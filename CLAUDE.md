@@ -6,6 +6,27 @@ Layout: `paper/` (the submission + design spec + figures), `engine/` (the Python
 own documentation: `README.md` orientation + file map, `BUILD_NOTES.md` running build log,
 `ROADMAP.md` where the project is going).
 
+## Before making this repo public (READ FIRST if that's the task)
+
+This repo is currently **private** and will be converted to public later. If the user asks to make
+it public, publish it, open-source it, or flip the GitHub repo's visibility -- **STOP and surface
+this checklist before doing it**, because some tracked content is deliberately kept private and
+must be removed from the working tree AND scrubbed from git history first (deleting it in a new
+commit is not enough -- it stays in history):
+
+- **`docs/BUILD_NOTES.md`** -- an internal reasoning/dev log (candid bug post-mortems, the
+  acceptance-strategy notes, flagged discrepancies, the ODbL "nothing published" musing). It is
+  intentionally tracked while the repo is private (for versioning + backup) but is **not** meant
+  to ship publicly. `git rm` it and scrub it from history at conversion time. It has NO other
+  copy on disk, so back it up somewhere local first.
+- Re-scan for anything else that shouldn't be public before flipping visibility: any acceptance-
+  strategy / review-tactics notes, unpublished-data concerns, or private author details beyond
+  the paper's own author block. Ask the user rather than guessing what stays.
+
+A history scrub was already done once (see the "GitHub history scrubbed" chronological entry in
+BUILD_NOTES) -- the mechanics are known: fresh `git init` + single clean commit + force-push, or
+`git filter-repo`. Do NOT force-push a scrub to a shared remote without explicit confirmation.
+
 ## Every session
 
 **Read `docs/BUILD_NOTES.md` first**, before making changes. It has decisions, tradeoffs, and bug
