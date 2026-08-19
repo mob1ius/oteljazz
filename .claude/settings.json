@@ -1,0 +1,117 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.venv/bin/python3 $CLAUDE_PROJECT_DIR/.claude/hooks/capture.py"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.venv/bin/python3 $CLAUDE_PROJECT_DIR/.claude/hooks/capture.py"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.venv/bin/python3 $CLAUDE_PROJECT_DIR/.claude/hooks/capture.py"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.venv/bin/python3 $CLAUDE_PROJECT_DIR/.claude/hooks/capture.py"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.venv/bin/python3 $CLAUDE_PROJECT_DIR/.claude/hooks/capture.py"
+          }
+        ],
+        "matcher": "*"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.venv/bin/python3 $CLAUDE_PROJECT_DIR/.claude/hooks/capture.py"
+          }
+        ],
+        "matcher": "*"
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.venv/bin/python3 $CLAUDE_PROJECT_DIR/.claude/hooks/capture.py"
+          }
+        ],
+        "matcher": "*"
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.venv/bin/python3 $CLAUDE_PROJECT_DIR/.claude/hooks/capture.py"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.venv/bin/python3 $CLAUDE_PROJECT_DIR/.claude/hooks/capture.py"
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.venv/bin/python3 $CLAUDE_PROJECT_DIR/.claude/hooks/capture.py"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.venv/bin/python3 $CLAUDE_PROJECT_DIR/.claude/hooks/capture.py"
+          }
+        ]
+      }
+    ]
+  }
+}

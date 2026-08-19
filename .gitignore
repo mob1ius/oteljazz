@@ -1,0 +1,25 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Logic Pro project -- large binary, not meaningfully diffable, personal working file.
+otelljazztesting.logicx/
+
+# Raw archival audio masters -- the trimmed deliverables in supplementary_audio/ and
+# zenodo_deposit/ ARE tracked; these are the untrimmed source bounces they were cut from.
+renders/
+
+# Raw corpus source (re-download via docs/README.md's setup command if needed; the mined
+# derivative, engine/corpus_model_jazz.json, is what the engine actually uses and IS tracked).
+corpus_raw/
+
+# Local OTel-hooks capture state (real Claude Code session telemetry, for the real-trace roadmap
+# item -- see docs/BUILD_NOTES.md). Stays local, never committed, never leaves this machine
+# unless explicitly exported/shared.
+.otel-hook-data/
+
+# Personal/local Claude Code settings -- machine-specific permission overrides, not project config.
+.claude/settings.local.json
+
+.DS_Store
