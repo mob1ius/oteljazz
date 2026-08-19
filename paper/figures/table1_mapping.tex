@@ -1,0 +1,29 @@
+% Table 1: Telemetry-to-music mapping.
+% Generated to mirror 07-oversight-symphony-sonification.md verbatim -- if the markdown table
+% changes, regenerate this by hand from the same source rather than letting the two drift.
+% Requires: \usepackage{booktabs}
+\begin{table*}[t]
+\centering
+\caption{Telemetry-to-music mapping. Tier 1 signals are computed directly from OpenTelemetry
+GenAI attributes in the live span stream and implemented in both prototype realizations. Tier 2
+signals are the adversarial signatures: rendered by the grammar, but their detectors do not yet
+exist, so they are currently injected as annotations on hand-authored spans rather than inferred
+from live telemetry.}
+\label{tab:mapping}
+\begin{tabular}{@{}clll@{}}
+\toprule
+Tier & Telemetry source & Musical parameter & Status \\
+\midrule
+1 & \texttt{gen\_ai.operation.name} & voice onset pattern and articulation type & implemented, live \\
+1 & agent liveness (span start/end + terminal \texttt{stop\_reason}) & chord voice count (ensemble thickness) & implemented, live \\
+1 & \texttt{gen\_ai.usage.\{input,output\}\_tokens} & articulation velocity & implemented, live \\
+1 & span-start rate (sliding window) & tempo, clamped to 68--132~BPM & implemented, live \\
+1 & \texttt{gen\_ai.tool.name} presence & bass register emphasis and walk feel & implemented, live \\
+2 & goal drift & pitch bend, chromatic deviation from the mode & rendered; detector not implemented, currently injected \\
+2 & collusion & unexpected unison between independent voices & rendered; detector not implemented, currently injected \\
+2 & poisoned spawn & new voice entering out of key & rendered; detector not implemented, currently injected \\
+2 & silent failure or stall & voice dropout from the chord & rendered; partially derivable from Tier~1 liveness \\
+2 & runaway loop & repeating rhythmic ostinato & rendered; detector not implemented, currently injected \\
+\bottomrule
+\end{tabular}
+\end{table*}

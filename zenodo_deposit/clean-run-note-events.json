@@ -1,0 +1,4353 @@
+{
+ "seed": 0,
+ "key": "Bb",
+ "tempo_default": 96.0,
+ "swing_default": 0.6,
+ "form": "Bbmaj7 | Bbmaj7 | Gm7 | C7 | F7 | Bbmaj7 | Gm7 | C7 | F7 | Bbmaj7 | Dm7 | G7 | Cm7 | F7 | Cm7 | F7",
+ "form_roman": "Imaj7 | Imaj7 | VImin | IIdom7 | Vdom7 | Imaj7 | VImin | IIdom7 | Vdom7 | Imaj7 | IIImin | VIdom7 | IImin | Vdom7 | IImin | Vdom7",
+ "source": "swarm",
+ "duration_s": 71.996,
+ "voices": {
+  "arch1": {
+   "channel": 0,
+   "role": "chord"
+  },
+  "planner": {
+   "channel": 1,
+   "role": "chord"
+  },
+  "worker2": {
+   "channel": 3,
+   "role": "chord"
+  },
+  "worker3": {
+   "channel": 4,
+   "role": "chord"
+  },
+  "tools": {
+   "channel": 5,
+   "role": "chord"
+  },
+  "worker1": {
+   "channel": 2,
+   "role": "chord"
+  },
+  "melody": {
+   "channel": 6,
+   "role": "solo"
+  },
+  "arch2": {
+   "channel": 7,
+   "role": "chord"
+  },
+  "bass": {
+   "channel": 8,
+   "role": "bass"
+  }
+ },
+ "chords": [
+  {
+   "t": 0.0,
+   "end": 3.2877,
+   "symbol": "Bbmaj7",
+   "root_pc": 0,
+   "quality": "maj7"
+  },
+  {
+   "t": 3.2877,
+   "end": 6.5753,
+   "symbol": "Bbmaj7",
+   "root_pc": 0,
+   "quality": "maj7"
+  },
+  {
+   "t": 6.5753,
+   "end": 9.863,
+   "symbol": "Gm7",
+   "root_pc": 9,
+   "quality": "min"
+  },
+  {
+   "t": 9.863,
+   "end": 13.1507,
+   "symbol": "C7",
+   "root_pc": 2,
+   "quality": "dom7"
+  },
+  {
+   "t": 13.1507,
+   "end": 14.9689,
+   "symbol": "F7",
+   "root_pc": 7,
+   "quality": "dom7"
+  },
+  {
+   "t": 14.9689,
+   "end": 16.787,
+   "symbol": "Bbmaj7",
+   "root_pc": 0,
+   "quality": "maj7"
+  },
+  {
+   "t": 16.787,
+   "end": 18.6052,
+   "symbol": "Gm7",
+   "root_pc": 9,
+   "quality": "min"
+  },
+  {
+   "t": 18.6052,
+   "end": 20.4234,
+   "symbol": "C7",
+   "root_pc": 2,
+   "quality": "dom7"
+  },
+  {
+   "t": 20.4234,
+   "end": 22.2416,
+   "symbol": "F7",
+   "root_pc": 7,
+   "quality": "dom7"
+  },
+  {
+   "t": 22.2416,
+   "end": 24.2584,
+   "symbol": "Bbmaj7",
+   "root_pc": 0,
+   "quality": "maj7"
+  },
+  {
+   "t": 24.2584,
+   "end": 26.2752,
+   "symbol": "Dm7",
+   "root_pc": 4,
+   "quality": "min"
+  },
+  {
+   "t": 26.2752,
+   "end": 28.292,
+   "symbol": "G7",
+   "root_pc": 9,
+   "quality": "dom7"
+  },
+  {
+   "t": 28.292,
+   "end": 30.3088,
+   "symbol": "Cm7",
+   "root_pc": 2,
+   "quality": "min"
+  },
+  {
+   "t": 30.3088,
+   "end": 32.3256,
+   "symbol": "F7",
+   "root_pc": 7,
+   "quality": "dom7"
+  },
+  {
+   "t": 32.3256,
+   "end": 34.9063,
+   "symbol": "Cm7",
+   "root_pc": 2,
+   "quality": "min"
+  },
+  {
+   "t": 34.9063,
+   "end": 37.4869,
+   "symbol": "F7",
+   "root_pc": 7,
+   "quality": "dom7"
+  },
+  {
+   "t": 37.4869,
+   "end": 40.0676,
+   "symbol": "Bbmaj7",
+   "root_pc": 0,
+   "quality": "maj7"
+  },
+  {
+   "t": 40.0676,
+   "end": 42.6482,
+   "symbol": "Bbmaj7",
+   "root_pc": 0,
+   "quality": "maj7"
+  },
+  {
+   "t": 42.6482,
+   "end": 45.0244,
+   "symbol": "Gm7",
+   "root_pc": 9,
+   "quality": "min"
+  },
+  {
+   "t": 45.0244,
+   "end": 47.4007,
+   "symbol": "C7",
+   "root_pc": 2,
+   "quality": "dom7"
+  },
+  {
+   "t": 47.4007,
+   "end": 49.7769,
+   "symbol": "F7",
+   "root_pc": 7,
+   "quality": "dom7"
+  },
+  {
+   "t": 49.7769,
+   "end": 52.1532,
+   "symbol": "Bbmaj7",
+   "root_pc": 0,
+   "quality": "maj7"
+  },
+  {
+   "t": 52.1532,
+   "end": 54.5294,
+   "symbol": "Gm7",
+   "root_pc": 9,
+   "quality": "min"
+  },
+  {
+   "t": 54.5294,
+   "end": 58.0588,
+   "symbol": "C7",
+   "root_pc": 2,
+   "quality": "dom7"
+  },
+  {
+   "t": 58.0588,
+   "end": 61.5882,
+   "symbol": "F7",
+   "root_pc": 7,
+   "quality": "dom7"
+  },
+  {
+   "t": 61.5882,
+   "end": 65.1176,
+   "symbol": "Bbmaj7",
+   "root_pc": 0,
+   "quality": "maj7"
+  },
+  {
+   "t": 65.1176,
+   "end": 68.647,
+   "symbol": "Dm7",
+   "root_pc": 4,
+   "quality": "min"
+  },
+  {
+   "t": 68.647,
+   "end": 72.1765,
+   "symbol": "G7",
+   "root_pc": 9,
+   "quality": "dom7"
+  }
+ ],
+ "notes": [
+  {
+   "t": 0.0,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 52,
+   "vel": 82,
+   "dur": 3.1093
+  },
+  {
+   "t": 0.0,
+   "ch": 1,
+   "voice": "planner",
+   "note": 59,
+   "vel": 82,
+   "dur": 1.1081
+  },
+  {
+   "t": 0.0,
+   "ch": 1,
+   "voice": "planner",
+   "note": 59,
+   "vel": 78,
+   "dur": 2.2529
+  },
+  {
+   "t": 0.0,
+   "ch": 6,
+   "voice": "melody",
+   "note": 71,
+   "vel": 66,
+   "dur": 1.0555
+  },
+  {
+   "t": 0.0,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 79,
+   "vel": 82,
+   "dur": 3.1093
+  },
+  {
+   "t": 0.0,
+   "ch": 8,
+   "voice": "bass",
+   "note": 48,
+   "vel": 89,
+   "dur": 0.7625
+  },
+  {
+   "t": 1.2556,
+   "ch": 6,
+   "voice": "melody",
+   "note": 86,
+   "vel": 66,
+   "dur": 0.4883
+  },
+  {
+   "t": 1.6438,
+   "ch": 8,
+   "voice": "bass",
+   "note": 43,
+   "vel": 78,
+   "dur": 0.7625
+  },
+  {
+   "t": 1.844,
+   "ch": 6,
+   "voice": "melody",
+   "note": 71,
+   "vel": 66,
+   "dur": 0.5117
+  },
+  {
+   "t": 1.869,
+   "ch": 1,
+   "voice": "planner",
+   "note": 59,
+   "vel": 83,
+   "dur": 1.2403
+  },
+  {
+   "t": 2.4382,
+   "ch": 6,
+   "voice": "melody",
+   "note": 78,
+   "vel": 66,
+   "dur": 1.0496
+  },
+  {
+   "t": 2.691,
+   "ch": 1,
+   "voice": "planner",
+   "note": 59,
+   "vel": 88,
+   "dur": 0.4869
+  },
+  {
+   "t": 3.2877,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 52,
+   "vel": 60,
+   "dur": 2.727
+  },
+  {
+   "t": 3.2877,
+   "ch": 1,
+   "voice": "planner",
+   "note": 59,
+   "vel": 60,
+   "dur": 2.4111
+  },
+  {
+   "t": 3.2877,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 79,
+   "vel": 60,
+   "dur": 2.727
+  },
+  {
+   "t": 3.2877,
+   "ch": 8,
+   "voice": "bass",
+   "note": 48,
+   "vel": 78,
+   "dur": 0.7625
+  },
+  {
+   "t": 4.1096,
+   "ch": 5,
+   "voice": "tools",
+   "note": 69,
+   "vel": 53,
+   "dur": 0.4384
+  },
+  {
+   "t": 4.9315,
+   "ch": 8,
+   "voice": "bass",
+   "note": 43,
+   "vel": 78,
+   "dur": 0.7625
+  },
+  {
+   "t": 5.1567,
+   "ch": 1,
+   "voice": "planner",
+   "note": 59,
+   "vel": 71,
+   "dur": 0.858
+  },
+  {
+   "t": 6.2038,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 48,
+   "vel": 70,
+   "dur": 3.0715
+  },
+  {
+   "t": 6.2038,
+   "ch": 1,
+   "voice": "planner",
+   "note": 67,
+   "vel": 70,
+   "dur": 2.0641
+  },
+  {
+   "t": 6.2038,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 88,
+   "vel": 70,
+   "dur": 3.0715
+  },
+  {
+   "t": 6.3896,
+   "ch": 1,
+   "voice": "planner",
+   "note": 59,
+   "vel": 74,
+   "dur": 0.7958
+  },
+  {
+   "t": 6.5753,
+   "ch": 8,
+   "voice": "bass",
+   "note": 45,
+   "vel": 78,
+   "dur": 0.7625
+  },
+  {
+   "t": 7.2115,
+   "ch": 5,
+   "voice": "tools",
+   "note": 69,
+   "vel": 55,
+   "dur": 0.308
+  },
+  {
+   "t": 8.0334,
+   "ch": 1,
+   "voice": "planner",
+   "note": 67,
+   "vel": 77,
+   "dur": 1.2419
+  },
+  {
+   "t": 8.1882,
+   "ch": 6,
+   "voice": "melody",
+   "note": 84,
+   "vel": 66,
+   "dur": 1.0489
+  },
+  {
+   "t": 8.2192,
+   "ch": 8,
+   "voice": "bass",
+   "note": 40,
+   "vel": 78,
+   "dur": 0.7625
+  },
+  {
+   "t": 8.4444,
+   "ch": 5,
+   "voice": "tools",
+   "note": 69,
+   "vel": 55,
+   "dur": 0.4011
+  },
+  {
+   "t": 9.2663,
+   "ch": 1,
+   "voice": "planner",
+   "note": 67,
+   "vel": 80,
+   "dur": 1.1715
+  },
+  {
+   "t": 9.4372,
+   "ch": 6,
+   "voice": "melody",
+   "note": 88,
+   "vel": 66,
+   "dur": 0.4883
+  },
+  {
+   "t": 9.4915,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 54,
+   "vel": 70,
+   "dur": 3.5017
+  },
+  {
+   "t": 9.4915,
+   "ch": 1,
+   "voice": "planner",
+   "note": 60,
+   "vel": 70,
+   "dur": 2.8856
+  },
+  {
+   "t": 9.4915,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 93,
+   "vel": 70,
+   "dur": 3.5017
+  },
+  {
+   "t": 9.863,
+   "ch": 8,
+   "voice": "bass",
+   "note": 50,
+   "vel": 78,
+   "dur": 0.7625
+  },
+  {
+   "t": 10.0256,
+   "ch": 6,
+   "voice": "melody",
+   "note": 78,
+   "vel": 66,
+   "dur": 0.3136
+  },
+  {
+   "t": 10.3856,
+   "ch": 6,
+   "voice": "melody",
+   "note": 84,
+   "vel": 66,
+   "dur": 0.5745
+  },
+  {
+   "t": 10.6849,
+   "ch": 8,
+   "voice": "bass",
+   "note": 51,
+   "vel": 78,
+   "dur": 0.7625
+  },
+  {
+   "t": 11.1353,
+   "ch": 1,
+   "voice": "planner",
+   "note": 60,
+   "vel": 86,
+   "dur": 1.8579
+  },
+  {
+   "t": 11.5068,
+   "ch": 8,
+   "voice": "bass",
+   "note": 52,
+   "vel": 78,
+   "dur": 0.7625
+  },
+  {
+   "t": 11.7006,
+   "ch": 6,
+   "voice": "melody",
+   "note": 90,
+   "vel": 66,
+   "dur": 0.5713
+  },
+  {
+   "t": 12.3288,
+   "ch": 8,
+   "voice": "bass",
+   "note": 54,
+   "vel": 78,
+   "dur": 0.7872
+  },
+  {
+   "t": 12.3724,
+   "ch": 6,
+   "voice": "melody",
+   "note": 86,
+   "vel": 66,
+   "dur": 0.319
+  },
+  {
+   "t": 12.7477,
+   "ch": 6,
+   "voice": "melody",
+   "note": 90,
+   "vel": 66,
+   "dur": 0.3119
+  },
+  {
+   "t": 13.0273,
+   "ch": 4,
+   "voice": "worker3",
+   "note": 71,
+   "vel": 54,
+   "dur": 0.1845
+  },
+  {
+   "t": 13.0945,
+   "ch": 6,
+   "voice": "melody",
+   "note": 83,
+   "vel": 66,
+   "dur": 0.3429
+  },
+  {
+   "t": 13.1045,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 78,
+   "vel": 69,
+   "dur": 0.8635
+  },
+  {
+   "t": 13.1606,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 59,
+   "vel": 60,
+   "dur": 1.5177
+  },
+  {
+   "t": 13.1606,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 81,
+   "vel": 60,
+   "dur": 0.4139
+  },
+  {
+   "t": 13.1606,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 65,
+   "vel": 60,
+   "dur": 0.3366
+  },
+  {
+   "t": 13.1606,
+   "ch": 4,
+   "voice": "worker3",
+   "note": 74,
+   "vel": 60,
+   "dur": 1.3874
+  },
+  {
+   "t": 13.1606,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 88,
+   "vel": 60,
+   "dur": 1.5177
+  },
+  {
+   "t": 13.1606,
+   "ch": 8,
+   "voice": "bass",
+   "note": 55,
+   "vel": 78,
+   "dur": 0.4298
+  },
+  {
+   "t": 13.1818,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 65,
+   "vel": 54,
+   "dur": 0.4845
+  },
+  {
+   "t": 13.3318,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 81,
+   "vel": 54,
+   "dur": 0.62
+  },
+  {
+   "t": 13.3318,
+   "ch": 4,
+   "voice": "worker3",
+   "note": 74,
+   "vel": 79,
+   "dur": 1.3465
+  },
+  {
+   "t": 13.4818,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 65,
+   "vel": 97,
+   "dur": 1.1965
+  },
+  {
+   "t": 13.6152,
+   "ch": 8,
+   "voice": "bass",
+   "note": 54,
+   "vel": 78,
+   "dur": 0.4298
+  },
+  {
+   "t": 13.6364,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 81,
+   "vel": 71,
+   "dur": 1.042
+  },
+  {
+   "t": 13.6364,
+   "ch": 5,
+   "voice": "tools",
+   "note": 71,
+   "vel": 52,
+   "dur": 0.4175
+  },
+  {
+   "t": 13.9364,
+   "ch": 5,
+   "voice": "tools",
+   "note": 71,
+   "vel": 55,
+   "dur": 0.3825
+  },
+  {
+   "t": 14.0136,
+   "ch": 5,
+   "voice": "tools",
+   "note": 71,
+   "vel": 56,
+   "dur": 0.4175
+  },
+  {
+   "t": 14.0278,
+   "ch": 6,
+   "voice": "melody",
+   "note": 77,
+   "vel": 58,
+   "dur": 0.0493
+  },
+  {
+   "t": 14.0697,
+   "ch": 8,
+   "voice": "bass",
+   "note": 53,
+   "vel": 78,
+   "dur": 0.4298
+  },
+  {
+   "t": 14.0825,
+   "ch": 6,
+   "voice": "melody",
+   "note": 79,
+   "vel": 58,
+   "dur": 0.0877
+  },
+  {
+   "t": 14.1809,
+   "ch": 6,
+   "voice": "melody",
+   "note": 83,
+   "vel": 58,
+   "dur": 0.0956
+  },
+  {
+   "t": 14.2871,
+   "ch": 6,
+   "voice": "melody",
+   "note": 86,
+   "vel": 58,
+   "dur": 0.0956
+  },
+  {
+   "t": 14.4308,
+   "ch": 6,
+   "voice": "melody",
+   "note": 83,
+   "vel": 58,
+   "dur": 0.0493
+  },
+  {
+   "t": 14.4856,
+   "ch": 6,
+   "voice": "melody",
+   "note": 79,
+   "vel": 58,
+   "dur": 0.0493
+  },
+  {
+   "t": 14.5243,
+   "ch": 8,
+   "voice": "bass",
+   "note": 54,
+   "vel": 78,
+   "dur": 0.4298
+  },
+  {
+   "t": 14.5403,
+   "ch": 6,
+   "voice": "melody",
+   "note": 77,
+   "vel": 58,
+   "dur": 0.0908
+  },
+  {
+   "t": 14.5455,
+   "ch": 5,
+   "voice": "tools",
+   "note": 71,
+   "vel": 56,
+   "dur": 0.3937
+  },
+  {
+   "t": 14.5455,
+   "ch": 5,
+   "voice": "tools",
+   "note": 71,
+   "vel": 55,
+   "dur": 0.4175
+  },
+  {
+   "t": 14.6417,
+   "ch": 6,
+   "voice": "melody",
+   "note": 74,
+   "vel": 58,
+   "dur": 0.0956
+  },
+  {
+   "t": 14.6955,
+   "ch": 5,
+   "voice": "tools",
+   "note": 71,
+   "vel": 54,
+   "dur": 0.3825
+  },
+  {
+   "t": 14.8044,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 52,
+   "vel": 84,
+   "dur": 1.9092
+  },
+  {
+   "t": 14.8044,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 86,
+   "vel": 84,
+   "dur": 1.9092
+  },
+  {
+   "t": 14.8044,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 59,
+   "vel": 84,
+   "dur": 1.9092
+  },
+  {
+   "t": 14.8044,
+   "ch": 4,
+   "voice": "worker3",
+   "note": 67,
+   "vel": 84,
+   "dur": 1.9092
+  },
+  {
+   "t": 14.8044,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 90,
+   "vel": 84,
+   "dur": 1.9092
+  },
+  {
+   "t": 14.8229,
+   "ch": 6,
+   "voice": "melody",
+   "note": 71,
+   "vel": 58,
+   "dur": 0.0602
+  },
+  {
+   "t": 14.8886,
+   "ch": 6,
+   "voice": "melody",
+   "note": 74,
+   "vel": 58,
+   "dur": 0.0493
+  },
+  {
+   "t": 14.9433,
+   "ch": 6,
+   "voice": "melody",
+   "note": 77,
+   "vel": 58,
+   "dur": 0.0493
+  },
+  {
+   "t": 14.9788,
+   "ch": 8,
+   "voice": "bass",
+   "note": 55,
+   "vel": 78,
+   "dur": 0.4298
+  },
+  {
+   "t": 14.9981,
+   "ch": 6,
+   "voice": "melody",
+   "note": 79,
+   "vel": 58,
+   "dur": 0.0938
+  },
+  {
+   "t": 15.0,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 52,
+   "dur": 0.2587
+  },
+  {
+   "t": 15.0,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 55,
+   "dur": 0.4175
+  },
+  {
+   "t": 15.1775,
+   "ch": 6,
+   "voice": "melody",
+   "note": 88,
+   "vel": 58,
+   "dur": 0.112
+  },
+  {
+   "t": 15.301,
+   "ch": 6,
+   "voice": "melody",
+   "note": 84,
+   "vel": 58,
+   "dur": 0.0577
+  },
+  {
+   "t": 15.365,
+   "ch": 6,
+   "voice": "melody",
+   "note": 83,
+   "vel": 58,
+   "dur": 0.0577
+  },
+  {
+   "t": 15.3773,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 55,
+   "dur": 0.4175
+  },
+  {
+   "t": 15.4291,
+   "ch": 6,
+   "voice": "melody",
+   "note": 79,
+   "vel": 58,
+   "dur": 0.088
+  },
+  {
+   "t": 15.4334,
+   "ch": 8,
+   "voice": "bass",
+   "note": 52,
+   "vel": 78,
+   "dur": 0.4298
+  },
+  {
+   "t": 15.6045,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 56,
+   "dur": 0.2026
+  },
+  {
+   "t": 15.6174,
+   "ch": 6,
+   "voice": "melody",
+   "note": 79,
+   "vel": 58,
+   "dur": 0.3521
+  },
+  {
+   "t": 15.7545,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 56,
+   "dur": 0.3825
+  },
+  {
+   "t": 15.8879,
+   "ch": 8,
+   "voice": "bass",
+   "note": 47,
+   "vel": 78,
+   "dur": 0.4298
+  },
+  {
+   "t": 15.9091,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 86,
+   "vel": 83,
+   "dur": 1.1875
+  },
+  {
+   "t": 16.0573,
+   "ch": 6,
+   "voice": "melody",
+   "note": 83,
+   "vel": 58,
+   "dur": 0.3521
+  },
+  {
+   "t": 16.3425,
+   "ch": 8,
+   "voice": "bass",
+   "note": 46,
+   "vel": 78,
+   "dur": 0.4298
+  },
+  {
+   "t": 16.4972,
+   "ch": 6,
+   "voice": "melody",
+   "note": 83,
+   "vel": 58,
+   "dur": 0.3521
+  },
+  {
+   "t": 16.6636,
+   "ch": 4,
+   "voice": "worker3",
+   "note": 67,
+   "vel": 73,
+   "dur": 0.8588
+  },
+  {
+   "t": 16.797,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 48,
+   "vel": 60,
+   "dur": 1.5177
+  },
+  {
+   "t": 16.797,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 83,
+   "vel": 60,
+   "dur": 1.5177
+  },
+  {
+   "t": 16.797,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 67,
+   "vel": 60,
+   "dur": 1.2671
+  },
+  {
+   "t": 16.797,
+   "ch": 4,
+   "voice": "worker3",
+   "note": 76,
+   "vel": 60,
+   "dur": 1.5177
+  },
+  {
+   "t": 16.797,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 86,
+   "vel": 60,
+   "dur": 1.5177
+  },
+  {
+   "t": 16.797,
+   "ch": 8,
+   "voice": "bass",
+   "note": 45,
+   "vel": 78,
+   "dur": 0.4298
+  },
+  {
+   "t": 16.9371,
+   "ch": 6,
+   "voice": "melody",
+   "note": 84,
+   "vel": 58,
+   "dur": 0.3521
+  },
+  {
+   "t": 17.1182,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 54,
+   "dur": 0.3825
+  },
+  {
+   "t": 17.2516,
+   "ch": 8,
+   "voice": "bass",
+   "note": 48,
+   "vel": 78,
+   "dur": 0.4298
+  },
+  {
+   "t": 17.2727,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 67,
+   "vel": 77,
+   "dur": 1.042
+  },
+  {
+   "t": 17.377,
+   "ch": 6,
+   "voice": "melody",
+   "note": 79,
+   "vel": 58,
+   "dur": 0.112
+  },
+  {
+   "t": 17.5014,
+   "ch": 6,
+   "voice": "melody",
+   "note": 81,
+   "vel": 58,
+   "dur": 0.0922
+  },
+  {
+   "t": 17.5727,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 54,
+   "dur": 0.3825
+  },
+  {
+   "t": 17.6001,
+   "ch": 6,
+   "voice": "melody",
+   "note": 84,
+   "vel": 58,
+   "dur": 0.0577
+  },
+  {
+   "t": 17.6642,
+   "ch": 6,
+   "voice": "melody",
+   "note": 88,
+   "vel": 58,
+   "dur": 0.0577
+  },
+  {
+   "t": 17.7061,
+   "ch": 8,
+   "voice": "bass",
+   "note": 48,
+   "vel": 78,
+   "dur": 0.4298
+  },
+  {
+   "t": 17.8773,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 83,
+   "vel": 98,
+   "dur": 0.5779
+  },
+  {
+   "t": 18.1045,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 53,
+   "dur": 0.0857
+  },
+  {
+   "t": 18.1606,
+   "ch": 8,
+   "voice": "bass",
+   "note": 49,
+   "vel": 78,
+   "dur": 0.4298
+  },
+  {
+   "t": 18.1818,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 57,
+   "dur": 0.4175
+  },
+  {
+   "t": 18.1818,
+   "ch": 5,
+   "voice": "tools",
+   "note": 73,
+   "vel": 100,
+   "dur": 0.2376
+  },
+  {
+   "t": 18.3318,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 52,
+   "dur": 0.3825
+  },
+  {
+   "t": 18.4407,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 54,
+   "vel": 70,
+   "dur": 1.6742
+  },
+  {
+   "t": 18.4407,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 88,
+   "vel": 70,
+   "dur": 1.6742
+  },
+  {
+   "t": 18.4407,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 72,
+   "vel": 70,
+   "dur": 1.6742
+  },
+  {
+   "t": 18.4407,
+   "ch": 4,
+   "voice": "worker3",
+   "note": 81,
+   "vel": 70,
+   "dur": 1.1453
+  },
+  {
+   "t": 18.4407,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 95,
+   "vel": 70,
+   "dur": 1.6742
+  },
+  {
+   "t": 18.6152,
+   "ch": 8,
+   "voice": "bass",
+   "note": 50,
+   "vel": 78,
+   "dur": 0.4298
+  },
+  {
+   "t": 18.6364,
+   "ch": 5,
+   "voice": "tools",
+   "note": 78,
+   "vel": 55,
+   "dur": 0.4175
+  },
+  {
+   "t": 18.7864,
+   "ch": 5,
+   "voice": "tools",
+   "note": 78,
+   "vel": 53,
+   "dur": 0.3825
+  },
+  {
+   "t": 18.7864,
+   "ch": 5,
+   "voice": "tools",
+   "note": 79,
+   "vel": 100,
+   "dur": 0.1951
+  },
+  {
+   "t": 18.8266,
+   "ch": 6,
+   "voice": "melody",
+   "note": 86,
+   "vel": 58,
+   "dur": 0.2795
+  },
+  {
+   "t": 19.0697,
+   "ch": 8,
+   "voice": "bass",
+   "note": 49,
+   "vel": 78,
+   "dur": 0.4298
+  },
+  {
+   "t": 19.0909,
+   "ch": 5,
+   "voice": "tools",
+   "note": 78,
+   "vel": 52,
+   "dur": 0.4175
+  },
+  {
+   "t": 19.1812,
+   "ch": 6,
+   "voice": "melody",
+   "note": 90,
+   "vel": 58,
+   "dur": 0.0956
+  },
+  {
+   "t": 19.2874,
+   "ch": 6,
+   "voice": "melody",
+   "note": 86,
+   "vel": 58,
+   "dur": 0.0956
+  },
+  {
+   "t": 19.3909,
+   "ch": 4,
+   "voice": "worker3",
+   "note": 81,
+   "vel": 71,
+   "dur": 0.724
+  },
+  {
+   "t": 19.3923,
+   "ch": 6,
+   "voice": "melody",
+   "note": 84,
+   "vel": 58,
+   "dur": 0.0493
+  },
+  {
+   "t": 19.4471,
+   "ch": 6,
+   "voice": "melody",
+   "note": 81,
+   "vel": 58,
+   "dur": 0.0493
+  },
+  {
+   "t": 19.5243,
+   "ch": 8,
+   "voice": "bass",
+   "note": 48,
+   "vel": 78,
+   "dur": 0.4298
+  },
+  {
+   "t": 19.5404,
+   "ch": 6,
+   "voice": "melody",
+   "note": 78,
+   "vel": 58,
+   "dur": 0.0909
+  },
+  {
+   "t": 19.642,
+   "ch": 6,
+   "voice": "melody",
+   "note": 74,
+   "vel": 58,
+   "dur": 0.0956
+  },
+  {
+   "t": 19.6955,
+   "ch": 5,
+   "voice": "tools",
+   "note": 78,
+   "vel": 56,
+   "dur": 0.3411
+  },
+  {
+   "t": 19.7482,
+   "ch": 6,
+   "voice": "melody",
+   "note": 72,
+   "vel": 58,
+   "dur": 0.0956
+  },
+  {
+   "t": 19.8455,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 72,
+   "vel": 86,
+   "dur": 0.4089
+  },
+  {
+   "t": 19.8455,
+   "ch": 5,
+   "voice": "tools",
+   "note": 78,
+   "vel": 54,
+   "dur": 0.2325
+  },
+  {
+   "t": 19.8501,
+   "ch": 6,
+   "voice": "melody",
+   "note": 69,
+   "vel": 58,
+   "dur": 0.0493
+  },
+  {
+   "t": 19.9227,
+   "ch": 4,
+   "voice": "worker3",
+   "note": 81,
+   "vel": 82,
+   "dur": 1.37
+  },
+  {
+   "t": 19.9435,
+   "ch": 6,
+   "voice": "melody",
+   "note": 74,
+   "vel": 58,
+   "dur": 0.0493
+  },
+  {
+   "t": 19.9788,
+   "ch": 8,
+   "voice": "bass",
+   "note": 49,
+   "vel": 78,
+   "dur": 0.4298
+  },
+  {
+   "t": 19.9982,
+   "ch": 6,
+   "voice": "melody",
+   "note": 72,
+   "vel": 58,
+   "dur": 0.0939
+  },
+  {
+   "t": 20.1028,
+   "ch": 6,
+   "voice": "melody",
+   "note": 69,
+   "vel": 58,
+   "dur": 0.0956
+  },
+  {
+   "t": 20.15,
+   "ch": 5,
+   "voice": "tools",
+   "note": 78,
+   "vel": 53,
+   "dur": 0.3825
+  },
+  {
+   "t": 20.209,
+   "ch": 6,
+   "voice": "melody",
+   "note": 66,
+   "vel": 58,
+   "dur": 0.0934
+  },
+  {
+   "t": 20.2589,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 59,
+   "vel": 70,
+   "dur": 1.9092
+  },
+  {
+   "t": 20.2589,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 81,
+   "vel": 70,
+   "dur": 1.0374
+  },
+  {
+   "t": 20.2589,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 65,
+   "vel": 70,
+   "dur": 1.9092
+  },
+  {
+   "t": 20.2589,
+   "ch": 4,
+   "voice": "worker3",
+   "note": 74,
+   "vel": 70,
+   "dur": 1.8205
+  },
+  {
+   "t": 20.2589,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 88,
+   "vel": 70,
+   "dur": 1.9092
+  },
+  {
+   "t": 20.3465,
+   "ch": 6,
+   "voice": "melody",
+   "note": 60,
+   "vel": 58,
+   "dur": 0.0493
+  },
+  {
+   "t": 20.4012,
+   "ch": 6,
+   "voice": "melody",
+   "note": 62,
+   "vel": 58,
+   "dur": 0.0493
+  },
+  {
+   "t": 20.4334,
+   "ch": 8,
+   "voice": "bass",
+   "note": 50,
+   "vel": 78,
+   "dur": 0.4298
+  },
+  {
+   "t": 20.4545,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 81,
+   "vel": 79,
+   "dur": 1.7136
+  },
+  {
+   "t": 20.4573,
+   "ch": 6,
+   "voice": "melody",
+   "note": 66,
+   "vel": 58,
+   "dur": 0.0956
+  },
+  {
+   "t": 20.5636,
+   "ch": 6,
+   "voice": "melody",
+   "note": 69,
+   "vel": 58,
+   "dur": 0.0956
+  },
+  {
+   "t": 20.7448,
+   "ch": 6,
+   "voice": "melody",
+   "note": 71,
+   "vel": 58,
+   "dur": 0.2795
+  },
+  {
+   "t": 20.7545,
+   "ch": 5,
+   "voice": "tools",
+   "note": 71,
+   "vel": 52,
+   "dur": 0.3825
+  },
+  {
+   "t": 20.8879,
+   "ch": 8,
+   "voice": "bass",
+   "note": 53,
+   "vel": 78,
+   "dur": 0.4298
+  },
+  {
+   "t": 20.9091,
+   "ch": 4,
+   "voice": "worker3",
+   "note": 74,
+   "vel": 71,
+   "dur": 1.259
+  },
+  {
+   "t": 21.0993,
+   "ch": 6,
+   "voice": "melody",
+   "note": 71,
+   "vel": 58,
+   "dur": 0.0956
+  },
+  {
+   "t": 21.2056,
+   "ch": 6,
+   "voice": "melody",
+   "note": 74,
+   "vel": 58,
+   "dur": 0.051
+  },
+  {
+   "t": 21.262,
+   "ch": 6,
+   "voice": "melody",
+   "note": 77,
+   "vel": 58,
+   "dur": 0.0493
+  },
+  {
+   "t": 21.2864,
+   "ch": 5,
+   "voice": "tools",
+   "note": 71,
+   "vel": 54,
+   "dur": 0.4175
+  },
+  {
+   "t": 21.2864,
+   "ch": 5,
+   "voice": "tools",
+   "note": 71,
+   "vel": 55,
+   "dur": 0.4175
+  },
+  {
+   "t": 21.2864,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 100,
+   "dur": 0.1649
+  },
+  {
+   "t": 21.3168,
+   "ch": 6,
+   "voice": "melody",
+   "note": 79,
+   "vel": 58,
+   "dur": 0.0515
+  },
+  {
+   "t": 21.3425,
+   "ch": 8,
+   "voice": "bass",
+   "note": 53,
+   "vel": 78,
+   "dur": 0.4298
+  },
+  {
+   "t": 21.4539,
+   "ch": 6,
+   "voice": "melody",
+   "note": 62,
+   "vel": 58,
+   "dur": 0.0956
+  },
+  {
+   "t": 21.5601,
+   "ch": 6,
+   "voice": "melody",
+   "note": 65,
+   "vel": 58,
+   "dur": 0.0956
+  },
+  {
+   "t": 21.6651,
+   "ch": 6,
+   "voice": "melody",
+   "note": 67,
+   "vel": 58,
+   "dur": 0.0493
+  },
+  {
+   "t": 21.7198,
+   "ch": 6,
+   "voice": "melody",
+   "note": 71,
+   "vel": 58,
+   "dur": 0.0493
+  },
+  {
+   "t": 21.797,
+   "ch": 8,
+   "voice": "bass",
+   "note": 54,
+   "vel": 78,
+   "dur": 0.4298
+  },
+  {
+   "t": 21.8132,
+   "ch": 6,
+   "voice": "melody",
+   "note": 65,
+   "vel": 58,
+   "dur": 0.0909
+  },
+  {
+   "t": 21.9147,
+   "ch": 6,
+   "voice": "melody",
+   "note": 67,
+   "vel": 58,
+   "dur": 0.0956
+  },
+  {
+   "t": 22.0209,
+   "ch": 6,
+   "voice": "melody",
+   "note": 71,
+   "vel": 58,
+   "dur": 0.0956
+  },
+  {
+   "t": 22.1182,
+   "ch": 5,
+   "voice": "tools",
+   "note": 71,
+   "vel": 54,
+   "dur": 0.3931
+  },
+  {
+   "t": 22.1228,
+   "ch": 6,
+   "voice": "melody",
+   "note": 74,
+   "vel": 58,
+   "dur": 0.0493
+  },
+  {
+   "t": 22.2162,
+   "ch": 6,
+   "voice": "melody",
+   "note": 71,
+   "vel": 58,
+   "dur": 0.3433
+  },
+  {
+   "t": 22.2569,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 52,
+   "vel": 74,
+   "dur": 1.8978
+  },
+  {
+   "t": 22.2569,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 86,
+   "vel": 74,
+   "dur": 1.8978
+  },
+  {
+   "t": 22.2569,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 59,
+   "vel": 74,
+   "dur": 1.7399
+  },
+  {
+   "t": 22.2569,
+   "ch": 4,
+   "voice": "worker3",
+   "note": 67,
+   "vel": 74,
+   "dur": 1.8817
+  },
+  {
+   "t": 22.2569,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 90,
+   "vel": 74,
+   "dur": 1.8978
+  },
+  {
+   "t": 22.2569,
+   "ch": 8,
+   "voice": "bass",
+   "note": 55,
+   "vel": 78,
+   "dur": 0.453
+  },
+  {
+   "t": 22.601,
+   "ch": 6,
+   "voice": "melody",
+   "note": 78,
+   "vel": 58,
+   "dur": 0.3884
+  },
+  {
+   "t": 22.6891,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 54,
+   "dur": 0.3596
+  },
+  {
+   "t": 22.7611,
+   "ch": 8,
+   "voice": "bass",
+   "note": 54,
+   "vel": 78,
+   "dur": 0.453
+  },
+  {
+   "t": 22.8492,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 56,
+   "dur": 0.2053
+  },
+  {
+   "t": 23.0092,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 59,
+   "vel": 93,
+   "dur": 1.1455
+  },
+  {
+   "t": 23.0438,
+   "ch": 6,
+   "voice": "melody",
+   "note": 79,
+   "vel": 58,
+   "dur": 0.0587
+  },
+  {
+   "t": 23.1013,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 52,
+   "dur": 0.4281
+  },
+  {
+   "t": 23.109,
+   "ch": 6,
+   "voice": "melody",
+   "note": 83,
+   "vel": 58,
+   "dur": 0.0587
+  },
+  {
+   "t": 23.1742,
+   "ch": 6,
+   "voice": "melody",
+   "note": 84,
+   "vel": 58,
+   "dur": 0.0879
+  },
+  {
+   "t": 23.2653,
+   "ch": 8,
+   "voice": "bass",
+   "note": 54,
+   "vel": 78,
+   "dur": 0.453
+  },
+  {
+   "t": 23.2734,
+   "ch": 6,
+   "voice": "melody",
+   "note": 88,
+   "vel": 58,
+   "dur": 0.1021
+  },
+  {
+   "t": 23.3534,
+   "ch": 4,
+   "voice": "worker3",
+   "note": 67,
+   "vel": 70,
+   "dur": 0.8014
+  },
+  {
+   "t": 23.4669,
+   "ch": 6,
+   "voice": "melody",
+   "note": 88,
+   "vel": 58,
+   "dur": 0.3174
+  },
+  {
+   "t": 23.7695,
+   "ch": 8,
+   "voice": "bass",
+   "note": 53,
+   "vel": 78,
+   "dur": 0.453
+  },
+  {
+   "t": 23.8644,
+   "ch": 6,
+   "voice": "melody",
+   "note": 83,
+   "vel": 58,
+   "dur": 0.3259
+  },
+  {
+   "t": 24.0176,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 86,
+   "vel": 89,
+   "dur": 0.8695
+  },
+  {
+   "t": 24.0176,
+   "ch": 4,
+   "voice": "worker3",
+   "note": 67,
+   "vel": 82,
+   "dur": 0.534
+  },
+  {
+   "t": 24.0176,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 54,
+   "dur": 0.3719
+  },
+  {
+   "t": 24.1097,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 53,
+   "dur": 0.3663
+  },
+  {
+   "t": 24.2618,
+   "ch": 6,
+   "voice": "melody",
+   "note": 79,
+   "vel": 58,
+   "dur": 0.3713
+  },
+  {
+   "t": 24.2737,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 55,
+   "vel": 60,
+   "dur": 1.8978
+  },
+  {
+   "t": 24.2737,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 78,
+   "vel": 60,
+   "dur": 1.8978
+  },
+  {
+   "t": 24.2737,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 62,
+   "vel": 60,
+   "dur": 1.8978
+  },
+  {
+   "t": 24.2737,
+   "ch": 4,
+   "voice": "worker3",
+   "note": 71,
+   "vel": 60,
+   "dur": 1.7891
+  },
+  {
+   "t": 24.2737,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 81,
+   "vel": 60,
+   "dur": 1.8978
+  },
+  {
+   "t": 24.2737,
+   "ch": 8,
+   "voice": "bass",
+   "note": 52,
+   "vel": 78,
+   "dur": 0.453
+  },
+  {
+   "t": 24.5218,
+   "ch": 5,
+   "voice": "tools",
+   "note": 79,
+   "vel": 52,
+   "dur": 0.3719
+  },
+  {
+   "t": 24.6791,
+   "ch": 6,
+   "voice": "melody",
+   "note": 79,
+   "vel": 58,
+   "dur": 0.0823
+  },
+  {
+   "t": 24.7059,
+   "ch": 5,
+   "voice": "tools",
+   "note": 79,
+   "vel": 52,
+   "dur": 0.4281
+  },
+  {
+   "t": 24.7727,
+   "ch": 6,
+   "voice": "melody",
+   "note": 76,
+   "vel": 58,
+   "dur": 0.1021
+  },
+  {
+   "t": 24.7779,
+   "ch": 8,
+   "voice": "bass",
+   "note": 51,
+   "vel": 78,
+   "dur": 0.453
+  },
+  {
+   "t": 24.866,
+   "ch": 5,
+   "voice": "tools",
+   "note": 79,
+   "vel": 52,
+   "dur": 0.3642
+  },
+  {
+   "t": 24.866,
+   "ch": 5,
+   "voice": "tools",
+   "note": 79,
+   "vel": 52,
+   "dur": 0.3719
+  },
+  {
+   "t": 24.8861,
+   "ch": 6,
+   "voice": "melody",
+   "note": 74,
+   "vel": 58,
+   "dur": 0.1021
+  },
+  {
+   "t": 24.9995,
+   "ch": 6,
+   "voice": "melody",
+   "note": 71,
+   "vel": 58,
+   "dur": 0.07
+  },
+  {
+   "t": 25.122,
+   "ch": 6,
+   "voice": "melody",
+   "note": 62,
+   "vel": 58,
+   "dur": 0.0587
+  },
+  {
+   "t": 25.1872,
+   "ch": 6,
+   "voice": "melody",
+   "note": 64,
+   "vel": 58,
+   "dur": 0.0851
+  },
+  {
+   "t": 25.2101,
+   "ch": 5,
+   "voice": "tools",
+   "note": 79,
+   "vel": 56,
+   "dur": 0.2134
+  },
+  {
+   "t": 25.2821,
+   "ch": 8,
+   "voice": "bass",
+   "note": 51,
+   "vel": 78,
+   "dur": 0.453
+  },
+  {
+   "t": 25.2836,
+   "ch": 6,
+   "voice": "melody",
+   "note": 67,
+   "vel": 58,
+   "dur": 0.1021
+  },
+  {
+   "t": 25.397,
+   "ch": 6,
+   "voice": "melody",
+   "note": 71,
+   "vel": 58,
+   "dur": 0.1021
+  },
+  {
+   "t": 25.5303,
+   "ch": 5,
+   "voice": "tools",
+   "note": 79,
+   "vel": 55,
+   "dur": 0.3719
+  },
+  {
+   "t": 25.5648,
+   "ch": 6,
+   "voice": "melody",
+   "note": 67,
+   "vel": 58,
+   "dur": 0.343
+  },
+  {
+   "t": 25.7143,
+   "ch": 4,
+   "voice": "worker3",
+   "note": 71,
+   "vel": 89,
+   "dur": 0.4573
+  },
+  {
+   "t": 25.7863,
+   "ch": 8,
+   "voice": "bass",
+   "note": 50,
+   "vel": 78,
+   "dur": 0.453
+  },
+  {
+   "t": 25.8744,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 62,
+   "vel": 82,
+   "dur": 1.1696
+  },
+  {
+   "t": 25.9879,
+   "ch": 6,
+   "voice": "melody",
+   "note": 71,
+   "vel": 58,
+   "dur": 0.0785
+  },
+  {
+   "t": 26.0345,
+   "ch": 5,
+   "voice": "tools",
+   "note": 79,
+   "vel": 56,
+   "dur": 0.1686
+  },
+  {
+   "t": 26.0729,
+   "ch": 6,
+   "voice": "melody",
+   "note": 74,
+   "vel": 58,
+   "dur": 0.0587
+  },
+  {
+   "t": 26.138,
+   "ch": 6,
+   "voice": "melody",
+   "note": 76,
+   "vel": 58,
+   "dur": 0.0587
+  },
+  {
+   "t": 26.2032,
+   "ch": 6,
+   "voice": "melody",
+   "note": 79,
+   "vel": 58,
+   "dur": 0.0908
+  },
+  {
+   "t": 26.2905,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 49,
+   "vel": 60,
+   "dur": 1.8978
+  },
+  {
+   "t": 26.2905,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 83,
+   "vel": 60,
+   "dur": 1.5546
+  },
+  {
+   "t": 26.2905,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 67,
+   "vel": 60,
+   "dur": 1.8978
+  },
+  {
+   "t": 26.2905,
+   "ch": 4,
+   "voice": "worker3",
+   "note": 76,
+   "vel": 60,
+   "dur": 1.8978
+  },
+  {
+   "t": 26.2905,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 90,
+   "vel": 60,
+   "dur": 1.8978
+  },
+  {
+   "t": 26.2905,
+   "ch": 8,
+   "voice": "bass",
+   "note": 49,
+   "vel": 78,
+   "dur": 0.453
+  },
+  {
+   "t": 26.3854,
+   "ch": 6,
+   "voice": "melody",
+   "note": 69,
+   "vel": 58,
+   "dur": 0.3259
+  },
+  {
+   "t": 26.5387,
+   "ch": 5,
+   "voice": "tools",
+   "note": 73,
+   "vel": 53,
+   "dur": 0.1073
+  },
+  {
+   "t": 26.6307,
+   "ch": 5,
+   "voice": "tools",
+   "note": 73,
+   "vel": 53,
+   "dur": 0.2964
+  },
+  {
+   "t": 26.7947,
+   "ch": 8,
+   "voice": "bass",
+   "note": 50,
+   "vel": 78,
+   "dur": 0.453
+  },
+  {
+   "t": 27.0429,
+   "ch": 5,
+   "voice": "tools",
+   "note": 73,
+   "vel": 53,
+   "dur": 0.1701
+  },
+  {
+   "t": 27.0429,
+   "ch": 5,
+   "voice": "tools",
+   "note": 73,
+   "vel": 56,
+   "dur": 0.3719
+  },
+  {
+   "t": 27.1349,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 83,
+   "vel": 76,
+   "dur": 1.0535
+  },
+  {
+   "t": 27.225,
+   "ch": 6,
+   "voice": "melody",
+   "note": 73,
+   "vel": 66,
+   "dur": 0.3968
+  },
+  {
+   "t": 27.2269,
+   "ch": 4,
+   "voice": "worker3",
+   "note": 76,
+   "vel": 76,
+   "dur": 0.9789
+  },
+  {
+   "t": 27.2989,
+   "ch": 8,
+   "voice": "bass",
+   "note": 51,
+   "vel": 78,
+   "dur": 0.453
+  },
+  {
+   "t": 27.6679,
+   "ch": 6,
+   "voice": "melody",
+   "note": 69,
+   "vel": 66,
+   "dur": 0.18
+  },
+  {
+   "t": 27.8031,
+   "ch": 8,
+   "voice": "bass",
+   "note": 52,
+   "vel": 78,
+   "dur": 0.453
+  },
+  {
+   "t": 27.8879,
+   "ch": 6,
+   "voice": "melody",
+   "note": 73,
+   "vel": 66,
+   "dur": 0.1998
+  },
+  {
+   "t": 27.8912,
+   "ch": 5,
+   "voice": "tools",
+   "note": 73,
+   "vel": 52,
+   "dur": 0.29
+  },
+  {
+   "t": 28.0513,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 67,
+   "vel": 109,
+   "dur": 0.9393
+  },
+  {
+   "t": 28.1107,
+   "ch": 6,
+   "voice": "melody",
+   "note": 66,
+   "vel": 66,
+   "dur": 0.3614
+  },
+  {
+   "t": 28.1433,
+   "ch": 5,
+   "voice": "tools",
+   "note": 73,
+   "vel": 55,
+   "dur": 0.0876
+  },
+  {
+   "t": 28.1433,
+   "ch": 5,
+   "voice": "tools",
+   "note": 73,
+   "vel": 54,
+   "dur": 0.4281
+  },
+  {
+   "t": 28.3073,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 53,
+   "vel": 60,
+   "dur": 1.6983
+  },
+  {
+   "t": 28.3073,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 88,
+   "vel": 60,
+   "dur": 1.5492
+  },
+  {
+   "t": 28.3073,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 72,
+   "vel": 60,
+   "dur": 1.6983
+  },
+  {
+   "t": 28.3073,
+   "ch": 4,
+   "voice": "worker3",
+   "note": 81,
+   "vel": 60,
+   "dur": 1.6983
+  },
+  {
+   "t": 28.3073,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 91,
+   "vel": 60,
+   "dur": 1.6983
+  },
+  {
+   "t": 28.3073,
+   "ch": 8,
+   "voice": "bass",
+   "note": 53,
+   "vel": 78,
+   "dur": 0.453
+  },
+  {
+   "t": 28.6475,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 88,
+   "vel": 73,
+   "dur": 1.3582
+  },
+  {
+   "t": 28.8115,
+   "ch": 8,
+   "voice": "bass",
+   "note": 52,
+   "vel": 78,
+   "dur": 0.453
+  },
+  {
+   "t": 29.0597,
+   "ch": 4,
+   "voice": "worker3",
+   "note": 81,
+   "vel": 76,
+   "dur": 1.1738
+  },
+  {
+   "t": 29.1093,
+   "ch": 6,
+   "voice": "melody",
+   "note": 62,
+   "vel": 66,
+   "dur": 0.4316
+  },
+  {
+   "t": 29.3157,
+   "ch": 8,
+   "voice": "bass",
+   "note": 52,
+   "vel": 78,
+   "dur": 0.453
+  },
+  {
+   "t": 29.6045,
+   "ch": 6,
+   "voice": "melody",
+   "note": 65,
+   "vel": 66,
+   "dur": 0.1594
+  },
+  {
+   "t": 29.7479,
+   "ch": 5,
+   "voice": "tools",
+   "note": 77,
+   "vel": 52,
+   "dur": 0.4019
+  },
+  {
+   "t": 29.8108,
+   "ch": 6,
+   "voice": "melody",
+   "note": 62,
+   "vel": 66,
+   "dur": 0.262
+  },
+  {
+   "t": 29.8199,
+   "ch": 8,
+   "voice": "bass",
+   "note": 51,
+   "vel": 78,
+   "dur": 0.453
+  },
+  {
+   "t": 29.908,
+   "ch": 5,
+   "voice": "tools",
+   "note": 77,
+   "vel": 53,
+   "dur": 0.2527
+  },
+  {
+   "t": 30.0997,
+   "ch": 6,
+   "voice": "melody",
+   "note": 69,
+   "vel": 66,
+   "dur": 0.4183
+  },
+  {
+   "t": 30.1095,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 59,
+   "vel": 70,
+   "dur": 2.0921
+  },
+  {
+   "t": 30.1095,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 86,
+   "vel": 70,
+   "dur": 1.9064
+  },
+  {
+   "t": 30.1095,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 65,
+   "vel": 70,
+   "dur": 0.7597
+  },
+  {
+   "t": 30.1095,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 93,
+   "vel": 70,
+   "dur": 2.0921
+  },
+  {
+   "t": 30.2521,
+   "ch": 5,
+   "voice": "tools",
+   "note": 77,
+   "vel": 52,
+   "dur": 0.2045
+  },
+  {
+   "t": 30.3241,
+   "ch": 8,
+   "voice": "bass",
+   "note": 50,
+   "vel": 78,
+   "dur": 0.453
+  },
+  {
+   "t": 30.5723,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 65,
+   "vel": 93,
+   "dur": 1.6293
+  },
+  {
+   "t": 30.6643,
+   "ch": 5,
+   "voice": "tools",
+   "note": 71,
+   "vel": 52,
+   "dur": 0.1542
+  },
+  {
+   "t": 30.8283,
+   "ch": 8,
+   "voice": "bass",
+   "note": 49,
+   "vel": 78,
+   "dur": 0.453
+  },
+  {
+   "t": 31.2605,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 86,
+   "vel": 90,
+   "dur": 0.9411
+  },
+  {
+   "t": 31.3325,
+   "ch": 8,
+   "voice": "bass",
+   "note": 48,
+   "vel": 78,
+   "dur": 0.453
+  },
+  {
+   "t": 31.6392,
+   "ch": 6,
+   "voice": "melody",
+   "note": 74,
+   "vel": 66,
+   "dur": 0.5042
+  },
+  {
+   "t": 31.8367,
+   "ch": 8,
+   "voice": "bass",
+   "note": 49,
+   "vel": 78,
+   "dur": 0.4533
+  },
+  {
+   "t": 32.0849,
+   "ch": 5,
+   "voice": "tools",
+   "note": 71,
+   "vel": 53,
+   "dur": 0.1038
+  },
+  {
+   "t": 32.1987,
+   "ch": 6,
+   "voice": "melody",
+   "note": 71,
+   "vel": 66,
+   "dur": 0.354
+  },
+  {
+   "t": 32.2581,
+   "ch": 5,
+   "voice": "tools",
+   "note": 71,
+   "vel": 56,
+   "dur": 0.4431
+  },
+  {
+   "t": 32.2581,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 100,
+   "dur": 0.2117
+  },
+  {
+   "t": 32.3375,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 53,
+   "vel": 60,
+   "dur": 2.4293
+  },
+  {
+   "t": 32.3375,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 84,
+   "vel": 60,
+   "dur": 1.0182
+  },
+  {
+   "t": 32.3375,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 93,
+   "vel": 60,
+   "dur": 2.4293
+  },
+  {
+   "t": 32.3375,
+   "ch": 8,
+   "voice": "bass",
+   "note": 50,
+   "vel": 78,
+   "dur": 0.5845
+  },
+  {
+   "t": 32.6196,
+   "ch": 6,
+   "voice": "melody",
+   "note": 69,
+   "vel": 66,
+   "dur": 0.2711
+  },
+  {
+   "t": 32.9523,
+   "ch": 6,
+   "voice": "melody",
+   "note": 62,
+   "vel": 66,
+   "dur": 0.6452
+  },
+  {
+   "t": 32.9827,
+   "ch": 8,
+   "voice": "bass",
+   "note": 53,
+   "vel": 78,
+   "dur": 0.5845
+  },
+  {
+   "t": 33.0929,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 84,
+   "vel": 81,
+   "dur": 1.6739
+  },
+  {
+   "t": 33.6278,
+   "ch": 8,
+   "voice": "bass",
+   "note": 53,
+   "vel": 78,
+   "dur": 0.5845
+  },
+  {
+   "t": 33.7381,
+   "ch": 1,
+   "voice": "planner",
+   "note": 64,
+   "vel": 81,
+   "dur": 0.6485
+  },
+  {
+   "t": 34.273,
+   "ch": 8,
+   "voice": "bass",
+   "note": 54,
+   "vel": 78,
+   "dur": 0.5845
+  },
+  {
+   "t": 34.9182,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 59,
+   "vel": 60,
+   "dur": 2.1555
+  },
+  {
+   "t": 34.9182,
+   "ch": 1,
+   "voice": "planner",
+   "note": 65,
+   "vel": 60,
+   "dur": 1.1349
+  },
+  {
+   "t": 34.9182,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 86,
+   "vel": 60,
+   "dur": 2.1555
+  },
+  {
+   "t": 34.9182,
+   "ch": 8,
+   "voice": "bass",
+   "note": 55,
+   "vel": 78,
+   "dur": 0.5845
+  },
+  {
+   "t": 35.4839,
+   "ch": 1,
+   "voice": "planner",
+   "note": 65,
+   "vel": 74,
+   "dur": 1.5898
+  },
+  {
+   "t": 35.7483,
+   "ch": 6,
+   "voice": "melody",
+   "note": 64,
+   "vel": 66,
+   "dur": 0.8174
+  },
+  {
+   "t": 36.2085,
+   "ch": 8,
+   "voice": "bass",
+   "note": 50,
+   "vel": 78,
+   "dur": 0.5845
+  },
+  {
+   "t": 36.6838,
+   "ch": 6,
+   "voice": "melody",
+   "note": 65,
+   "vel": 66,
+   "dur": 0.4391
+  },
+  {
+   "t": 36.7742,
+   "ch": 1,
+   "voice": "planner",
+   "note": 65,
+   "vel": 68,
+   "dur": 0.5635
+  },
+  {
+   "t": 37.1911,
+   "ch": 6,
+   "voice": "melody",
+   "note": 69,
+   "vel": 66,
+   "dur": 0.3802
+  },
+  {
+   "t": 37.2092,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 52,
+   "vel": 106,
+   "dur": 2.7029
+  },
+  {
+   "t": 37.2092,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 83,
+   "vel": 106,
+   "dur": 2.7029
+  },
+  {
+   "t": 37.4988,
+   "ch": 8,
+   "voice": "bass",
+   "note": 48,
+   "vel": 89,
+   "dur": 0.5845
+  },
+  {
+   "t": 37.6557,
+   "ch": 6,
+   "voice": "melody",
+   "note": 59,
+   "vel": 66,
+   "dur": 0.4239
+  },
+  {
+   "t": 38.144,
+   "ch": 8,
+   "voice": "bass",
+   "note": 47,
+   "vel": 78,
+   "dur": 0.5845
+  },
+  {
+   "t": 38.7891,
+   "ch": 8,
+   "voice": "bass",
+   "note": 46,
+   "vel": 78,
+   "dur": 0.5845
+  },
+  {
+   "t": 38.8994,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 62,
+   "vel": 54,
+   "dur": 0.2628
+  },
+  {
+   "t": 38.983,
+   "ch": 6,
+   "voice": "melody",
+   "note": 64,
+   "vel": 66,
+   "dur": 0.4239
+  },
+  {
+   "t": 39.089,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 62,
+   "vel": 78,
+   "dur": 0.4204
+  },
+  {
+   "t": 39.089,
+   "ch": 4,
+   "voice": "worker3",
+   "note": 66,
+   "vel": 54,
+   "dur": 0.206
+  },
+  {
+   "t": 39.2219,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 84,
+   "vel": 54,
+   "dur": 0.2372
+  },
+  {
+   "t": 39.3548,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 62,
+   "vel": 54,
+   "dur": 0.294
+  },
+  {
+   "t": 39.3548,
+   "ch": 4,
+   "voice": "worker3",
+   "note": 66,
+   "vel": 81,
+   "dur": 0.5882
+  },
+  {
+   "t": 39.4343,
+   "ch": 8,
+   "voice": "bass",
+   "note": 47,
+   "vel": 78,
+   "dur": 0.5845
+  },
+  {
+   "t": 39.5017,
+   "ch": 6,
+   "voice": "melody",
+   "note": 67,
+   "vel": 66,
+   "dur": 0.2579
+  },
+  {
+   "t": 39.5445,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 84,
+   "vel": 75,
+   "dur": 0.7508
+  },
+  {
+   "t": 39.5445,
+   "ch": 5,
+   "voice": "tools",
+   "note": 69,
+   "vel": 51,
+   "dur": 0.2999
+  },
+  {
+   "t": 39.7342,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 62,
+   "vel": 99,
+   "dur": 0.7225
+  },
+  {
+   "t": 39.7928,
+   "ch": 6,
+   "voice": "melody",
+   "note": 64,
+   "vel": 66,
+   "dur": 0.1883
+  },
+  {
+   "t": 39.8671,
+   "ch": 5,
+   "voice": "tools",
+   "note": 69,
+   "vel": 54,
+   "dur": 0.3631
+  },
+  {
+   "t": 40.0204,
+   "ch": 6,
+   "voice": "melody",
+   "note": 71,
+   "vel": 66,
+   "dur": 0.484
+  },
+  {
+   "t": 40.0795,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 52,
+   "vel": 60,
+   "dur": 2.4708
+  },
+  {
+   "t": 40.0795,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 86,
+   "vel": 60,
+   "dur": 1.9572
+  },
+  {
+   "t": 40.0795,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 59,
+   "vel": 60,
+   "dur": 1.2182
+  },
+  {
+   "t": 40.0795,
+   "ch": 4,
+   "voice": "worker3",
+   "note": 67,
+   "vel": 60,
+   "dur": 2.4708
+  },
+  {
+   "t": 40.0795,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 90,
+   "vel": 60,
+   "dur": 2.4708
+  },
+  {
+   "t": 40.0795,
+   "ch": 8,
+   "voice": "bass",
+   "note": 48,
+   "vel": 78,
+   "dur": 0.5845
+  },
+  {
+   "t": 40.1897,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 54,
+   "dur": 0.3864
+  },
+  {
+   "t": 40.3794,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 59,
+   "vel": 94,
+   "dur": 2.1709
+  },
+  {
+   "t": 40.3794,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 54,
+   "dur": 0.2085
+  },
+  {
+   "t": 40.3794,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 55,
+   "dur": 0.3569
+  },
+  {
+   "t": 40.3794,
+   "ch": 5,
+   "voice": "tools",
+   "note": 73,
+   "vel": 100,
+   "dur": 0.1483
+  },
+  {
+   "t": 40.7246,
+   "ch": 8,
+   "voice": "bass",
+   "note": 47,
+   "vel": 78,
+   "dur": 0.5845
+  },
+  {
+   "t": 41.1959,
+   "ch": 6,
+   "voice": "melody",
+   "note": 64,
+   "vel": 58,
+   "dur": 0.4901
+  },
+  {
+   "t": 41.2903,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 86,
+   "vel": 82,
+   "dur": 1.2599
+  },
+  {
+   "t": 41.2903,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 51,
+   "dur": 0.4431
+  },
+  {
+   "t": 41.3698,
+   "ch": 8,
+   "voice": "bass",
+   "note": 47,
+   "vel": 78,
+   "dur": 0.6279
+  },
+  {
+   "t": 41.7525,
+   "ch": 6,
+   "voice": "melody",
+   "note": 67,
+   "vel": 58,
+   "dur": 0.0847
+  },
+  {
+   "t": 41.8466,
+   "ch": 6,
+   "voice": "melody",
+   "note": 64,
+   "vel": 58,
+   "dur": 0.1344
+  },
+  {
+   "t": 41.9901,
+   "ch": 6,
+   "voice": "melody",
+   "note": 60,
+   "vel": 58,
+   "dur": 0.0818
+  },
+  {
+   "t": 42.0388,
+   "ch": 8,
+   "voice": "bass",
+   "note": 46,
+   "vel": 78,
+   "dur": 0.5937
+  },
+  {
+   "t": 42.06,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 52,
+   "dur": 0.421
+  },
+  {
+   "t": 42.06,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 52,
+   "dur": 0.421
+  },
+  {
+   "t": 42.081,
+   "ch": 6,
+   "voice": "melody",
+   "note": 59,
+   "vel": 58,
+   "dur": 0.0818
+  },
+  {
+   "t": 42.2658,
+   "ch": 6,
+   "voice": "melody",
+   "note": 62,
+   "vel": 58,
+   "dur": 0.4264
+  },
+  {
+   "t": 42.5358,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 59,
+   "vel": 83,
+   "dur": 0.801
+  },
+  {
+   "t": 42.6735,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 48,
+   "vel": 60,
+   "dur": 2.2627
+  },
+  {
+   "t": 42.6735,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 83,
+   "vel": 60,
+   "dur": 1.3831
+  },
+  {
+   "t": 42.6735,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 67,
+   "vel": 60,
+   "dur": 2.2627
+  },
+  {
+   "t": 42.6735,
+   "ch": 4,
+   "voice": "worker3",
+   "note": 76,
+   "vel": 60,
+   "dur": 2.2627
+  },
+  {
+   "t": 42.6735,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 86,
+   "vel": 60,
+   "dur": 2.2627
+  },
+  {
+   "t": 42.6735,
+   "ch": 8,
+   "voice": "bass",
+   "note": 45,
+   "vel": 78,
+   "dur": 0.5562
+  },
+  {
+   "t": 42.7514,
+   "ch": 6,
+   "voice": "melody",
+   "note": 64,
+   "vel": 58,
+   "dur": 0.1033
+  },
+  {
+   "t": 42.8674,
+   "ch": 6,
+   "voice": "melody",
+   "note": 60,
+   "vel": 58,
+   "dur": 0.114
+  },
+  {
+   "t": 42.994,
+   "ch": 6,
+   "voice": "melody",
+   "note": 57,
+   "vel": 58,
+   "dur": 0.114
+  },
+  {
+   "t": 43.1207,
+   "ch": 6,
+   "voice": "melody",
+   "note": 55,
+   "vel": 58,
+   "dur": 0.0785
+  },
+  {
+   "t": 43.1299,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 83,
+   "vel": 73,
+   "dur": 1.1315
+  },
+  {
+   "t": 43.1299,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 51,
+   "dur": 0.3604
+  },
+  {
+   "t": 43.2666,
+   "ch": 6,
+   "voice": "melody",
+   "note": 67,
+   "vel": 58,
+   "dur": 0.4555
+  },
+  {
+   "t": 43.2676,
+   "ch": 8,
+   "voice": "bass",
+   "note": 48,
+   "vel": 78,
+   "dur": 0.5562
+  },
+  {
+   "t": 43.3663,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 52,
+   "dur": 0.2071
+  },
+  {
+   "t": 43.5451,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 56,
+   "dur": 0.1625
+  },
+  {
+   "t": 43.7819,
+   "ch": 6,
+   "voice": "melody",
+   "note": 76,
+   "vel": 58,
+   "dur": 0.0754
+  },
+  {
+   "t": 43.8422,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 53,
+   "dur": 0.421
+  },
+  {
+   "t": 43.8616,
+   "ch": 8,
+   "voice": "bass",
+   "note": 48,
+   "vel": 78,
+   "dur": 0.5562
+  },
+  {
+   "t": 43.8656,
+   "ch": 6,
+   "voice": "melody",
+   "note": 79,
+   "vel": 58,
+   "dur": 0.0754
+  },
+  {
+   "t": 43.9494,
+   "ch": 6,
+   "voice": "melody",
+   "note": 81,
+   "vel": 58,
+   "dur": 0.1083
+  },
+  {
+   "t": 43.9604,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 83,
+   "vel": 76,
+   "dur": 0.9759
+  },
+  {
+   "t": 43.9604,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 53,
+   "dur": 0.4396
+  },
+  {
+   "t": 44.0704,
+   "ch": 6,
+   "voice": "melody",
+   "note": 84,
+   "vel": 58,
+   "dur": 0.114
+  },
+  {
+   "t": 44.2864,
+   "ch": 6,
+   "voice": "melody",
+   "note": 88,
+   "vel": 58,
+   "dur": 0.0861
+  },
+  {
+   "t": 44.318,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 56,
+   "dur": 0.0955
+  },
+  {
+   "t": 44.3809,
+   "ch": 6,
+   "voice": "melody",
+   "note": 84,
+   "vel": 58,
+   "dur": 0.0754
+  },
+  {
+   "t": 44.4362,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 56,
+   "dur": 0.1075
+  },
+  {
+   "t": 44.4557,
+   "ch": 8,
+   "voice": "bass",
+   "note": 49,
+   "vel": 78,
+   "dur": 0.5562
+  },
+  {
+   "t": 44.4646,
+   "ch": 6,
+   "voice": "melody",
+   "note": 81,
+   "vel": 58,
+   "dur": 0.0754
+  },
+  {
+   "t": 44.5484,
+   "ch": 6,
+   "voice": "melody",
+   "note": 79,
+   "vel": 58,
+   "dur": 0.1109
+  },
+  {
+   "t": 44.7333,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 53,
+   "dur": 0.379
+  },
+  {
+   "t": 44.7613,
+   "ch": 6,
+   "voice": "melody",
+   "note": 79,
+   "vel": 58,
+   "dur": 0.386
+  },
+  {
+   "t": 44.9121,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 67,
+   "vel": 95,
+   "dur": 0.7094
+  },
+  {
+   "t": 45.0498,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 54,
+   "vel": 60,
+   "dur": 2.2627
+  },
+  {
+   "t": 45.0498,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 81,
+   "vel": 60,
+   "dur": 2.2627
+  },
+  {
+   "t": 45.0498,
+   "ch": 4,
+   "voice": "worker3",
+   "note": 72,
+   "vel": 60,
+   "dur": 2.2627
+  },
+  {
+   "t": 45.0498,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 88,
+   "vel": 60,
+   "dur": 2.2627
+  },
+  {
+   "t": 45.0498,
+   "ch": 8,
+   "voice": "bass",
+   "note": 50,
+   "vel": 78,
+   "dur": 0.5562
+  },
+  {
+   "t": 45.2361,
+   "ch": 6,
+   "voice": "melody",
+   "note": 74,
+   "vel": 58,
+   "dur": 0.4836
+  },
+  {
+   "t": 45.6244,
+   "ch": 5,
+   "voice": "tools",
+   "note": 78,
+   "vel": 54,
+   "dur": 0.421
+  },
+  {
+   "t": 45.6438,
+   "ch": 8,
+   "voice": "bass",
+   "note": 51,
+   "vel": 78,
+   "dur": 0.5562
+  },
+  {
+   "t": 46.2379,
+   "ch": 8,
+   "voice": "bass",
+   "note": 52,
+   "vel": 78,
+   "dur": 0.5562
+  },
+  {
+   "t": 46.5154,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 62,
+   "vel": 87,
+   "dur": 0.7859
+  },
+  {
+   "t": 46.6943,
+   "ch": 4,
+   "voice": "worker3",
+   "note": 72,
+   "vel": 79,
+   "dur": 0.8521
+  },
+  {
+   "t": 46.8125,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 81,
+   "vel": 93,
+   "dur": 0.9729
+  },
+  {
+   "t": 46.8319,
+   "ch": 8,
+   "voice": "bass",
+   "note": 54,
+   "vel": 78,
+   "dur": 0.5562
+  },
+  {
+   "t": 47.2883,
+   "ch": 5,
+   "voice": "tools",
+   "note": 78,
+   "vel": 53,
+   "dur": 0.3002
+  },
+  {
+   "t": 47.426,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 59,
+   "vel": 60,
+   "dur": 2.2627
+  },
+  {
+   "t": 47.426,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 86,
+   "vel": 60,
+   "dur": 2.2627
+  },
+  {
+   "t": 47.426,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 65,
+   "vel": 60,
+   "dur": 2.2627
+  },
+  {
+   "t": 47.426,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 93,
+   "vel": 60,
+   "dur": 2.2627
+  },
+  {
+   "t": 47.426,
+   "ch": 8,
+   "voice": "bass",
+   "note": 55,
+   "vel": 78,
+   "dur": 0.5562
+  },
+  {
+   "t": 47.4801,
+   "ch": 6,
+   "voice": "melody",
+   "note": 67,
+   "vel": 58,
+   "dur": 0.5941
+  },
+  {
+   "t": 47.8824,
+   "ch": 5,
+   "voice": "tools",
+   "note": 71,
+   "vel": 53,
+   "dur": 0.3604
+  },
+  {
+   "t": 47.8824,
+   "ch": 5,
+   "voice": "tools",
+   "note": 71,
+   "vel": 57,
+   "dur": 0.3604
+  },
+  {
+   "t": 47.8824,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 100,
+   "dur": 0.1433
+  },
+  {
+   "t": 48.0201,
+   "ch": 8,
+   "voice": "bass",
+   "note": 53,
+   "vel": 78,
+   "dur": 0.5562
+  },
+  {
+   "t": 48.1776,
+   "ch": 6,
+   "voice": "melody",
+   "note": 67,
+   "vel": 58,
+   "dur": 0.5941
+  },
+  {
+   "t": 48.6141,
+   "ch": 8,
+   "voice": "bass",
+   "note": 50,
+   "vel": 78,
+   "dur": 0.5562
+  },
+  {
+   "t": 48.7129,
+   "ch": 5,
+   "voice": "tools",
+   "note": 71,
+   "vel": 52,
+   "dur": 0.1445
+  },
+  {
+   "t": 48.7129,
+   "ch": 5,
+   "voice": "tools",
+   "note": 71,
+   "vel": 53,
+   "dur": 0.4396
+  },
+  {
+   "t": 48.8978,
+   "ch": 6,
+   "voice": "melody",
+   "note": 69,
+   "vel": 58,
+   "dur": 0.5941
+  },
+  {
+   "t": 49.2082,
+   "ch": 8,
+   "voice": "bass",
+   "note": 49,
+   "vel": 78,
+   "dur": 0.5562
+  },
+  {
+   "t": 49.3069,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 65,
+   "vel": 81,
+   "dur": 0.7638
+  },
+  {
+   "t": 49.6181,
+   "ch": 6,
+   "voice": "melody",
+   "note": 71,
+   "vel": 58,
+   "dur": 0.5941
+  },
+  {
+   "t": 49.7828,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 86,
+   "vel": 79,
+   "dur": 0.8139
+  },
+  {
+   "t": 49.8022,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 52,
+   "vel": 74,
+   "dur": 2.2627
+  },
+  {
+   "t": 49.8022,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 79,
+   "vel": 74,
+   "dur": 2.2627
+  },
+  {
+   "t": 49.8022,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 59,
+   "vel": 74,
+   "dur": 2.2627
+  },
+  {
+   "t": 49.8022,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 86,
+   "vel": 74,
+   "dur": 2.2627
+  },
+  {
+   "t": 49.8022,
+   "ch": 8,
+   "voice": "bass",
+   "note": 48,
+   "vel": 78,
+   "dur": 0.5562
+  },
+  {
+   "t": 50.0798,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 52,
+   "dur": 0.2532
+  },
+  {
+   "t": 50.3114,
+   "ch": 6,
+   "voice": "melody",
+   "note": 76,
+   "vel": 58,
+   "dur": 0.1064
+  },
+  {
+   "t": 50.3963,
+   "ch": 8,
+   "voice": "bass",
+   "note": 47,
+   "vel": 78,
+   "dur": 0.5562
+  },
+  {
+   "t": 50.4296,
+   "ch": 6,
+   "voice": "melody",
+   "note": 72,
+   "vel": 58,
+   "dur": 0.1274
+  },
+  {
+   "t": 50.495,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 52,
+   "dur": 0.4396
+  },
+  {
+   "t": 50.5748,
+   "ch": 6,
+   "voice": "melody",
+   "note": 71,
+   "vel": 58,
+   "dur": 0.1609
+  },
+  {
+   "t": 50.6739,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 54,
+   "dur": 0.379
+  },
+  {
+   "t": 50.7537,
+   "ch": 6,
+   "voice": "melody",
+   "note": 67,
+   "vel": 58,
+   "dur": 0.14
+  },
+  {
+   "t": 50.9889,
+   "ch": 6,
+   "voice": "melody",
+   "note": 60,
+   "vel": 58,
+   "dur": 0.5941
+  },
+  {
+   "t": 50.9904,
+   "ch": 8,
+   "voice": "bass",
+   "note": 47,
+   "vel": 78,
+   "dur": 0.5562
+  },
+  {
+   "t": 51.565,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 79,
+   "vel": 95,
+   "dur": 0.516
+  },
+  {
+   "t": 51.5844,
+   "ch": 8,
+   "voice": "bass",
+   "note": 46,
+   "vel": 78,
+   "dur": 0.5562
+  },
+  {
+   "t": 52.159,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 52,
+   "dur": 0.421
+  },
+  {
+   "t": 52.159,
+   "ch": 5,
+   "voice": "tools",
+   "note": 73,
+   "vel": 100,
+   "dur": 0.1561
+  },
+  {
+   "t": 52.1785,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 48,
+   "vel": 60,
+   "dur": 1.8115
+  },
+  {
+   "t": 52.1785,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 76,
+   "vel": 60,
+   "dur": 1.8115
+  },
+  {
+   "t": 52.1785,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 67,
+   "vel": 60,
+   "dur": 1.8115
+  },
+  {
+   "t": 52.1785,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 83,
+   "vel": 60,
+   "dur": 1.8115
+  },
+  {
+   "t": 52.1785,
+   "ch": 8,
+   "voice": "bass",
+   "note": 45,
+   "vel": 78,
+   "dur": 0.5562
+  },
+  {
+   "t": 52.7725,
+   "ch": 8,
+   "voice": "bass",
+   "note": 48,
+   "vel": 78,
+   "dur": 0.5562
+  },
+  {
+   "t": 52.8713,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 56,
+   "dur": 0.2516
+  },
+  {
+   "t": 53.2289,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 56,
+   "dur": 0.3604
+  },
+  {
+   "t": 53.3666,
+   "ch": 8,
+   "voice": "bass",
+   "note": 48,
+   "vel": 78,
+   "dur": 0.5562
+  },
+  {
+   "t": 53.9065,
+   "ch": 6,
+   "voice": "melody",
+   "note": 71,
+   "vel": 66,
+   "dur": 0.5744
+  },
+  {
+   "t": 53.9606,
+   "ch": 8,
+   "voice": "bass",
+   "note": 49,
+   "vel": 78,
+   "dur": 0.5391
+  },
+  {
+   "t": 54.1094,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 54,
+   "vel": 70,
+   "dur": 3.7444
+  },
+  {
+   "t": 54.1094,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 81,
+   "vel": 70,
+   "dur": 2.4677
+  },
+  {
+   "t": 54.1094,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 72,
+   "vel": 70,
+   "dur": 2.0757
+  },
+  {
+   "t": 54.1094,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 88,
+   "vel": 70,
+   "dur": 3.7444
+  },
+  {
+   "t": 54.3,
+   "ch": 5,
+   "voice": "tools",
+   "note": 72,
+   "vel": 53,
+   "dur": 0.368
+  },
+  {
+   "t": 54.5435,
+   "ch": 8,
+   "voice": "bass",
+   "note": 50,
+   "vel": 78,
+   "dur": 0.8174
+  },
+  {
+   "t": 54.5774,
+   "ch": 6,
+   "voice": "melody",
+   "note": 69,
+   "vel": 66,
+   "dur": 0.3728
+  },
+  {
+   "t": 55.0199,
+   "ch": 6,
+   "voice": "melody",
+   "note": 60,
+   "vel": 66,
+   "dur": 0.3607
+  },
+  {
+   "t": 55.4259,
+   "ch": 8,
+   "voice": "bass",
+   "note": 51,
+   "vel": 78,
+   "dur": 0.8174
+  },
+  {
+   "t": 55.4399,
+   "ch": 6,
+   "voice": "melody",
+   "note": 69,
+   "vel": 66,
+   "dur": 0.7438
+  },
+  {
+   "t": 55.5882,
+   "ch": 2,
+   "voice": "worker1",
+   "note": 81,
+   "vel": 101,
+   "dur": 2.2655
+  },
+  {
+   "t": 55.5882,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 72,
+   "vel": 77,
+   "dur": 2.0561
+  },
+  {
+   "t": 56.0647,
+   "ch": 5,
+   "voice": "tools",
+   "note": 78,
+   "vel": 54,
+   "dur": 0.1159
+  },
+  {
+   "t": 56.3082,
+   "ch": 8,
+   "voice": "bass",
+   "note": 52,
+   "vel": 78,
+   "dur": 0.8174
+  },
+  {
+   "t": 56.9471,
+   "ch": 3,
+   "voice": "worker2",
+   "note": 72,
+   "vel": 104,
+   "dur": 0.9067
+  },
+  {
+   "t": 57.1906,
+   "ch": 8,
+   "voice": "bass",
+   "note": 54,
+   "vel": 78,
+   "dur": 0.8174
+  },
+  {
+   "t": 58.0324,
+   "ch": 1,
+   "voice": "planner",
+   "note": 59,
+   "vel": 81,
+   "dur": 0.6743
+  },
+  {
+   "t": 58.0729,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 59,
+   "vel": 60,
+   "dur": 3.3346
+  },
+  {
+   "t": 58.0729,
+   "ch": 1,
+   "voice": "planner",
+   "note": 65,
+   "vel": 60,
+   "dur": 2.4104
+  },
+  {
+   "t": 58.0729,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 86,
+   "vel": 60,
+   "dur": 3.3346
+  },
+  {
+   "t": 58.0729,
+   "ch": 8,
+   "voice": "bass",
+   "note": 55,
+   "vel": 78,
+   "dur": 0.8174
+  },
+  {
+   "t": 58.1781,
+   "ch": 6,
+   "voice": "melody",
+   "note": 76,
+   "vel": 66,
+   "dur": 1.1195
+  },
+  {
+   "t": 59.1176,
+   "ch": 1,
+   "voice": "planner",
+   "note": 65,
+   "vel": 74,
+   "dur": 2.2899
+  },
+  {
+   "t": 59.5093,
+   "ch": 6,
+   "voice": "melody",
+   "note": 65,
+   "vel": 66,
+   "dur": 0.5294
+  },
+  {
+   "t": 59.8376,
+   "ch": 8,
+   "voice": "bass",
+   "note": 50,
+   "vel": 78,
+   "dur": 0.8174
+  },
+  {
+   "t": 60.1446,
+   "ch": 6,
+   "voice": "melody",
+   "note": 69,
+   "vel": 66,
+   "dur": 0.5603
+  },
+  {
+   "t": 60.6794,
+   "ch": 5,
+   "voice": "tools",
+   "note": 79,
+   "vel": 54,
+   "dur": 0.3967
+  },
+  {
+   "t": 60.7951,
+   "ch": 6,
+   "voice": "melody",
+   "note": 65,
+   "vel": 66,
+   "dur": 1.1142
+  },
+  {
+   "t": 61.6023,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 52,
+   "vel": 74,
+   "dur": 3.3346
+  },
+  {
+   "t": 61.6023,
+   "ch": 1,
+   "voice": "planner",
+   "note": 59,
+   "vel": 74,
+   "dur": 2.036
+  },
+  {
+   "t": 61.6023,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 91,
+   "vel": 74,
+   "dur": 3.3346
+  },
+  {
+   "t": 61.6023,
+   "ch": 8,
+   "voice": "bass",
+   "note": 48,
+   "vel": 78,
+   "dur": 0.8174
+  },
+  {
+   "t": 63.1235,
+   "ch": 1,
+   "voice": "planner",
+   "note": 59,
+   "vel": 68,
+   "dur": 1.8134
+  },
+  {
+   "t": 63.367,
+   "ch": 8,
+   "voice": "bass",
+   "note": 43,
+   "vel": 78,
+   "dur": 0.8174
+  },
+  {
+   "t": 65.1318,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 55,
+   "vel": 60,
+   "dur": 3.3346
+  },
+  {
+   "t": 65.1318,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 86,
+   "vel": 60,
+   "dur": 3.3346
+  },
+  {
+   "t": 65.1318,
+   "ch": 8,
+   "voice": "bass",
+   "note": 52,
+   "vel": 78,
+   "dur": 0.8174
+  },
+  {
+   "t": 66.2375,
+   "ch": 6,
+   "voice": "melody",
+   "note": 64,
+   "vel": 66,
+   "dur": 1.5121
+  },
+  {
+   "t": 66.8965,
+   "ch": 8,
+   "voice": "bass",
+   "note": 47,
+   "vel": 78,
+   "dur": 0.8174
+  },
+  {
+   "t": 68.0022,
+   "ch": 6,
+   "voice": "melody",
+   "note": 67,
+   "vel": 66,
+   "dur": 0.7515
+  },
+  {
+   "t": 68.6612,
+   "ch": 0,
+   "voice": "arch1",
+   "note": 49,
+   "vel": 60,
+   "dur": 3.3346
+  },
+  {
+   "t": 68.6612,
+   "ch": 7,
+   "voice": "arch2",
+   "note": 91,
+   "vel": 60,
+   "dur": 3.3346
+  },
+  {
+   "t": 68.6612,
+   "ch": 8,
+   "voice": "bass",
+   "note": 45,
+   "vel": 78,
+   "dur": 0.8174
+  },
+  {
+   "t": 68.8846,
+   "ch": 6,
+   "voice": "melody",
+   "note": 69,
+   "vel": 66,
+   "dur": 0.7515
+  }
+ ],
+ "deviations": []
+}
