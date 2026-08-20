@@ -30,4 +30,9 @@ corpus_raw/
 docs/BUILD_NOTES.md
 paper/working-notes.md
 
+# ScholarOne submission artifact -- generated from the .md source for the actual journal
+# upload; carries a placeholder postal address pending the author filling it in. Not the
+# canonical paper source (that's still the tracked .md file), so kept local-only.
+paper/OSWagner.docx
+
 .DS_Store
