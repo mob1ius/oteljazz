@@ -66,9 +66,8 @@ array carries the continuous pitch-bend stream (drift's secondary micro-cue).
 
 The engine (`caidence.py`), the mock multi-agent pipeline (`swarm.py`), the live OTLP path
 (`live.py`), the figure-generation script (`make_figures.py`), and everything else needed to
-reproduce these renders is available at [GitHub URL — fill in once the repo is public], archived
-at the version corresponding to this submission via Zenodo's GitHub integration at
-[code deposit DOI — fill in once that deposit exists].
+reproduce these renders is available at https://github.com/mob1ius/oteljazz, archived at the v1.0.0
+release corresponding to this submission via Zenodo's GitHub integration: doi:10.5281/zenodo.22035239.
 
 ## License
 
