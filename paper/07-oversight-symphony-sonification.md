@@ -19,9 +19,7 @@ Sonification of running systems is mature (Section 2); the contribution here is 
 
 ## 2. Related Work and What Is New
 
-Why this is worth building at all: a multi-agent system emits state changes in parallel across many agents at machine speed, while a human overseer's visual attention is serial, foveal, and slow. Standard instrumentation does not close that gap: agent observability captures state richly but presents it through trace trees and dashboards read one region at a time, and a display requiring foveation provides no coverage while the overseer is elsewhere, in a meeting, reading code, away from the screen. The auditory channel is preattentive and peripheral, reaching a listener without their looking, and temporal, matching a process whose meaning is in its unfolding. That is the case for moving this problem onto sound at all; the rest of this section places the technique among its neighbors.
-
-The relevant lineage is real and must be credited, since the risk here is a known technique dressed for a new occasion.
+Why this is worth building at all: a multi-agent system emits state changes in parallel across many agents at machine speed, while a human overseer's visual attention is serial, foveal, and slow. Standard instrumentation does not close that gap: agent observability captures state richly but presents it through trace trees and dashboards read one region at a time, and a display requiring foveation provides no coverage while the overseer is elsewhere, in a meeting, reading code, away from the screen. The auditory channel is preattentive and peripheral, reaching a listener without their looking, and temporal, matching a process whose meaning is in its unfolding.
 
 Turning data into sound for monitoring is an established discipline (Kramer et al. 1999), with a taxonomy of what counts as sonification formalized since (Hermann 2008). Gaver, Smith, and O'Shea's ARKola simulation is the field's foundational demonstration that a complex process, a simulated bottling plant with many concurrent machine states, can be monitored by ear, each state a distinct auditory icon operators learned to parse (Gaver et al. 1991). ARKola's operators tracked more state variables than Section 1's three-or-four-stream limit would suggest, complicating a naive reading of that limit as a hard ceiling. The two designs are not in tension once target is distinguished from technique. ARKola's icons are individually-identified, segregated streams, the one-source-per-signal approach Section 1 argues does not scale to an unbounded population; its operators' higher count is plausibly won by training and heterogeneous timbres, the opposite of this design's fusion. Security operations is the closest applied precedent here. SoNSTAR sonifies live TCP/IP traffic so administrators can hear the signatures of port scans and denial-of-service floods (Debashi & Vickers 2018). More directly relevant, Axon et al. ran the controlled experiment this paper's future perceptual work would extend: security practitioners performed network-monitoring tasks with and without sonification added to a standard SIEM tool, and performance improved significantly with it present, in both primary and non-primary task conditions (Axon et al. 2019). Interview and survey work with SOC practitioners found they valued it for peripheral monitoring (Axon et al. 2018). Two things follow from this: the ear is a viable channel, and peripheral monitoring is the benefit practitioners identify.
 
@@ -175,6 +173,10 @@ Multi-agent AI coordination, illegible to a human watching a visual trace update
 ## Acknowledgments
 
 AI assistance (Claude, Anthropic) was used during this project's research, writing, and software development. All claims, results, and code were reviewed and verified by the author, who is responsible for the content.
+
+## Competing Interests
+
+The author declares no competing interests.
 
 ## References
 
