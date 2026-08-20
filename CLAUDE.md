@@ -8,24 +8,28 @@ own documentation: `README.md` orientation + file map, `BUILD_NOTES.md` running 
 
 ## Before making this repo public (READ FIRST if that's the task)
 
-This repo is currently **private** and will be converted to public later. If the user asks to make
-it public, publish it, open-source it, or flip the GitHub repo's visibility -- **STOP and surface
-this checklist before doing it**, because some tracked content is deliberately kept private and
-must be removed from the working tree AND scrubbed from git history first (deleting it in a new
-commit is not enough -- it stays in history):
+This repo is currently **private** and headed toward being made public. The pre-public content
+scrub is **done as of 2026-08-20**: `docs/BUILD_NOTES.md` and `paper/working-notes.md` are
+untracked (`git rm --cached` + `.gitignore`, still present locally, also backed up outside the
+repo at `~/Private/oteljazz-internal-backup/`) and their history was stripped from every commit
+via `git filter-repo --path docs/BUILD_NOTES.md --path paper/working-notes.md --invert-paths
+--force` (verified: `git log --all -- <path>` and `git rev-list --objects --all | grep` both come
+back empty for both files). `working-notes.md` was added to the scrub list after a full re-scan
+found it: candid acceptance-strategy/venue-shopping reasoning ("RECON STATUS" kill-search log,
+honest novelty grading, a "HackerNews path" distribution-tactics section), same category as
+BUILD_NOTES.md, not paper content. The re-scan covered every other tracked file and found nothing
+else.
 
-- **`docs/BUILD_NOTES.md`** -- an internal reasoning/dev log (candid bug post-mortems, the
-  acceptance-strategy notes, flagged discrepancies, the ODbL "nothing published" musing). It is
-  intentionally tracked while the repo is private (for versioning + backup) but is **not** meant
-  to ship publicly. `git rm` it and scrub it from history at conversion time. It has NO other
-  copy on disk, so back it up somewhere local first.
-- Re-scan for anything else that shouldn't be public before flipping visibility: any acceptance-
-  strategy / review-tactics notes, unpublished-data concerns, or private author details beyond
-  the paper's own author block. Ask the user rather than guessing what stays.
-
-A history scrub was already done once (see the "GitHub history scrubbed" chronological entry in
-BUILD_NOTES) -- the mechanics are known: fresh `git init` + single clean commit + force-push, or
-`git filter-repo`. Do NOT force-push a scrub to a shared remote without explicit confirmation.
+**filter-repo removes the `origin` remote as a safety feature** -- it needs to be re-added
+(`git remote add origin https://github.com/mob1ius/oteljazz.git`) before anything can be pushed.
+**Nothing has been force-pushed yet.** The rewritten local history and the still-private GitHub
+remote have now diverged, so the actual "make it public" step still needs, in order: re-add the
+remote, confirm the user is ready for the force-push specifically (irreversible on the remote,
+overwrites the old history other collaborators or forks would see), run `git push --force origin
+main`, then flip the repo's visibility to public in GitHub settings. If asked to make the repo
+public again in some future session and this checklist looks stale (new tracked files appeared,
+history/backup paths changed), re-verify before trusting this note rather than assuming it's still
+accurate -- do a fresh re-scan rather than skipping straight to the push.
 
 ## Every session
 
