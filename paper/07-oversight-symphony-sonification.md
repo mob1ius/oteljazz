@@ -172,6 +172,10 @@ This paper has argued for a musical grammar built for a target existing musifica
 
 Multi-agent AI coordination, illegible to a human watching a visual trace update in parallel at machine speed, is the application that motivated this grammar and makes it matter beyond a compositional exercise. Whether it can also serve that application, whether a human can learn to hear an agent system the way an experienced listener hears a choir losing its tenors, is the open question left to Section 5's future work. What this paper establishes is narrower, and sufficient on its own: a jazz-grounded musical grammar for an unbounded, semantically defined source population, and a working demonstration that there is real structure in the resulting signal to eventually learn to hear.
 
+## Acknowledgments
+
+AI assistance (Claude, Anthropic) was used during this project's research, writing, and software development. All claims, results, and code were reviewed and verified by the author, who is responsible for the content.
+
 ## References
 
 Alunno, M., and P. Bientinesi. 2026. "Real-Time, EDM-Inspired Sonification of the Activity of a Supercomputer." arXiv:2605.21874.
