@@ -166,7 +166,7 @@ def figure1(spans, rows, seed, outdir):
     # the paper reorganized so the perceptual/saturation figures (Section 3) now come before this
     # one (Section 4) in reading order; renamed outputs to match, left the function name alone
     # rather than touch every call site for an internal identifier no reader of the paper sees.
-    for ext in ("pdf", "png"):
+    for ext in ("pdf", "png", "eps"):
         fig.savefig(os.path.join(outdir, f"fig3_channels.{ext}"), dpi=300)
     plt.close(fig)
 
@@ -244,7 +244,7 @@ def figure2(outdir):
     # Output named fig1_* (paper's Figure 1, Section 3) though this is the figure2() function --
     # see figure3()'s docstring/comment for why the function names and output numbers no longer
     # match one-to-one.
-    for ext in ("pdf", "png"):
+    for ext in ("pdf", "png", "eps"):
         fig.savefig(os.path.join(outdir, f"fig1_perceptual.{ext}"), dpi=300)
     plt.close(fig)
 
@@ -307,7 +307,7 @@ def figure3(outdir, pool_slots=None, trials_per_fanout=5, fanouts=None):
 
     fig.tight_layout()
     # Output named fig2_* (paper's Figure 2, Section 3) -- see figure2()'s comment above.
-    for ext in ("pdf", "png"):
+    for ext in ("pdf", "png", "eps"):
         fig.savefig(os.path.join(outdir, f"fig2_saturation.{ext}"), dpi=300)
     plt.close(fig)
     return rows
