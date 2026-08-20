@@ -10,20 +10,56 @@ signals are the adversarial signatures: rendered by the grammar, but their detec
 exist, so they are currently injected as annotations on hand-authored spans rather than inferred
 from live telemetry.}
 \label{tab:mapping}
-\begin{tabular}{@{}clll@{}}
+\begin{tabular}{@{}cllll@{}}
 \toprule
-Tier & Telemetry source & Musical parameter & Status \\
+Tier & Telemetry source & Musical parameter & Range / transfer function & Status \\
 \midrule
-1 & \texttt{gen\_ai.operation.name} & voice onset pattern and articulation type & implemented, live \\
-1 & agent liveness (span start/end + terminal \texttt{stop\_reason}) & chord voice count (ensemble thickness) & implemented, live \\
-1 & \texttt{gen\_ai.usage.\{input,output\}\_tokens} & articulation velocity & implemented, live \\
-1 & span-start rate (sliding window) & tempo, clamped to 68--132~BPM & implemented, live \\
-1 & \texttt{gen\_ai.tool.name} presence & bass register emphasis and walk feel & implemented, live \\
-2 & goal drift & pitch bend, chromatic deviation from the mode & rendered; detector not implemented, currently injected \\
-2 & collusion & unexpected unison between independent voices & rendered; detector not implemented, currently injected \\
-2 & poisoned spawn & new voice entering out of key & rendered; detector not implemented, currently injected \\
-2 & silent failure or stall & voice dropout from the chord & rendered; partially derivable from Tier~1 liveness \\
-2 & runaway loop & repeating rhythmic ostinato & rendered; detector not implemented, currently injected \\
+1 & \texttt{gen\_ai.operation.name} & voice onset pattern and articulation type &
+  categorical: \texttt{execute\_tool} staccato (0.12--0.4s), \texttt{chat}/reasoning legato-ish
+  (0.25--2.0s), both latency-clamped; \texttt{create\_agent} is an entrance & implemented, live \\
+1 & agent liveness (span start/end + terminal value in \texttt{gen\_ai.response.finish\_reasons}) &
+  chord voice count (ensemble thickness) &
+  floor 2 (always-on harmonic-rhythm voices) to ceiling 7 (plus orchestrator, up to 3 pooled
+  worker voices, and tool voice); ordinal, not an exact readout (Section~3) & implemented, live \\
+1 & \texttt{gen\_ai.usage.output\_tokens}, or \texttt{gen\_ai.usage.input\_tokens} if absent &
+  articulation velocity &
+  linear, MIDI velocity 50 to 110, in tokens from 0 to 500, clamped flat above 500 &
+  implemented, live \\
+1 & span-start rate, per movement & tempo &
+  linear, 68--132~BPM, min-max normalized against that run's own busiest/quietest movement
+  (see Figure~3); boundaries from accumulated terminal-signal weight and spawn bursts, not a
+  fixed window & implemented, live \\
+1 & activity level (distinct live agents in the current window) &
+  bass walk feel and register emphasis &
+  categorical: two-beat below activity level 2, four-beat at/above; beat-1 is root
+  $\sim$83\% of downbeats, else 3rd/5th, never 7th/extension & implemented, live \\
+1 & activity level (distinct live agents in the current window) &
+  solo line phrase length, rest length, and ornament density &
+  phrase length linear, 2 notes idle to 2 + 3$\times$ activity level busy; rest linear,
+  1.5 bars idle to 0.25 bars busy; arpeggio probability linear, 0.15 base + 0.12 per activity
+  level, capped at 0.6 & implemented, live \\
+-- & none (corpus/form-derived, not telemetry) &
+  recurring motif, restated once per chorus top, developed by inversion/retrograde/free variation &
+  fixed per piece once generated; not telemetry-responsive and explicitly not claimed as an
+  oversight channel (Section~3) & implemented; musical cohesion only \\
+2 & goal drift &
+  onset lag on the target voice, ramping to 45ms behind the shared attack, within the natural
+  ensemble-asynchrony range (Rasch 1978; primary cue), plus a secondary pitch-bend micro-cue &
+  linear ramp over the drift window (8--14s in the prototype's scripted instances), held at
+  maximum after & rendered; detector not implemented, currently injected \\
+2 & collusion & unexpected unison between independent voices &
+  discrete, triggered at a single scripted timestamp & rendered; detector not implemented,
+  currently injected \\
+2 & poisoned spawn & chromatic wrong-note cluster (new voice entering out of key) &
+  discrete, a fixed-length note cluster at a single scripted timestamp &
+  rendered; detector not implemented, currently injected \\
+2 & silent failure or stall & voice dropout from the chord &
+  discrete: absence of further spans from that agent past the liveness window &
+  rendered; partially derivable from Tier~1 liveness \\
+2 & runaway loop & repeating rhythmic ostinato &
+  not exercised in the current supplementary audio (see Section~4); rendered conceptually,
+  least developed of the five Tier~2 signatures & rendered; detector not implemented,
+  currently injected \\
 \bottomrule
 \end{tabular}
 \end{table*}

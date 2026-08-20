@@ -162,8 +162,12 @@ def figure1(spans, rows, seed, outdir):
         arrowprops=dict(arrowstyle="->", lw=0.8, color=INK,
                         connectionstyle="arc3,rad=0.3"))
 
+    # Output named fig3_* (paper's Figure 3, Section 4) though this is the figure1() function --
+    # the paper reorganized so the perceptual/saturation figures (Section 3) now come before this
+    # one (Section 4) in reading order; renamed outputs to match, left the function name alone
+    # rather than touch every call site for an internal identifier no reader of the paper sees.
     for ext in ("pdf", "png"):
-        fig.savefig(os.path.join(outdir, f"fig1_channels.{ext}"), dpi=300)
+        fig.savefig(os.path.join(outdir, f"fig3_channels.{ext}"), dpi=300)
     plt.close(fig)
 
 
@@ -233,12 +237,15 @@ def figure2(outdir):
     ax.text(0.1, 9.72, "Approximately 3 concurrent auditory objects, not 9 streams",
             fontsize=9.5, va="top")
     ax.text(0.1, 0.55,
-            "Thickness = live agent count.   Spelling = coherence.   Detuning = drift.\n"
-            "Monitored as properties OF the object, without decomposing it.",
+            "Thickness = live agent count.   Spelling = coherence.   Synchrony = drift.\n"
+            "Designed as properties OF the object -- untested whether a listener hears it that way.",
             fontsize=7.4, va="top", color=MID)
 
+    # Output named fig1_* (paper's Figure 1, Section 3) though this is the figure2() function --
+    # see figure3()'s docstring/comment for why the function names and output numbers no longer
+    # match one-to-one.
     for ext in ("pdf", "png"):
-        fig.savefig(os.path.join(outdir, f"fig2_perceptual.{ext}"), dpi=300)
+        fig.savefig(os.path.join(outdir, f"fig1_perceptual.{ext}"), dpi=300)
     plt.close(fig)
 
 
@@ -299,8 +306,9 @@ def figure3(outdir, pool_slots=None, trials_per_fanout=5, fanouts=None):
                   style="italic", pad=4)
 
     fig.tight_layout()
+    # Output named fig2_* (paper's Figure 2, Section 3) -- see figure2()'s comment above.
     for ext in ("pdf", "png"):
-        fig.savefig(os.path.join(outdir, f"fig3_saturation.{ext}"), dpi=300)
+        fig.savefig(os.path.join(outdir, f"fig2_saturation.{ext}"), dpi=300)
     plt.close(fig)
     return rows
 
