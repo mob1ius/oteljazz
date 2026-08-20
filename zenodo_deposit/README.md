@@ -32,8 +32,11 @@ un-sped-up tempo.
 
 Consistent with the paper's own claims (Section 3, Section 4): the four Tier-2 examples are
 scripted injections on a hand-authored calibration trace with known, documented timestamps, not
-detected from telemetry — a detector is future work (Section 5). They are not claimed to be real
-telemetry. The clean run is real telemetry.
+excerpted from the drift detector's own output. Drift alone now has a first-pass detector
+(Section 5) computing onset lag directly from real span timing; the other three signatures
+(collusion, poisoned spawn, silent failure/stall) remain scripted, with a detector an open
+direction. None of these four excerpts are claimed to be real telemetry. The clean run is real
+telemetry.
 
 ## Note-event data
 

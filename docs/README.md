@@ -16,7 +16,7 @@ engine/   the Python engine: caidence.py and everything it depends on
 web/      the browser port: director.js/engine.js/demo.html and the audio sample libraries
 docs/     this file, BUILD_NOTES.md, ROADMAP.md, CONCEPTS.md
 supplementary_audio/   the five rendered examples accompanying the paper submission
-zenodo_deposit/        staged files (audio + note-events + corpus model) for the Zenodo upload
+zenodo_deposit/        files for the data deposit (audio + note-events + corpus model), published at doi:10.5281/zenodo.22033353
 ```
 
 Read the docs in this order:
