@@ -1,4 +1,4 @@
-# cAIdence: design concepts
+# OtelJazz: design concepts
 
 This document exists for the parallel academic-paper session (Blue Sky paper idea) as much as for
 future engineering sessions here. It explains the *approach*, not the *code* -- for code detail,

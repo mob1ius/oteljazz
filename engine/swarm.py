@@ -2,7 +2,7 @@
 """
 swarm.py - a mock multi-agent pipeline, and the telemetry-to-form derivation that goes with it.
 
-Everything cAIdence has played so far came from a hand-authored trace: extended_demo_trace() is
+Everything OtelJazz has played so far came from a hand-authored trace: extended_demo_trace() is
 129 spans written by hand to make a nice arc, with its movements, tempos, and voice sets set by a
 literal table. That is fine for tuning the instrument and useless for the actual claim -- a piece
 whose shape a human chose is not evidence that swarm shape is audible. This module is the other

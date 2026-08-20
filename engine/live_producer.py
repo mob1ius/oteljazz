@@ -64,7 +64,7 @@ def main():
     exporter = OTLPSpanExporter(endpoint=args.endpoint)
     provider.add_span_processor(SimpleSpanProcessor(exporter))   # not Batch -- see docstring
     trace.set_tracer_provider(provider)
-    tracer = trace.get_tracer("cAIdence-live-producer")
+    tracer = trace.get_tracer("oteljazz-live-producer")
 
     if args.trace == "swarm":
         import swarm as swarm_mod

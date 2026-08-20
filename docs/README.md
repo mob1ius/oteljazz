@@ -1,4 +1,4 @@
-# cAIdence / OtelJazz
+# OtelJazz
 
 Semantic sonification of multi-agent AI coordination as a real-time human oversight channel:
 agent telemetry (OTel GenAI spans), turned into a musical cadence you can hear.
