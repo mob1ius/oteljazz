@@ -1,0 +1,27 @@
+[
+  {
+    "trial": 1,
+    "seed": 1,
+    "drift_slot": "A"
+  },
+  {
+    "trial": 2,
+    "seed": 2,
+    "drift_slot": "B"
+  },
+  {
+    "trial": 3,
+    "seed": 3,
+    "drift_slot": "A"
+  },
+  {
+    "trial": 4,
+    "seed": 4,
+    "drift_slot": "B"
+  },
+  {
+    "trial": 5,
+    "seed": 5,
+    "drift_slot": "A"
+  }
+]

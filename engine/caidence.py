@@ -1589,6 +1589,10 @@ def build_timeline(spans, tempo, speed, do_drift, corpus_model, regime_schedule=
     # DRIFT_TARGET's onset while every other voice stays on the shared grid -- see
     # DRIFT_MAX_ONSET_OFFSET_S above for why this, not the pitch bend, is the claimed-audible cue.
     drift = next((s for s in spans if s.get("drift_start")), None) if do_drift else None
+    # DRIFT_TARGET is the calibration path's fixed choice (worker2); a marker span injected by
+    # drift_detect.py (--detect-drift) carries its own detected agent as "agent", so a detected
+    # drift can render on whichever voice the detector actually flagged, not just worker2.
+    drift_target = drift.get("agent", DRIFT_TARGET) if drift else DRIFT_TARGET
 
     def drift_onset_delay_s(t):
         if not drift:
@@ -1637,7 +1641,7 @@ def build_timeline(spans, tempo, speed, do_drift, corpus_model, regime_schedule=
             note = voicing[voice]
             vel = max(1, min(127, COMP_VELOCITY + accent))
             voice_attack = attack
-            if voice == DRIFT_TARGET:
+            if voice == drift_target:
                 voice_attack += drift_onset_delay_s(attack)
             add(max(0.0, voice_attack), mido.Message("note_on", channel=ch, note=note, velocity=vel))
             add(max(0.0, voice_attack) + dur, mido.Message("note_off", channel=ch, note=note, velocity=0))
@@ -1682,7 +1686,7 @@ def build_timeline(spans, tempo, speed, do_drift, corpus_model, regime_schedule=
     # Injected goal-drift: ramp the target voice's pitch bend flat and hold (secondary micro-cue;
     # the onset lag applied in the comp loop above, via drift_onset_delay_s, is the primary one).
     if drift:
-        ch = VOICES[DRIFT_TARGET][0]
+        ch = VOICES[drift_target][0]
         t0 = drift["drift_start"]
         window = drift.get("drift_window", 8.0)
         steps = int(window * 1000 / DRIFT_STEP_MS)
@@ -2065,6 +2069,10 @@ def main():
     ap.add_argument("--tempo", type=float, default=96.0)
     ap.add_argument("--speed", type=float, default=1.0)
     ap.add_argument("--no-drift", action="store_true")
+    ap.add_argument("--detect-drift", action="store_true",
+                     help="compute drift from actual span timing (drift_detect.py) instead of "
+                          "reading a hand-typed drift_start out of the trace file -- prints "
+                          "what it found (or that it found nothing) and renders accordingly")
     ap.add_argument("--demo", action="store_true",
                      help="use the extended ~110s demo trace (wide dynamic range, minor-mode "
                           "crisis arc) instead of the ~30s calibration-shaped synthetic trace")
@@ -2172,7 +2180,35 @@ def main():
                   f"(full log in VoicePool.overflow_log for scripted analysis)")
         return
 
-    timeline = build_timeline(spans, args.tempo, args.speed, do_drift=not args.no_drift,
+    do_drift = not args.no_drift
+    if args.detect_drift:
+        # Compute the shared onset grid the same way build_timeline will, so the detector sees
+        # exactly the windows the render is about to use -- see drift_detect.py's docstring for
+        # why the grid (not an assumed-zero baseline) is what a voice's onset gets compared to.
+        from drift_detect import detect_drift
+        end_s = max((s["start"] + s.get("duration", 0.5) for s in spans), default=8.0) + 2.0
+        if sections:
+            end_s = max(end_s, sections[-1]["end"])
+        chord_schedule_preview = generate_chord_schedule(end_s, args.tempo, form[0], form[1],
+                                                           regime_schedule=regime_schedule,
+                                                           sections=sections)
+        resolved_preview, _ = pool_spans(spans)
+        result = detect_drift(spans, chord_schedule_preview, resolved=resolved_preview)
+        if result:
+            print(f"\n--detect-drift: flagged {result['agent']!r} starting ~{result['drift_start']:.2f}s, "
+                  f"net growth {result['net_growth_s']*1000:.1f}ms over {result['drift_window']:.2f}s "
+                  f"(z={result['z_score']:.2f}).")
+            spans = spans + [{"agent": result["agent"], "action": "chat",
+                               "start": result["drift_start"], "duration": 0.1,
+                               "drift_start": result["drift_start"],
+                               "drift_window": result["drift_window"]}]
+            do_drift = do_drift and True
+        else:
+            print("\n--detect-drift: no voice's onset lag showed a growing, statistically "
+                  "significant divergence from the group -- rendering without drift.")
+            do_drift = False
+
+    timeline = build_timeline(spans, args.tempo, args.speed, do_drift=do_drift,
                                corpus_model=corpus_model, regime_schedule=regime_schedule, seed=seed,
                                sections=sections, form=form, swing=args.swing)
 
