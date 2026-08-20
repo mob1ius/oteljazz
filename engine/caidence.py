@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-cAIdence - starter mapping engine (v0.1)
-The tool name behind the "Oversight Symphony" research (07-oversight-symphony-sonification.md,
+caidence.py - OtelJazz's starter mapping engine (v0.1)
+The engine behind the "Oversight Symphony" research (07-oversight-symphony-sonification.md,
 08-sonification-mapping-spec.md): agent telemetry, turned into a musical cadence you can hear.
-The paper is the vision; cAIdence is the thing you run.
+The paper is the vision; this script is the thing you run.
 
 Reads a multi-agent trace (synthetic by default, or an OTel-style JSON) and streams quantized
 MIDI over a macOS IAC Driver bus so Logic Pro X plays it: an 8-track all-piano jazz ensemble --
@@ -2062,7 +2062,7 @@ def play(timeline, port_name):
     print("Done.")
 
 def main():
-    ap = argparse.ArgumentParser(description="cAIdence starter engine")
+    ap = argparse.ArgumentParser(description="OtelJazz starter engine")
     ap.add_argument("--list-ports", action="store_true")
     ap.add_argument("--port", default=None)
     ap.add_argument("--trace", default=None)

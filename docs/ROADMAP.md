@@ -1,4 +1,4 @@
-# cAIdence / oteljazz -- roadmap to a real streaming product
+# OtelJazz -- roadmap to a real streaming product
 
 This document exists to carry intent across context windows. `BUILD_NOTES.md` records what was
 built and why; this records **where it's going and what has to exist to get there**. Written at

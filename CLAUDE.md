@@ -1,6 +1,6 @@
 # Instructions for Claude working in this directory
 
-This is the cAIdence / OtelJazz project (semantic sonification of multi-agent AI coordination).
+This is the OtelJazz project (semantic sonification of multi-agent AI coordination).
 Layout: `paper/` (the submission + design spec + figures), `engine/` (the Python engine,
 `caidence.py` and everything it depends on), `web/` (the browser port), `docs/` (this project's
 own documentation: `README.md` orientation + file map, `BUILD_NOTES.md` running build log,

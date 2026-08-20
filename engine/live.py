@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-live.py - real OTLP receiver + real-time player for cAIdence (v0.1 of the live path)
+live.py - real OTLP receiver + real-time player for OtelJazz (v0.1 of the live path)
 
 Reads real OTel GenAI spans over the standard OTLP/HTTP wire protocol (protobuf, the default
 encoding for every OTel SDK exporter -- verified empirically against the real Python SDK before
@@ -326,7 +326,7 @@ class OTLPHandler(BaseHTTPRequestHandler):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="cAIdence live OTLP receiver + player")
+    ap = argparse.ArgumentParser(description="OtelJazz live OTLP receiver + player")
     ap.add_argument("--port", required=True, help="MIDI output port (substring match ok)")
     ap.add_argument("--seed", type=int, default=0, help="form (tune) seed (default 0)")
     ap.add_argument("--swing", type=float, default=c.SWING_DEFAULT,

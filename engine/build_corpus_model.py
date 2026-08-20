@@ -2,7 +2,7 @@
 """
 build_corpus_model.py - offline corpus miner (dev-only, not part of the realtime engine)
 
-Mines a public-domain symbolic corpus for the statistics that shape cAIdence's harmony,
+Mines a public-domain symbolic corpus for the statistics that shape OtelJazz's harmony,
 voice-leading, and cadence shape:
 
   1. Chord-transition probabilities (7x7 Markov matrices over scale degrees, roman numeral
