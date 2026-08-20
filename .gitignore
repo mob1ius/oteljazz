@@ -22,4 +22,12 @@ corpus_raw/
 # Personal/local Claude Code settings -- machine-specific permission overrides, not project config.
 .claude/settings.local.json
 
+# Internal dev log and pre-submission strategy notes -- candid reasoning (bug post-mortems,
+# acceptance-strategy/venue-shopping notes, review calibration) never meant to ship publicly.
+# Kept locally (backed up outside the repo too) so CLAUDE.md's "read BUILD_NOTES.md every
+# session" instruction still works; just no longer committed. See CLAUDE.md's pre-public
+# checklist for why these two specifically were pulled before the repo went public.
+docs/BUILD_NOTES.md
+paper/working-notes.md
+
 .DS_Store
