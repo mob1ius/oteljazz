@@ -1,4 +1,4 @@
-# The Oversight Symphony: A Jazz-Grounded Musical Grammar for Sonifying Multi-Agent AI Coordination
+# The Oversight Ensemble: A Jazz-Grounded Musical Grammar for Sonifying Multi-Agent AI Coordination
 
 **Mike Wagner**
 Independent Researcher

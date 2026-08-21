@@ -21,7 +21,7 @@ zenodo_deposit/        files for the data deposit (audio + note-events + corpus 
 
 Read the docs in this order:
 
-1. [`../paper/07-oversight-symphony-sonification.md`](../paper/07-oversight-symphony-sonification.md)
+1. [`../paper/07-oversight-ensemble-sonification.md`](../paper/07-oversight-ensemble-sonification.md)
    -- the paper. The "why."
 2. [`../paper/08-sonification-mapping-spec.md`](../paper/08-sonification-mapping-spec.md) -- the
    complete OTel-span-to-MIDI mapping spec. The "what." Read this before touching `caidence.py`.

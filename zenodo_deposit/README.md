@@ -1,9 +1,9 @@
-# Supplementary data for "The Oversight Symphony: A Jazz-Grounded Musical Grammar for Sonifying Multi-Agent AI Coordination"
+# Supplementary data for "The Oversight Ensemble: A Jazz-Grounded Musical Grammar for Sonifying Multi-Agent AI Coordination"
 
 Mike Wagner, Independent Researcher (ORCID: 0009-0008-2589-027X)
 
-This deposit accompanies the paper's submission to *Organised Sound* (Cambridge University
-Press). It contains the rendered audio examples described in Section 4 ("Supplementary audio"),
+This deposit accompanies the paper's submission to the *Journal of the Audio Engineering Society*
+(AES). It contains the rendered audio examples described in Section 4 ("Supplementary audio"),
 the exported note-event data those renders were produced from, and the corpus model the harmonic
 grammar (Section 3) is mined from. The paper's own code, and the exact commit this deposit
 corresponds to, is archived separately via GitHub's Zenodo integration (see "Code availability"

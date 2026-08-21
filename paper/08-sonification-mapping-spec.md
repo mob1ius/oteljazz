@@ -1,6 +1,6 @@
 # Sonification Mapping Spec (v0.1)
 
-Implementation companion to `07-oversight-symphony-sonification.md`. Defines how agent state (OpenTelemetry GenAI spans) becomes musical events, and the musicality rules that keep it music rather than noise. Target output: MIDI into Logic Pro X (or MainStage) via the macOS IAC Driver, real orchestral samples. Goal of v0.1: hear the first bars from a real or synthetic trace, and produce the controlled stimuli for the Section 5.2 study.
+Implementation companion to `07-oversight-ensemble-sonification.md`. Defines how agent state (OpenTelemetry GenAI spans) becomes musical events, and the musicality rules that keep it music rather than noise. Target output: MIDI into Logic Pro X (or MainStage) via the macOS IAC Driver, real orchestral samples. Goal of v0.1: hear the first bars from a real or synthetic trace, and produce the controlled stimuli for the Section 5.2 study.
 
 ## 0. The one honest caveat: two tiers of signal
 
