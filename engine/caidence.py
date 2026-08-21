@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 caidence.py - OtelJazz's starter mapping engine (v0.1)
-The engine behind the "Oversight Symphony" research (07-oversight-symphony-sonification.md,
+The engine behind the "Oversight Ensemble" research (07-oversight-ensemble-sonification.md,
 08-sonification-mapping-spec.md): agent telemetry, turned into a musical cadence you can hear.
 The paper is the vision; this script is the thing you run.
 

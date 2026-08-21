@@ -2,7 +2,7 @@
 """Generate the paper's figures from REAL engine output, not hand-drawn mockups.
 
 Every number in Figure 1 is measured from a `--swarm` run and its exported note events, so the
-figure and the prose in 07-oversight-symphony-sonification.md cannot drift apart: regenerate
+figure and the prose in 07-oversight-ensemble-sonification.md cannot drift apart: regenerate
 after any mapping change and the figure updates with the engine.
 
     python3 make_figures.py [--seed N] [--outdir figures]
