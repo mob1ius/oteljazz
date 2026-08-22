@@ -36,4 +36,13 @@ paper/working-notes.md
 paper/OSWagner.docx
 paper/WagnerF*.eps
 
+# Per-venue submission build directories -- LaTeX builds, downloaded templates, page renders,
+# and a personal print copy. Not canonical (the tracked .md and paper/figures/*.eps are); the
+# real submission content lives in the actual venue's portal once uploaded. cmj-submission and
+# leonardo-submission are abandoned-venue scratch work from before JAES was settled on.
+paper/jaes-submission/
+paper/cmj-submission/
+paper/leonardo-submission/
+paper/personal-latex/
+
 .DS_Store
