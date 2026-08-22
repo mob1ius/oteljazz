@@ -1,0 +1,51 @@
+# Cloudflare Pages headers file. Copied into dist/ by scripts/build_site.sh.
+#
+# The CSP here is tighter than the one drafted in ROADMAP 4.7, which specified
+# `script-src 'self' https://cdnjs.cloudflare.com`. Two things changed: Tone.js is now vendored
+# (web/vendor/Tone.js, verified byte-identical to the CDN copy), so no third-party origin is
+# needed at all; and the page's inline <script type="module"> was extracted to app.js, because
+# that drafted policy would have blocked it outright and the page would simply not have run.
+#
+# 'unsafe-inline' stays on style-src ONLY: the markup uses inline style="" attributes for the
+# knob positions and the JS sets element.style for the VU bars. It is deliberately NOT on
+# script-src, which is where it would actually matter.
+#
+# worker-src needs blob: because Tone.js spins up its audio worklet from a blob: URL. Without it
+# the browser falls back to script-src, blocks the worker, and the demo breaks. Found by serving
+# dist/ under this exact policy locally (scripts/serve_dist.py), not in production -- keep testing
+# that way before changing anything here.
+
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self'; media-src 'self'; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: geolocation=(), camera=(), microphone=(), payment=(), usb=(), interest-cohort=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+# Content-addressed in practice: these change only when the samples/artwork/corpus themselves
+# change, and a change would come with a new deploy anyway.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/samples/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/vendor/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/corpus_model_jazz.json
+  Cache-Control: public, max-age=31536000, immutable
+
+# The app itself is short-cached: filenames are not fingerprinted, so a long cache here would
+# strand visitors on a stale build after a deploy.
+/index.html
+  Cache-Control: public, max-age=300
+
+/app.js
+  Cache-Control: public, max-age=300
+
+/director.js
+  Cache-Control: public, max-age=300
+
+/engine.js
+  Cache-Control: public, max-age=300
