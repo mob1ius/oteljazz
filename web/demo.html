@@ -229,6 +229,22 @@
     color: #666;
     font-family: 'SF Mono', Menlo, Consolas, monospace;
   }
+  /* Attribution is a LICENSE CONDITION here, not a courtesy, so it ships on the page rather
+     than living only in the paper: the piano samples are CC BY 3.0 (attribution required on
+     redistribution, and serving them to visitors is redistribution), and the harmonic model
+     is a derivative of the Weimar Jazz Database, which is ODbL. Do not remove. */
+  .credits {
+    max-width: min(920px, 94vw);
+    margin: 0 auto;
+    padding: 0 24px 48px;
+    text-align: center;
+    font-size: 12px;
+    line-height: 1.7;
+    color: #6b6b6b;
+    font-family: 'SF Mono', Menlo, Consolas, monospace;
+  }
+  .credits a { color: #8a7a55; }
+  .credits a:hover { color: var(--brass); }
 </style>
 </head>
 <body>
@@ -258,6 +274,17 @@
     <div class="caption">oteljazz -- semantic sonification of multi-agent AI coordination</div>
   </div>
 </div>
+
+<footer class="credits">
+  Piano: <a href="https://archive.org/details/SalamanderGrandPianoV3" rel="noopener noreferrer" target="_blank">Salamander Grand Piano</a>
+  by Alexander Holm, <a href="https://creativecommons.org/licenses/by/3.0/" rel="noopener noreferrer" target="_blank">CC BY 3.0</a>.
+  Bass: <a href="https://theremin.music.uiowa.edu" rel="noopener noreferrer" target="_blank">University of Iowa Musical Instrument Samples</a> (Lawrence Fritts).
+  <br>
+  Harmony mined from the <a href="https://jazzomat.hfm-weimar.de" rel="noopener noreferrer" target="_blank">Weimar Jazz Database</a>
+  (Jazzomat Research Project), <a href="https://opendatacommons.org/licenses/odbl/" rel="noopener noreferrer" target="_blank">ODbL</a>.
+  <br>
+  <a href="https://github.com/mob1ius/oteljazz" rel="noopener noreferrer" target="_blank">Source and paper on GitHub</a>.
+</footer>
 
 <script type="module">
 import { Director, BAR_S } from "./director.js";

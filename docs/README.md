@@ -41,7 +41,7 @@ Read the docs in this order:
 | `swarm.py` | **Mock multi-agent pipeline + telemetry-derived form.** This is what demonstrates the mapping-fidelity claim -- ensemble thickness and tempo come from the pipeline's own shape, not authored. |
 | `live.py` | Real OTLP/HTTP receiver + real-time player. |
 | `live_producer.py` | Synthetic OTel span generator (real `opentelemetry-sdk`) for testing `live.py`. |
-| `export_otel_trace.py` | `swarm.py`'s spans -> OTLP/JSON, for `web/demo.html`'s terminal display. |
+| `export_otel_trace.py` | `swarm.py`'s spans -> OTLP/JSON. Dev/inspection tool only. The browser demo generates its own spans client-side and does **not** load this output; the checked-in copy was deleted when hosting became real, since it was 208K of dead weight in a public deploy. |
 | `import_otel_hook_trace.py` | A real captured Claude Code session (`.claude/hooks/capture.py`'s output) -> `caidence.py --trace`-loadable JSON. |
 | `make_figures.py` | Regenerates `paper/figures/`. Run from `engine/`; pass `--outdir ../paper/figures`. |
 
