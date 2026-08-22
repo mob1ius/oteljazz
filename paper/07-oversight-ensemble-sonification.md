@@ -33,7 +33,7 @@ A more important foil is agent observability, not sound at all. LangSmith (LangC
 
 The departure from that lineage is perception, not capture. Observability has largely solved capture, standardizing on an OpenTelemetry GenAI span stream, then presented through the serial visual channel described above. Sonification is a perception layer over the same captured telemetry, not a competitor to observability. Where the sonification lineage above maps low-level infrastructure metrics, this design renders already-captured semantic agent state, coordination events, drift, collusion, a poisoned spawn, that neither infrastructure sonification nor observability tooling was built to make audible.
 
-One inverse relationship is worth naming to avoid confusion: a separate, active line uses multi-agent LLM systems to compose music, decomposing composition across leader, melody, harmony, and review agents (Deng et al. 2024; Xing et al. 2025): agents *as musicians*, music the output, agents the means. This is not agents used to make music; it is music made from agents' state, an instrument for watching them.
+One inverse relationship is worth naming to avoid confusion: a separate, active line uses multi-agent LLM systems to compose music (cited here, as with other arXiv sources in this section, to acknowledge active related work, not as evidence for this paper's own claims), decomposing composition across leader, melody, harmony, and review agents (Deng et al. 2024; Xing et al. 2025): agents *as musicians*, music the output, agents the means. This is not agents used to make music; it is music made from agents' state, an instrument for watching them.
 
 ## 3. A Musical Grammar for Agent Coordination
 
