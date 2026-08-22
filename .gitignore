@@ -46,3 +46,7 @@ paper/leonardo-submission/
 paper/personal-latex/
 
 .DS_Store
+
+# Built site output (assembled from an explicit allowlist by scripts/build_site.sh; Cloudflare
+# Pages builds this itself on deploy, so the artifact never needs committing).
+dist/
