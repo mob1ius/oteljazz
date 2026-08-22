@@ -1,0 +1,244 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>oteljazz -- README hero (static render)</title>
+<!--
+  STATIC RENDER FOR THE README HERO IMAGE. Not the demo -- demo.html is the live, playable
+  thing. This page exists only to be screenshotted into docs/assets/hero.jpg, because a
+  headless screenshot of demo.html can't get past the play button (Web Audio needs a real
+  user gesture, and the interesting frames are ~3 minutes into playback).
+
+  Everything here is a FROZEN FRAME of a real demo.html run, captured out of the live page's
+  own DOM (term innerHTML + chord readout) rather than hand-written: peak fan-out at ~187-190s,
+  three concurrent subagents (r2-0/1/2) interleaved, one real error span, chord Db maj7. The
+  span text is therefore genuine engine output, not invented sample data. The VU bar heights
+  are the one exception -- they are driven by live audio analysis, so they're set here to a
+  plausible draw from bumpVU()'s own distribution (15 + rand*85, with its exact colour
+  thresholds) rather than captured.
+
+  To refresh: run demo.html, let it play to a fan-out section, and copy the #term innerHTML
+  and .chord-readout contents out of the live DOM. Then re-run the screenshot command in
+  docs/README.md's "Regenerating the hero image" note.
+
+  Sizes below are the demo's own values multiplied by --s, so this stays visually identical
+  to demo.html at a larger raster size. --s = 2624/920 (2x the overlay PNG's native 1312px
+  width, over the demo's own 920px radio width). Rendering at 2x native and letting GitHub
+  downscale is what keeps the text crisp in the README.
+-->
+<style>
+  :root {
+    --s: 2.852;
+    --brass: #c9a24b;
+    --brass-dark: #8a6d2f;
+    --dial-glow: #ffb347;
+    --phosphor: #ffb000;
+    --phosphor-dim: #8a5c10;
+    --phosphor-glow: rgba(255,176,0,0.85);
+    --phosphor-glow-wide: rgba(255,140,0,0.45);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #0a0a0a;
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #eee;
+  }
+  .stage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 70px 70px 130px;
+  }
+  .radio {
+    position: relative;
+    width: 2624px;
+    /* The stage is a flex row, so without this the radio shrinks to the viewport width while
+       the calc()-derived text stays at its fixed 2x size -- which collapses the dial glass to a
+       sliver. The render must be at exactly 2624px for the --s scale factor to be correct. */
+    flex-shrink: 0;
+    aspect-ratio: 1312 / 816;
+    overflow: hidden;
+    border-radius: calc(28px * var(--s));
+    background: #000 url("assets/radio_overlay.png") center / 100% 100% no-repeat;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+  }
+  .cutout {
+    position: absolute;
+    left: 54.3%; top: 30%; width: 31%; height: 36.5%;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: calc(3px * var(--s));
+    min-width: 0; min-height: 0;
+    padding: calc(8px * var(--s));
+  }
+  .dial-glass {
+    flex: 1;
+    border-radius: calc(6px * var(--s));
+    background: linear-gradient(180deg, rgba(13,18,16,0.55), rgba(6,9,7,0.55));
+    padding: calc(7px * var(--s));
+    overflow: hidden;
+    position: relative;
+    min-height: 0; min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: calc(6px * var(--s));
+  }
+  .dial-glass::before {
+    content: "";
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.05), transparent 30%);
+    pointer-events: none;
+  }
+  .chord-readout {
+    color: var(--dial-glow);
+    text-shadow: 0 0 calc(8px * var(--s)) rgba(255,179,71,0.6);
+    font-size: calc(20px * var(--s));
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+    min-height: 1.3em;
+    flex-shrink: 0;
+  }
+  /* Same phosphor-amber CRT treatment as demo.html, with one deliberate difference: the
+     crtFlicker animation is NOT applied here. A screenshot lands on an arbitrary animation
+     frame, and catching the page mid-flicker would bake a randomly dimmed terminal into a
+     permanent image asset. */
+  .term {
+    flex: 1;
+    min-height: 0; min-width: 0;
+    background: rgba(8,5,0,0.55);
+    border-radius: calc(4px * var(--s));
+    padding: calc(4px * var(--s)) calc(6px * var(--s));
+    font-family: 'SF Mono', Menlo, Consolas, monospace;
+    font-size: calc(9px * var(--s));
+    color: var(--phosphor);
+    text-shadow: 0 0 calc(3px * var(--s)) var(--phosphor-glow),
+                 0 0 calc(7px * var(--s)) var(--phosphor-glow-wide);
+    overflow: hidden;
+    white-space: pre-wrap;
+    line-height: 1.5;
+    position: relative;
+  }
+  .term::after {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      repeating-linear-gradient(180deg,
+        rgba(0,0,0,0.32) 0, rgba(0,0,0,0.32) calc(1px * var(--s)),
+        transparent calc(1px * var(--s)), transparent calc(3px * var(--s))),
+      linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.55) 100%);
+    pointer-events: none;
+    mix-blend-mode: multiply;
+  }
+  .term .dim { color: var(--phosphor-dim); text-shadow: none; }
+  .term .ok { color: var(--phosphor); }
+  .term .err { color: #ff6b5a; font-weight: bold;
+               text-shadow: 0 0 calc(4px * var(--s)) rgba(255,107,90,0.7); }
+  .controls-row {
+    display: flex;
+    align-items: center;
+    gap: calc(10px * var(--s));
+    padding-top: calc(2px * var(--s));
+  }
+  .power-btn {
+    width: calc(26px * var(--s)); height: calc(26px * var(--s)); border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, var(--brass), var(--brass-dark));
+    border: calc(1.5px * var(--s)) solid #4a3a1a;
+    box-shadow: 0 calc(2px * var(--s)) calc(4px * var(--s)) rgba(0,0,0,0.6),
+                inset 0 calc(1px * var(--s)) calc(1px * var(--s)) rgba(255,255,255,0.4);
+    display: flex; align-items: center; justify-content: center;
+    font-size: calc(12px * var(--s));
+    color: #241a08;
+    flex-shrink: 0;
+    padding: 0;
+  }
+  .status-text {
+    font-size: calc(9px * var(--s));
+    color: #b89a6a;
+    font-family: 'SF Mono', Menlo, Consolas, monospace;
+    flex: 1; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .vu {
+    display: flex; gap: calc(2px * var(--s)); align-items: flex-end;
+    height: calc(12px * var(--s)); flex-shrink: 0;
+  }
+  .vu i { width: calc(2.5px * var(--s)); border-radius: calc(1px * var(--s)); }
+  .knob-control {
+    position: absolute;
+    aspect-ratio: 1;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+  }
+  .knob-indicator {
+    position: absolute;
+    top: 10%; left: 50%;
+    width: 9%; height: 34%;
+    background: #2a1c0a;
+    border-radius: calc(2px * var(--s));
+    transform-origin: 50% 165%;
+    transform: translateX(-50%) rotate(0deg);
+    box-shadow: 0 0 calc(3px * var(--s)) rgba(0,0,0,0.6);
+  }
+  .knob-label {
+    position: absolute;
+    top: 108%; left: 50%;
+    transform: translateX(-50%);
+    font-size: calc(8px * var(--s));
+    color: var(--brass);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    text-shadow: 0 calc(1px * var(--s)) calc(2px * var(--s)) rgba(0,0,0,0.8);
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="radio">
+    <div class="cutout">
+      <div class="chord-readout">D&#9837;maj7</div>
+      <div class="dial-glass">
+        <div class="term"><span class="dim">[188.63s subagent-r2-0]</span> <span class="dim">span</span> subagent-r2-0.execute_tool <span class="dim">tool=</span>mcp://vector-store/embed <span class="dim">tokens=</span>54 <span class="dim">finish=</span>tool_use  <span class="ok">OK</span>
+<span class="dim">[189.25s subagent-r2-2]</span> <span class="dim">span</span> subagent-r2-2.chat <span class="dim">tokens=</span>207  <span class="ok">OK</span>
+<span class="dim">[189.38s subagent-r2-1]</span> <span class="dim">span</span> subagent-r2-1.execute_tool <span class="dim">tool=</span>mcp://database/explain <span class="dim">tokens=</span>37 <span class="dim">finish=</span>tool_use  <span class="err">ERROR</span>
+<span class="dim">[189.56s subagent-r2-0]</span> <span class="dim">span</span> subagent-r2-0.chat <span class="dim">tokens=</span>188  <span class="ok">OK</span>
+<span class="dim">[189.75s subagent-r2-2]</span> <span class="dim">span</span> subagent-r2-2.execute_tool <span class="dim">tool=</span>mcp://github/list_issues <span class="dim">tokens=</span>23 <span class="dim">finish=</span>tool_use  <span class="ok">OK</span>
+<span class="dim">[190.19s subagent-r2-2]</span> <span class="dim">span</span> subagent-r2-2.execute_tool <span class="dim">tool=</span>mcp://vector-store/embed <span class="dim">tokens=</span>48 <span class="dim">finish=</span>tool_use  <span class="ok">OK</span>
+<span class="dim">[190.63s subagent-r2-0]</span> <span class="dim">span</span> subagent-r2-0.execute_tool <span class="dim">tool=</span>mcp://database/query <span class="dim">tokens=</span>59 <span class="dim">finish=</span>tool_use  <span class="ok">OK</span>
+<span class="dim">[190.63s subagent-r2-1]</span> <span class="dim">span</span> subagent-r2-1.chat <span class="dim">tokens=</span>404  <span class="ok">OK</span>
+<span class="dim">[190.81s subagent-r2-2]</span> <span class="dim">span</span> subagent-r2-2.chat <span class="dim">tokens=</span>463 <span class="dim">finish=</span>end_turn  <span class="ok">OK</span></div>
+      </div>
+      <div class="controls-row">
+        <button class="power-btn">&#9654;</button>
+        <div class="status-text">Playing...</div>
+        <!-- heights/colours follow bumpVU()'s own rule: >70 #ff7a4a, >40 --dial-glow, else #5a4a2a -->
+        <div class="vu">
+          <i style="height:62%; background:var(--dial-glow)"></i>
+          <i style="height:88%; background:#ff7a4a"></i>
+          <i style="height:41%; background:var(--dial-glow)"></i>
+          <i style="height:73%; background:#ff7a4a"></i>
+          <i style="height:29%; background:#5a4a2a"></i>
+          <i style="height:55%; background:var(--dial-glow)"></i>
+          <i style="height:81%; background:#ff7a4a"></i>
+          <i style="height:34%; background:#5a4a2a"></i>
+        </div>
+      </div>
+    </div>
+    <div class="knob-control" style="left:59.07%; top:80.27%; width:6.86%;">
+      <div class="knob-indicator"></div>
+      <div class="knob-label">Volume</div>
+    </div>
+    <div class="knob-control" style="left:81.40%; top:79.90%; width:6.4%;">
+      <div class="knob-indicator"></div>
+      <div class="knob-label">Tuning</div>
+    </div>
+    <!-- demo.html has a caption line here; it is deliberately omitted from the hero render.
+         It sits at a negative `bottom` outside the radio box, so `.radio { overflow: hidden }`
+         clips it away in Firefox anyway, and the README supplies its own heading right above
+         the image. -->
+  </div>
+</div>
+</body>
+</html>

@@ -11,7 +11,7 @@ the Weimar Jazz Database.
 ## Layout
 
 ```
-paper/    the submission (Organised Sound) and its design spec, figures, review notes
+paper/    the submission (JAES) and its design spec, figures, review notes
 engine/   the Python engine: caidence.py and everything it depends on
 web/      the browser port: director.js/engine.js/demo.html and the audio sample libraries
 docs/     this file, BUILD_NOTES.md, ROADMAP.md, CONCEPTS.md
