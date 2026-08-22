@@ -1,15 +1,14 @@
 # OtelJazz
 
-**Semantic sonification of multi-agent AI coordination.** Agent telemetry (OpenTelemetry GenAI
-spans) rendered as a jazz combo you can leave running in the background and hear go wrong.
+**Your agent swarm, played as a jazz combo.** You don't read the trace. You hear it go wrong.
 
 ![A 1940s tabletop radio whose dial glass is an amber CRT terminal streaming live OpenTelemetry
 spans from three concurrent AI subagents, one of them returning an error, above the chord
 readout D-flat major 7.](docs/assets/hero.jpg)
 
-The dial is not decoration. It is the browser demo (`web/demo.html`) mid-run: three subagents
-working in parallel, one tool call failing, and the chord the ensemble is currently sounding.
-The image is a frozen frame of real engine output, not a mockup.
+The dial is not decoration. That's the live demo mid-run: OpenTelemetry GenAI spans from three
+subagents working in parallel, one tool call failing, and the chord the ensemble is sounding as
+it happens. A frozen frame of real engine output, not a mockup.
 
 ## The idea
 
