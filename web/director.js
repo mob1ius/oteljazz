@@ -398,7 +398,10 @@ export class Director {
 
   _spanLineHtml(s) {
     const ok = s.status !== "error";
-    let line = `<span class="dim">span</span> ${s.agent}.${s.op}`
+    // Operation only, no agent prefix: app.js already renders "[12.34s <agent>]" ahead of this,
+    // so including it here printed the agent name twice and burned ~20 characters of line width --
+    // which is most of the budget on a phone, where the terminal is ~250px wide.
+    let line = `<span class="dim">span</span> ${s.op}`
       + (s.tool ? ` <span class="dim">tool=</span>${s.tool}` : "")
       + ` <span class="dim">tokens=</span>${s.tokens}`
       + (s.stop_reason ? ` <span class="dim">finish=</span>${s.stop_reason}` : "")
