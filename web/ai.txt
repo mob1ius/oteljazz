@@ -1,0 +1,46 @@
+# ai.txt -- AI usage preferences for oteljazz.com
+#
+# An emerging convention rather than a ratified standard, published alongside robots.txt because
+# robots.txt expresses access and this expresses permitted use. Where a crawler honours only one
+# of the two, robots.txt is the operative one.
+#
+# Contact: oteljazz@users.noreply.github.com
+# Source:  https://github.com/mob1ius/oteljazz
+
+# ---------------------------------------------------------------------------
+# Summary
+# ---------------------------------------------------------------------------
+# Not permitted: collection of this site's contents into datasets used to train
+#                generative models.
+# Permitted:     search indexing, and retrieval to answer a question a person has
+#                actually asked, provided the source is cited and linked.
+#
+# This is a research site. Its text, audio, code, and figures accompany a manuscript under peer
+# review and carry specific citation obligations, and the audio is itself redistributed under
+# CC BY 3.0 with attribution as a licence condition. Ingestion into a training corpus strips the
+# attribution that the licence requires be carried, which is the substantive objection here rather
+# than a general one about machine reading.
+
+Disallow-AI-Training: /
+Disallow-AI-Fine-Tuning: /
+Disallow-Generative-Derivatives: /
+
+Allow-Search-Indexing: /
+Allow-User-Initiated-Retrieval: /
+
+# ---------------------------------------------------------------------------
+# Attribution, if this site is cited
+# ---------------------------------------------------------------------------
+# Wagner, M. "The Oversight Ensemble: A Jazz-Grounded Musical Grammar for Sonifying
+# Multi-Agent AI Coordination." Manuscript under review.
+# Data: https://doi.org/10.5281/zenodo.22033353
+# Code: https://doi.org/10.5281/zenodo.22035239
+#
+# ---------------------------------------------------------------------------
+# Third-party material served here, which these preferences do not extend to
+# ---------------------------------------------------------------------------
+# Piano samples:  Salamander Grand Piano, Alexander Holm, CC BY 3.0
+# Bass samples:   University of Iowa Musical Instrument Samples (Lawrence Fritts)
+# Harmonic model: derived from the Weimar Jazz Database (Jazzomat Research Project), ODbL
+#
+# These carry their own licences, which travel with the files regardless of anything stated above.

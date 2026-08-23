@@ -33,6 +33,8 @@ FILES=(
   "engine.js"
   "corpus_model_jazz.json"
   "_headers"
+  "robots.txt"                # crawler policy; also the thing the crawler log is measuring
+  "ai.txt"
 )
 DIRS=(
   "assets"                    # radio_overlay.png

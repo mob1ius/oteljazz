@@ -50,3 +50,6 @@ paper/personal-latex/
 # Built site output (assembled from an explicit allowlist by scripts/build_site.sh; Cloudflare
 # Pages builds this itself on deploy, so the artifact never needs committing).
 dist/
+
+# Local wrangler/miniflare state (local D1 emulation for testing functions/_middleware.js).
+.wrangler/

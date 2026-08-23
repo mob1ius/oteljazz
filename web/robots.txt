@@ -1,0 +1,102 @@
+# oteljazz.com
+#
+# The line taken here: search indexing is welcome, training-corpus collection is not.
+#
+# Those are different activities that often travel under different user-agents, and several
+# operators expose a separate agent precisely so the two can be answered differently. Where an
+# operator does that, the search agent is allowed and the training agent is not. Where an operator
+# offers only one agent for both, it is disallowed, since there is no way to permit the one
+# without the other.
+#
+# Retrieval on behalf of a person who asked a question is treated as closer to search than to
+# training, and is allowed.
+
+# --- Search engines: allowed ---
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: Slurp
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+# --- User-initiated retrieval: allowed ---
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+# --- Training-corpus collection: not allowed ---
+# Google-Extended and Applebot-Extended govern model training only; the search agents above are
+# unaffected by these lines.
+User-agent: GPTBot
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: Applebot-Extended
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: Claude-Web
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: PerplexityBot
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: Meta-ExternalAgent
+Disallow: /
+
+User-agent: FacebookBot
+Disallow: /
+
+User-agent: Amazonbot
+Disallow: /
+
+User-agent: cohere-ai
+Disallow: /
+
+User-agent: Diffbot
+Disallow: /
+
+User-agent: Omgilibot
+Disallow: /
+
+User-agent: ImagesiftBot
+Disallow: /
+
+User-agent: Timpibot
+Disallow: /
+
+User-agent: YouBot
+Disallow: /
+
+User-agent: firecrawl
+Disallow: /
+
+# --- Everything else ---
+User-agent: *
+Allow: /
