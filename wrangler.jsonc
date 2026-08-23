@@ -1,0 +1,54 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "oteljazz",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-20",
+
+  // dist/ is produced by `bash scripts/build_site.sh` from an explicit allowlist -- never point
+  // this at the repo root, which holds ~430MB that must not ship (see the build script).
+  "assets": {
+    "directory": "dist",
+    "binding": "ASSETS",
+
+    // Which requests reach the Worker at all. Without this the asset server answers directly and
+    // the Worker never runs, so nothing would be logged -- silently.
+    //
+    // "/*" then excludes the heavy static paths, because a single page view pulls ~40 sample
+    // files and running (and being billed for) the Worker on each would multiply invocations by
+    // roughly 45x for no data: those requests are filtered out of logging anyway. What remains is
+    // exactly the interesting set -- "/", robots.txt, ai.txt, and any unknown probe path such as
+    // /wp-admin or /.env, which are among the more revealing things a crawler does.
+    //
+    // Negative patterns take precedence over positive ones and order does not matter.
+    "run_worker_first": [
+      "/*",
+      "!/samples/*",
+      "!/assets/*",
+      "!/vendor/*",
+      "!/app.js",
+      "!/director.js",
+      "!/engine.js",
+      "!/corpus_model_jazz.json"
+    ]
+  },
+
+  // The crawler log. See infra/d1_schema.sql for the table and the reasoning about what is
+  // deliberately not stored (no IP addresses).
+  //
+  // SETUP: database_id below is a placeholder and `wrangler deploy` will fail until it is real.
+  // That is deliberate -- a wrong-but-plausible value would deploy happily and log nothing, and
+  // silent no-logging is the failure mode worth designing against here. To fill it in:
+  //   npx wrangler d1 create oteljazz-logs        # prints the id
+  //   npx wrangler d1 execute oteljazz-logs --remote --file=infra/d1_schema.sql
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "oteljazz-logs",
+      "database_id": "REPLACE_WITH_DATABASE_ID_FROM_WRANGLER_D1_CREATE"
+    }
+  ],
+
+  "observability": {
+    "enabled": true
+  }
+}
