@@ -35,6 +35,8 @@ FILES=(
   "_headers"
   "robots.txt"                # crawler policy; also the thing the crawler log is measuring
   "ai.txt"
+  "favicon.png"               # without this every browser visit 404s and logs a noise row
+  "og.jpg"                    # social card; a real screenshot of the demo, not a mockup
 )
 DIRS=(
   "assets"                    # radio_overlay.png
