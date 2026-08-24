@@ -42,4 +42,4 @@ Allow-User-Initiated-Retrieval: /
 # Bass samples:   University of Iowa Musical Instrument Samples (Lawrence Fritts)
 # Harmonic model: derived from the Weimar Jazz Database (Jazzomat Research Project), ODbL
 #
-# These carry their own licences, which travel with the files regardless of anything stated above.
+# These carry their own licenses, which travel with the files regardless of anything stated above.
