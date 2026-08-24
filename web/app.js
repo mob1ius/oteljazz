@@ -2,7 +2,7 @@
 // <script type="module"> block in demo.html so the site can ship a Content-Security-Policy
 // with script-src 'self' and no 'unsafe-inline': an inline script would be blocked by that
 // policy, and allowing inline scripts would defeat most of the point of having the CSP.
-// Behaviour is unchanged -- this is a move, not a rewrite.
+// Behavior is unchanged -- this is a move, not a rewrite.
 
 import { Director, BAR_S } from "./director.js";
 
@@ -182,7 +182,7 @@ powerBtn.onclick = async () => {
   // Safari 16.4+; guarded because no other engine implements audioSession.
   try {
     if (navigator.audioSession) navigator.audioSession.type = "playback";
-  } catch { /* non-fatal: worst case is the pre-existing silent-switch behaviour */ }
+  } catch { /* non-fatal: worst case is the pre-existing silent-switch behavior */ }
 
   await Tone.start();
   if (!playing) {

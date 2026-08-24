@@ -521,7 +521,7 @@ def _notes_in_range(pitch_class, lo, hi):
     return list(range(start, hi + 1, 12))
 
 # How the solo line picks WHICH tone of the current chord to land on. JAZZ_CHORD_TONES is
-# ordered root, 3rd, 5th, 7th, then extensions, so these weights say: favour the GUIDE TONES
+# ordered root, 3rd, 5th, 7th, then extensions, so these weights say: favor the GUIDE TONES
 # (3rd and 7th, ~55% combined). Guide tones are the notes that actually define a chord's quality
 # and that resolve by step through a ii-V, which is why a line built on them sounds like it is
 # playing THE CHANGES rather than merely noodling over them. A uniform pick across all tones --
@@ -778,7 +778,7 @@ class VoicePool:
         self.slot_of = {}     # true agent id -> slot, only while it currently holds one
         self.last_active = {}  # true agent id -> last time it was seen (for the steal heuristic)
         self._rr = 0           # round-robin cursor among free slots, so ties don't always
-                                # favour the first slot
+                                # favor the first slot
         self.overflow_events = 0
         self.overflow_log = []   # [(t, stolen_from_agent_or_None, given_to_agent), ...]
 

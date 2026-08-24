@@ -195,7 +195,7 @@ export class Director {
     const forced = this.anomalyCount === 0 && barStart >= this.firstAnomalyDueS;
     if (!forced && !this.rng.bool(ANOMALY_ROLL_PROB)) return;
     // "tools" is a voice, not an agent identity (see caidence.py's CHORD_AGENT_VOICES comment) --
-    // excluded here since "tools's tone flattening" wouldn't read as an agent-behaviour signature.
+    // excluded here since "tools's tone flattening" wouldn't read as an agent-behavior signature.
     const candidates = [...CHORD_AGENT_VOICES].filter(v => v !== "tools" && liveVoices.has(v));
     if (candidates.length === 0) return;
 

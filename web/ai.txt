@@ -1,7 +1,7 @@
 # ai.txt -- AI usage preferences for oteljazz.com
 #
 # An emerging convention rather than a ratified standard, published alongside robots.txt because
-# robots.txt expresses access and this expresses permitted use. Where a crawler honours only one
+# robots.txt expresses access and this expresses permitted use. Where a crawler honors only one
 # of the two, robots.txt is the operative one.
 #
 # Contact: oeoteljazz@gmail.com
@@ -15,10 +15,10 @@
 # Permitted:     search indexing, and retrieval to answer a question a person has
 #                actually asked, provided the source is cited and linked.
 #
-# This is a research site. Its text, audio, code, and figures accompany a manuscript under peer
-# review and carry specific citation obligations, and the audio is itself redistributed under
-# CC BY 3.0 with attribution as a licence condition. Ingestion into a training corpus strips the
-# attribution that the licence requires be carried, which is the substantive objection here rather
+# This is a research site. Its text, audio, code, and figures carry specific citation
+# obligations, and the audio is itself redistributed under
+# CC BY 3.0 with attribution as a license condition. Ingestion into a training corpus strips the
+# attribution that the license requires be carried, which is the substantive objection here rather
 # than a general one about machine reading.
 
 Disallow-AI-Training: /

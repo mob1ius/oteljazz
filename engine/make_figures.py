@@ -11,7 +11,7 @@ Outputs PDF (vector, for camera-ready) and PNG (for preview) per figure.
 
 Design constraints, deliberate:
   - GREYSCALE-SAFE. Proceedings print black and white and reviewers print to whatever is in the
-    office. Nothing is encoded by colour alone; every series is separable by linestyle, marker,
+    office. Nothing is encoded by color alone; every series is separable by linestyle, marker,
     or hatch. Colours are a redundant channel, not the channel.
   - VECTOR. PDF is the camera-ready format; PNG is a convenience preview only.
   - The seed is stamped into the caption text this script prints, because Section 6 rests on

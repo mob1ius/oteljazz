@@ -4,7 +4,7 @@
 --   npx wrangler d1 execute oteljazz-logs --remote --file=infra/d1_schema.sql
 --
 -- WHAT THIS DELIBERATELY DOES NOT STORE: IP addresses. The research question is which crawlers
--- arrive and whether they honour robots.txt, and that is answerable from user-agent, ASN, and
+-- arrive and whether they honor robots.txt, and that is answerable from user-agent, ASN, and
 -- timing. Storing IPs would make this a personal-data collection with the GDPR obligations that
 -- follow, for no analytical gain. The site otherwise sets no cookies and no storage of any kind;
 -- keep it that way. ASN and country are coarse and are the useful part: ASN is what identifies
