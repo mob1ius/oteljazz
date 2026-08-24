@@ -37,7 +37,7 @@ const MOD_INTERVALS = [2, 5, 7, -5, -7, 1, -2]; // common jazz modulation relati
 // --- ANOMALY SIGNATURES -----------------------------------------------------------------
 // Ported from caidence.py's demo-only anomaly mechanisms (DRIFT_TARGET/DRIFT_MAX_BEND,
 // CONFLICT_BEND, capture_spike_cluster, collusion_unison -- see that file for the originals).
-// Honest characterization, matching what the paper now says explicitly: these are INJECTED on a
+// Honest characterization: these are INJECTED on a
 // timer/probability, same as caidence.py's extended_demo_trace() hand-places them at fixed
 // timestamps -- neither version DERIVES an anomaly from something structurally wrong in the
 // swarm. This closes the gap where the browser demo had literally none of the five signatures
@@ -59,8 +59,8 @@ const DRIFT_WINDOW_S = [8, 16];          // [min,max) ramp duration
 // motion), so breaking it attacks fusion directly; a pitch bend alone likely isn't decodable
 // per-voice once the chord is fusing on purpose. See caidence.py's DRIFT_MAX_ONSET_OFFSET_S and
 // BUILD_NOTES.md. The bend below still fires but is a secondary micro-cue only.
-// This file previously had the bend WITHOUT the lag, i.e. it implemented the mechanism the paper
-// explicitly demotes and not the one it claims. Do not remove the lag to "simplify" scheduling.
+// This file previously had the bend WITHOUT the lag, i.e. it implemented the demoted mechanism
+// and not the load-bearing one. Do not remove the lag to "simplify" scheduling.
 const DRIFT_MAX_ONSET_OFFSET_S = 0.045;  // matches caidence.py's DRIFT_MAX_ONSET_OFFSET_S
 const DRIFT_MAX_BEND_SEMITONES = -1.5;   // matches caidence.py's DRIFT_MAX_BEND at +/-2 range
 const CONFLICT_WINDOW_S = [4, 9];

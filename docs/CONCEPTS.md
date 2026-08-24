@@ -1,15 +1,13 @@
 # OtelJazz: design concepts
 
-This document exists for the parallel academic-paper session (Blue Sky paper idea) as much as for
-future engineering sessions here. It explains the *approach*, not the *code* -- for code detail,
-read `caidence.py` itself; for what was tried and rejected, read the repo README. This is the
-"why it's built this way" layer between the two: the design decisions that would otherwise have
-to be re-derived by reading commits, and that the paper needs stated plainly to argue for the
-mapping's validity.
+This document explains the *approach*, not the *code* -- for code detail, read `caidence.py`
+itself; for what was tried and rejected, read the repo README. This is the "why it's built this
+way" layer between the two: the design decisions that would otherwise have to be re-derived by
+reading commits, and that have to be stated plainly to argue for the mapping's validity.
 
-Written for: someone drafting the methods/design section of the paper, who needs to understand
-the actual engineering choices behind "sonifying multi-agent AI coordination for oversight" well
-enough to defend them, not just describe the output.
+Written for: someone who needs to understand the actual engineering choices behind "sonifying
+multi-agent AI coordination for oversight" well enough to defend them, not just describe the
+output.
 
 **Musical idiom**: the engine is jazz, end to end -- an 8-track all-piano ensemble over
 seventh-chord harmony mined from real jazz standards. An earlier version used Romantic-era
@@ -18,7 +16,7 @@ alternative, so anything describing the mapping in terms of diatonic scale degre
 numerals is out of date. What did NOT change in that transition is everything in Sections 1-6
 below except the specific harmonic vocabulary: the two-tier signal design, the
 telemetry-vs-corpus separation, the anomaly signatures, and the mode-shift decoupling are all
-idiom-independent by construction, which is itself worth stating in the paper -- the approach
+idiom-independent by construction, which is itself worth stating -- the approach
 isn't specific to one musical style.
 
 ---
@@ -33,7 +31,7 @@ screen. Vision (a dashboard) demands foreground attention. Hearing is a backgrou
 process an unfolding pattern while doing something else, the way an experienced driver notices an
 engine's pitch change without looking at a tachometer.
 
-So the paper's claim is about **perceptual bandwidth for background monitoring**, not about
+So the claim is about **perceptual bandwidth for background monitoring**, not about
 detection capability that doesn't already exist elsewhere. Every design decision below follows
 from taking that claim seriously: a sonification that requires the listener's full foreground
 attention to parse (constant harmonic ambiguity, no consistent voice-to-role mapping, arbitrary
@@ -58,7 +56,7 @@ engine's architecture mirrors that split exactly:
   detectors that would replace the scripted flags) is future work, explicitly deferred as the
   spec's own "ambitious tier" (Section 9).
 
-This split matters for the paper because it's honest about what's proven and what's aspirational:
+This split matters because it's honest about what's proven and what's aspirational:
 the DIRECT tier is a working, real-time-capable mapping today (see `live.py`); the DERIVED tier
 is currently a demonstration of what the *finished instrument* should sound like once real
 detectors exist, not a claim that detection itself is solved.
@@ -106,7 +104,7 @@ minor within a single piece, so no key was ever established, and because nothing
 was no theme either. Statistical fidelity to a corpus at the level of individual events does not
 produce music; a listener needs a stable referent to hear deviation *from*.
 
-That has a direct methodological consequence for the paper, beyond aesthetics. The whole premise
+That has a direct methodological consequence, beyond aesthetics. The whole premise
 (Section 1) is that a listener can notice an anomaly in the background without foreground
 attention. That only works if the healthy baseline is *predictable* -- if the listener has
 internalized "this is what the system sounds like when it's fine." A through-composed,
@@ -120,7 +118,7 @@ requirement, not a stylistic preference.
   carries information about system state, and it's still entirely per-span for the chord voices
   -- a span's own duration/velocity/onset never moved to the chord level, only its PITCH did.
 
-The reason dynamics and harmony must never cross is the paper's core validity argument: if the
+The reason dynamics and harmony must never cross is the core validity argument: if the
 corpus model were allowed to influence *dynamics* (e.g. a "more dramatic" composer style making
 bursts louder regardless of actual token throughput), a listener's inference from loudness back
 to system state would be corrupted by stylistic noise. The listener needs "louder means more
@@ -162,7 +160,7 @@ dissonant all the time would have nothing to depart FROM.
 ## 5. Five anomaly signatures, and why each is spectrally/temporally distinct from the others
 
 If two different failure modes produced acoustically similar signatures, a listener couldn't
-distinguish them by ear -- which would defeat the point (the paper's claim isn't just "you can
+distinguish them by ear -- which would defeat the point (the claim isn't just "you can
 hear that something is wrong," it's "you can hear roughly WHAT is wrong"). Each signature was
 designed to be distinct along a different axis:
 
@@ -189,7 +187,7 @@ so the major and minor realizations share their functional progression bar for b
 their roots too. A mode shift is therefore modal interchange: the same tune, recolored, still
 recognizable as itself. It never swaps in different changes.
 
-This is a deliberate methodological choice for the paper's eventual detectability study (spec
+This is a deliberate methodological choice for an eventual detectability study (spec
 Section 5.2): if mode-shift also changed which chords appear, then in a minor-mode window an
 anomaly's detectability couldn't be cleanly separated from "the listener also just noticed the
 piece went to minor." Keeping the progression fixed means a mode change and an anomaly signature
@@ -244,7 +242,7 @@ communicate the thing it is supposed to communicate.
 
 ## 8. From live OTel to compositional decisions: the actual pipeline
 
-This is the part most directly relevant to a paper methods section describing "how telemetry
+This is the part most directly relevant to any methods writeup describing "how telemetry
 becomes music," end to end, as it exists today (`live.py`):
 
 1. An OTel SDK exports a span over OTLP/HTTP. Verified empirically (not assumed) that the
@@ -284,7 +282,7 @@ boundaries); always major; and no derived-tier anomaly detection (all five anoma
 are currently scripted flags on hand-authored spans, not detected from real telemetry -- see
 Section 2).
 
-## 9. Open design question the paper should probably engage with directly
+## 9. Open design question worth engaging with directly
 
 **Fixed vs. adaptive structure.** Every structural decision in the engine right now (movement
 boundaries, tempo per section, when a cadence happens) is either fully scripted (`--demo`) or
@@ -299,5 +297,5 @@ to whatever the swarm is actually doing, but continuous structural change is har
 perceptually legible than a small number of clearly-differentiated states (see Section 4's point
 about anomalies needing a stable baseline to depart from -- the same tension applies to movement
 boundaries: too much continuous change and there's no baseline "movement" to notice a boundary
-crossing FROM). Worth stating explicitly in the paper as a tradeoff rather than resolving it
+crossing FROM). Worth stating explicitly as a tradeoff rather than resolving it
 silently in the implementation.

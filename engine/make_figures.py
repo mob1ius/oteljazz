@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the paper's figures from REAL engine output, not hand-drawn mockups.
+"""Generate the analysis figures from REAL engine output, not hand-drawn mockups.
 
 Every number in Figure 1 is measured from a `--swarm` run and its exported note events, so the
 figure and the prose in 07-oversight-ensemble-sonification.md cannot drift apart: regenerate
@@ -162,10 +162,9 @@ def figure1(spans, rows, seed, outdir):
         arrowprops=dict(arrowstyle="->", lw=0.8, color=INK,
                         connectionstyle="arc3,rad=0.3"))
 
-    # Output named fig3_* (paper's Figure 3, Section 4) though this is the figure1() function --
-    # the paper reorganized so the perceptual/saturation figures (Section 3) now come before this
-    # one (Section 4) in reading order; renamed outputs to match, left the function name alone
-    # rather than touch every call site for an internal identifier no reader of the paper sees.
+    # Output named fig3_* though this is the figure1() function -- the perceptual/saturation
+    # figures come before this one in reading order; outputs were renamed to match and the
+    # function name left alone rather than touching every call site for an internal identifier.
     for ext in ("pdf", "png", "eps"):
         fig.savefig(os.path.join(outdir, f"fig3_channels.{ext}"), dpi=300)
     plt.close(fig)
@@ -174,8 +173,8 @@ def figure1(spans, rows, seed, outdir):
 def figure2(outdir):
     """The perceptual claim: 7 chord voices FUSE into one object; 2 streams stay segregable.
 
-    Conceptual, not data-driven -- it illustrates the stream-segregation argument in Section 4,
-    which is the paper's central perceptual commitment and was prose-only before this.
+    Conceptual, not data-driven -- it illustrates the stream-segregation argument, which is the
+    design's central perceptual commitment and was prose-only before this.
     """
     fig, ax = plt.subplots(figsize=(6.6, 3.9))
     ax.set_xlim(0, 10)
@@ -241,7 +240,7 @@ def figure2(outdir):
             "Designed as properties OF the object -- untested whether a listener hears it that way.",
             fontsize=7.4, va="top", color=MID)
 
-    # Output named fig1_* (paper's Figure 1, Section 3) though this is the figure2() function --
+    # Output named fig1_* though this is the figure2() function --
     # see figure3()'s docstring/comment for why the function names and output numbers no longer
     # match one-to-one.
     for ext in ("pdf", "png", "eps"):
@@ -306,7 +305,7 @@ def figure3(outdir, pool_slots=None, trials_per_fanout=5, fanouts=None):
                   style="italic", pad=4)
 
     fig.tight_layout()
-    # Output named fig2_* (paper's Figure 2, Section 3) -- see figure2()'s comment above.
+    # Output named fig2_* -- see figure2()'s comment above.
     for ext in ("pdf", "png", "eps"):
         fig.savefig(os.path.join(outdir, f"fig2_saturation.{ext}"), dpi=300)
     plt.close(fig)

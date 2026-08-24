@@ -19,10 +19,9 @@ uses the POOLED spread of every voice's deviation across every window as the noi
 single window's 4-5-voice sample stdev, since that sample is too small to estimate spread from at
 one point in time.
 
-This is a first-pass detector, not a validated production one. See BUILD_NOTES.md and paper
-Section 3/5 for how it's scoped and validated (ground-truth recovery on a synthetic case with a
-known injected ramp, a false-positive check against pure jitter, and an honest, unvalidated look
-at one real captured trace).
+This is a first-pass detector, not a validated production one. It is scoped and validated by
+ground-truth recovery on a synthetic case with a known injected ramp, a false-positive check
+against pure jitter, and an honest, unvalidated look at one real captured trace.
 """
 import statistics
 from collections import defaultdict

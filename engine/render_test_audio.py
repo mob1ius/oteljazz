@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """render_test_audio.py -- a dependency-free WAV renderer for the forced-choice drift
-perceptual check ONLY. Not the paper's supplementary-audio pipeline (that uses real sample
+perceptual check ONLY. Not the supplementary-audio pipeline (that uses real sample
 libraries via Logic/Web Audio, see zenodo_deposit/). This exists because this machine has no
 numpy, fluidsynth, or soundfont available, and the perceptual check doesn't need real timbre --
 it needs the timing artifact (drift's onset lag) to be audible, which a plain additive synth with

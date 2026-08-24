@@ -4,13 +4,12 @@ import_otel_hook_trace.py -- convert a REAL captured session from the `opentelem
 Claude Code hook (see BUILD_NOTES, "real-trace roadmap item") into caidence's internal span-dict
 JSON, loadable via `caidence.py --trace PATH`.
 
-Why this exists: the paper's mapping-fidelity claim (Section 4) has so far only been measured
-against telemetry this project's own author generated (swarm.py's mock pipeline, or hand-authored
-spans). R1's review flagged that as a structural confound -- mapping and trace generator both
-author-written means correlation is guaranteed by construction. This script closes that gap by
-converting a REAL Claude Code session (captured locally via `.claude/settings.json`'s otel-hook
-wiring, see BUILD_NOTES for setup) into something caidence.py can render, so the same engine can
-be run on telemetry nobody wrote for the paper.
+Why this exists: the mapping-fidelity claim has so far only been measured against telemetry
+this project's own author generated (swarm.py's mock pipeline, or hand-authored spans). That is a
+structural confound -- mapping and trace generator both author-written means correlation is
+guaranteed by construction. This script closes that gap by converting a REAL Claude Code session
+(captured locally via `.claude/settings.json`'s hook wiring) into something caidence.py can
+render, so the same engine can be run on telemetry nobody wrote for this project.
 
 Reverse-direction sibling of export_otel_trace.py (which goes caidence-shape -> OTLP/JSON). This
 script goes the other way: otel-hook's local_spans JSONL -> caidence-shape.

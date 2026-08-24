@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """make_forced_choice_trials.py -- generates the N=5 forced-choice drift-audibility trials
-described in paper Section 5. For each of 5 seeds, renders the SAME extended_demo_trace() with
+for drift audibility. For each of 5 seeds, renders the SAME extended_demo_trace() with
 drift on and drift off (do_drift=True/False, everything else identical), clips both to the same
 window around the scripted drift instance (worker2, t=35.0-49.0s), shuffles which one is "A" and
 which is "B" per trial (seeded on the trial index so it's reproducible), and writes an answer key
 kept separate from the files handed to a listener.
 
-Not the paper's supplementary-audio pipeline -- see render_test_audio.py's docstring. This script
+Not the supplementary-audio pipeline -- see render_test_audio.py's docstring. This script
 exists only to produce this one perceptual check's stimuli.
 """
 import json

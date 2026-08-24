@@ -25,17 +25,7 @@ corpus_raw/
 docs/BUILD_NOTES.md
 docs/LAUNCH_BRIEF.md
 docs/ROADMAP.md
-paper/working-notes.md
-paper/review_organised_sound_*.md
-
-# Journal submission builds -- LaTeX output, downloaded templates, and page renders, generated
-# from the tracked .md sources and paper/figures/*.eps. Not canonical; regenerate if lost.
-paper/*.docx
-paper/WagnerF*.eps
-paper/jaes-submission/
-paper/cmj-submission/
-paper/leonardo-submission/
-paper/personal-latex/
+paper/
 
 .DS_Store
 

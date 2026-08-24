@@ -27,7 +27,7 @@ WHAT THE MUSIC GETS FOR FREE, because the engine already reads these signals:
   * Activity level -> walking bass two-feel vs four-feel, solo density, chord inversion.
   * Tool calls -> the tools voice; tool errors -> the dissonant grace note.
 
-AGENT-TO-VOICE POOLING (an honest limitation, and a real design question for the paper): the
+AGENT-TO-VOICE POOLING (an honest limitation, and a real open design question): the
 instrument has five agent voices and a swarm can have many more agents than that. This module
 emits every subagent's TRUE, unbounded identity (see _fan_out) -- it does NOT pool them onto
 voices itself. Pooling now happens in caidence.py's VoicePool, which is the mapping engine's job
@@ -35,7 +35,7 @@ for exactly the reason CLAUDE.md gives for keeping one shared mapping: real OTel
 never arrive pre-pooled either, so if THIS module collapsed identity before caidence.py ever saw
 it, live and mock spans would take different paths through the code. A voice still represents
 "whichever true agent is using that slot right now" once VoicePool has run -- that loss of
-identity resolution is real and is the sort of thing that should be stated in the paper, not
+identity resolution is real and is the sort of thing that should be stated plainly, not
 hidden -- but it's now something that can be MEASURED (caidence.py --show-pool-stats /
 VoicePool.overflow_events counts every forced slot steal), not merely asserted.
 

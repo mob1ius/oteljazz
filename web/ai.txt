@@ -31,10 +31,9 @@ Allow-User-Initiated-Retrieval: /
 # ---------------------------------------------------------------------------
 # Attribution, if this site is cited
 # ---------------------------------------------------------------------------
-# Wagner, M. "The Oversight Ensemble: A Jazz-Grounded Musical Grammar for Sonifying
-# Multi-Agent AI Coordination." Manuscript under review.
-# Data: https://doi.org/10.5281/zenodo.22033353
-# Code: https://doi.org/10.5281/zenodo.22035239
+# Wagner, M. "OtelJazz: semantic sonification of multi-agent AI coordination."
+# https://oteljazz.com
+# Archived data: https://doi.org/10.5281/zenodo.22033353
 #
 # ---------------------------------------------------------------------------
 # Third-party material served here, which these preferences do not extend to

@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """
 caidence.py - OtelJazz's starter mapping engine (v0.1)
-The engine behind the "Oversight Ensemble" research (07-oversight-ensemble-sonification.md,
-08-sonification-mapping-spec.md): agent telemetry, turned into a musical cadence you can hear.
-The paper is the vision; this script is the thing you run.
+Agent telemetry, turned into a musical cadence you can hear.
+docs/CONCEPTS.md is the vision; this script is the thing you run.
 
 Reads a multi-agent trace (synthetic by default, or an OTel-style JSON) and streams quantized
 MIDI over a macOS IAC Driver bus so Logic Pro X plays it: an 8-track all-piano jazz ensemble --
@@ -208,7 +207,7 @@ DRIFT_STEP_MS = 80             # ramp resolution
 DRIFT_MAX_ONSET_OFFSET_S = 0.045  # how late DRIFT_TARGET's comp tone lands, at full drift.
 # The pitch bend above is a fine continuous channel but attacks none of the cues the chorale's
 # fusion depends on (shared timbre, shared onset grid, voice-led motion -- see build_timeline's
-# comp loop and the paper's Section 3), so it is not guaranteed to be decodable per-voice once
+# comp loop and docs/CONCEPTS.md), so it is not guaranteed to be decodable per-voice once
 # seven voices are sounding together. A late onset attacks the onset-grid cue directly and is
 # the claimed-audible/decodable drift signature; the bend is kept as a secondary micro-cue only.
 
