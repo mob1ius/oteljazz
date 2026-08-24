@@ -37,6 +37,16 @@ Allow: /
 User-agent: Perplexity-User
 Allow: /
 
+# Anthropic runs separate agents for training, search, and user-initiated retrieval, and each is
+# controlled independently -- disallowing ClaudeBot below does not restrict these two. They are
+# named explicitly rather than left to the wildcard default, so that permitting them is a stated
+# decision and not an omission.
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
 # --- Training-corpus collection: not allowed ---
 # Google-Extended and Applebot-Extended govern model training only; the search agents above are
 # unaffected by these lines.
@@ -100,3 +110,5 @@ Disallow: /
 # --- Everything else ---
 User-agent: *
 Allow: /
+
+Sitemap: https://oteljazz.com/sitemap.xml

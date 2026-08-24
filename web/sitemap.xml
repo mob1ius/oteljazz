@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  One page, one entry. The demo generates a fresh session per visit rather than serving distinct
+  URLs, so there is nothing else here to enumerate. This exists because the agents this site's
+  robots.txt explicitly permits look for it: Claude-SearchBot requested it twice on 2026-08-24
+  and got a 404 both times.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://oteljazz.com/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>
