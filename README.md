@@ -1,6 +1,6 @@
 # OtelJazz
 
-**Your agent swarm, played as a jazz combo.** You don't read the trace. You hear it go wrong.
+**An agent swarm, played as a jazz combo.** You don't read the trace. You hear it go wrong.
 
 ![A 1940s tabletop radio whose dial glass is an amber CRT terminal streaming live OpenTelemetry
 spans from three concurrent AI subagents, one of them returning an error, above the chord
