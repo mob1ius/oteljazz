@@ -45,7 +45,23 @@ const MOD_INTERVALS = [2, 5, 7, -5, -7, 1, -2]; // common jazz modulation relati
 // bend/detune/drift/collusion/capture in this file) -- it does not yet make them evidence-driven.
 const ANOMALY_MIN_GAP_S = 30;            // cooldown floor between anomalies, any type
 const ANOMALY_ROLL_PROB = 0.05;          // per-bar roll once the cooldown has elapsed
+// The FIRST anomaly of a session is scheduled, not rolled for. Measured over 500 headless
+// sessions with the pure 5%-per-bar roll: only 39.6% produced an anomaly inside the first 30s
+// (median time-to-first 42.5s, p90 160s). Six in ten visitors heard a pleasant piano trio and
+// nothing else, on a page whose whole claim is that you hear it go wrong. The roll governs
+// everything AFTER the first one, so the long-run density (~2.9 per 5min) is unchanged -- this
+// only removes the chance that a short first visit contains no signature at all.
+const FIRST_ANOMALY_S = [12, 18];        // [min,max) forced window for the session's first
 const DRIFT_WINDOW_S = [8, 16];          // [min,max) ramp duration
+// Goal-drift's PRIMARY signature is the ONSET LAG, not the bend -- the drifting voice's comp
+// attack ramps up to 45ms late while the other six stay locked to the shared grid. That is the
+// cue the chorale's fusion actually depends on (shared timbre + shared onset grid + voice-led
+// motion), so breaking it attacks fusion directly; a pitch bend alone likely isn't decodable
+// per-voice once the chord is fusing on purpose. See caidence.py's DRIFT_MAX_ONSET_OFFSET_S and
+// BUILD_NOTES.md. The bend below still fires but is a secondary micro-cue only.
+// This file previously had the bend WITHOUT the lag, i.e. it implemented the mechanism the paper
+// explicitly demotes and not the one it claims. Do not remove the lag to "simplify" scheduling.
+const DRIFT_MAX_ONSET_OFFSET_S = 0.045;  // matches caidence.py's DRIFT_MAX_ONSET_OFFSET_S
 const DRIFT_MAX_BEND_SEMITONES = -1.5;   // matches caidence.py's DRIFT_MAX_BEND at +/-2 range
 const CONFLICT_WINDOW_S = [4, 9];
 const CONFLICT_BEND_SEMITONES = 0.73;    // matches caidence.py's CONFLICT_BEND (3000/8192*2)
@@ -102,6 +118,8 @@ export class Director {
     this.activeDrift = null;      // {voice, startS, windowS}
     this.activeConflict = null;   // {voiceA, voiceB, startS, windowS}
     this.lastAnomalyEndS = -ANOMALY_MIN_GAP_S;
+    this.firstAnomalyDueS = this.rng.uniform(...FIRST_ANOMALY_S);  // see FIRST_ANOMALY_S
+    this.anomalyCount = 0;
 
     // callbacks the page wires up
     this.onScheduleNote = null;   // (voice, midiNote, velocity, durationS, atS)
@@ -153,6 +171,17 @@ export class Director {
     return bend;
   }
 
+  // How late `voice`'s comp attack lands at grid time `atS`, in seconds: a linear ramp to
+  // DRIFT_MAX_ONSET_OFFSET_S across the drift window, mirroring caidence.py's
+  // drift_onset_delay_s. Unlike _activeBendFor this is deliberately READ-ONLY -- it never clears
+  // an expired window, so it cannot race the lazy clear there depending on call order.
+  _driftOnsetDelayFor(voice, atS) {
+    const d = this.activeDrift;
+    if (!d || voice !== d.voice) return 0;
+    if (atS < d.startS || atS >= d.startS + d.windowS) return 0;
+    return DRIFT_MAX_ONSET_OFFSET_S * Math.min(1, (atS - d.startS) / d.windowS);
+  }
+
   // Roll for a new anomaly once the cooldown has elapsed, pick a signature and target voice(s)
   // from whichever chord-agent voices are actually live right now (an anomaly needs someone to
   // happen to), and either start a continuous-deviation window (drift/conflict, resolved per
@@ -160,19 +189,30 @@ export class Director {
   _maybeTriggerAnomaly(barStart, liveVoices, rootPc, quality, voicing) {
     if (this.activeDrift || this.activeConflict) return;
     if (barStart - this.lastAnomalyEndS < ANOMALY_MIN_GAP_S) return;
-    if (!this.rng.bool(ANOMALY_ROLL_PROB)) return;
+    // The session's first anomaly is due rather than rolled for (see FIRST_ANOMALY_S); it still
+    // needs a live candidate voice below, so during a quiet intake it lands at the first bar
+    // after the due time that actually has someone for it to happen to.
+    const forced = this.anomalyCount === 0 && barStart >= this.firstAnomalyDueS;
+    if (!forced && !this.rng.bool(ANOMALY_ROLL_PROB)) return;
     // "tools" is a voice, not an agent identity (see caidence.py's CHORD_AGENT_VOICES comment) --
     // excluded here since "tools's tone flattening" wouldn't read as an agent-behaviour signature.
     const candidates = [...CHORD_AGENT_VOICES].filter(v => v !== "tools" && liveVoices.has(v));
     if (candidates.length === 0) return;
 
+    // `anomalyCount` gates `forced` above, so it MUST be maintained -- without it every bar past
+    // firstAnomalyDueS fires (measured: 7.91 anomalies per 5min instead of ~3). It is counted
+    // from whether the branch below actually committed one rather than incremented up front,
+    // because the conflict/collusion branches fall through silently when fewer than two agent
+    // voices are live -- which is common early on, exactly when the forced first is due. Every
+    // firing branch advances lastAnomalyEndS; no non-firing path does.
+    const anomalyEndBefore = this.lastAnomalyEndS;
     const kind = this.rng.choice(["drift", "conflict", "capture", "collusion"]);
     if (kind === "drift") {
       const voice = this.rng.choice(candidates);
       const windowS = this.rng.uniform(...DRIFT_WINDOW_S);
       this.activeDrift = { voice, startS: barStart, windowS };
       this.lastAnomalyEndS = barStart + windowS;
-      this._logAnomaly(barStart, `goal-drift: ${voice}'s tone flattening over ${windowS.toFixed(1)}s`);
+      this._logAnomaly(barStart, `goal-drift: ${voice} falling off the ensemble's shared attack over ${windowS.toFixed(1)}s`);
     } else if (kind === "conflict" && candidates.length >= 2) {
       const voiceA = this.rng.choice(candidates);
       const voiceB = this.rng.choice(candidates.filter(v => v !== voiceA));
@@ -204,6 +244,7 @@ export class Director {
       this.lastAnomalyEndS = barStart + COLLUSION_COUNT * COLLUSION_GAP_S;
       this._logAnomaly(barStart, `collusion: ${voiceA} and ${voiceB} synchronized on an identical pitch`);
     }
+    if (this.lastAnomalyEndS !== anomalyEndBefore) this.anomalyCount++;
   }
 
   _logAnomaly(t, text) {
@@ -310,7 +351,11 @@ export class Director {
       const note = voicing[voice];
       const vel = Math.max(1, Math.min(127, COMP_VELOCITY + accent));
       const bendAt = Math.max(0, attack);
-      this._schedule(voice, note, vel, dur, bendAt, this._activeBendFor(voice, bendAt));
+      // Both the bend and the lag are evaluated at the GRID time, not the delayed one, so the
+      // ramp position is identical for every voice; only this voice's attack moves. Duration is
+      // deliberately NOT shortened, matching caidence.py (the note_off also shifts by the lag).
+      const voiceAttack = bendAt + this._driftOnsetDelayFor(voice, bendAt);
+      this._schedule(voice, note, vel, dur, voiceAttack, this._activeBendFor(voice, bendAt));
     }
 
     // --- walking bass
