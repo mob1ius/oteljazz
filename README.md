@@ -165,26 +165,30 @@ For the Python engine (MIDI into Logic Pro X), the mock pipeline, the live OTLP 
 real-trace capture, see **[`docs/README.md`](docs/README.md)**. The design itself is written up in
 **[`docs/CONCEPTS.md`](docs/CONCEPTS.md)**.
 
-## The paper
-
-[**The Oversight Ensemble: A Jazz-Grounded Musical Grammar for Sonifying Multi-Agent AI
-Coordination**](paper/07-oversight-ensemble-sonification.md) — currently **under review** at the
-Journal of the Audio Engineering Society. Not accepted, not published.
-
-Archived on Zenodo: [data](https://doi.org/10.5281/zenodo.22033353) (audio, note-event exports,
-corpus model) and [code](https://doi.org/10.5281/zenodo.22035239).
-
 ## Layout
 
 ```
-paper/    the paper, its design spec, and figures
 engine/   the Python engine (caidence.py and its deps)
 web/      the browser port + audio samples
 docs/     orientation and the design writeup
 src/      the Cloudflare Worker serving oteljazz.com
-supplementary_audio/   five examples from the paper
+supplementary_audio/   five rendered examples
 zenodo_deposit/        the data deposit contents
 ```
+
+## License
+
+The code in this repository — the Python engine, the browser port, and the Worker — is MIT
+licensed; see [`LICENSE`](LICENSE).
+
+That covers the code and **not** the bundled third-party material, which keeps its own terms and
+is not relicensed by it:
+
+- `web/samples/salamander_piano/` — CC BY 3.0
+- `web/samples/pizz_bass/` — University of Iowa MIS terms
+- `engine/corpus_model_jazz.json`, `web/corpus_model_jazz.json` — derived from an ODbL database
+  and therefore **ODbL**, including its share-alike condition. A further derivative of this
+  model carries the same obligation.
 
 ## Attribution
 

@@ -11,23 +11,18 @@ the Weimar Jazz Database.
 ## Layout
 
 ```
-paper/    the paper (under review, JAES), its design spec, and figures
 engine/   the Python engine: caidence.py and everything it depends on
 web/      the browser port: director.js/engine.js/demo.html and the audio sample libraries
 docs/     this file and CONCEPTS.md
-supplementary_audio/   the five rendered examples accompanying the paper submission
+supplementary_audio/   five rendered examples
 zenodo_deposit/        files for the data deposit (audio + note-events + corpus model), published at doi:10.5281/zenodo.22033353
 ```
 
 Read the docs in this order:
 
-1. [`../paper/07-oversight-ensemble-sonification.md`](../paper/07-oversight-ensemble-sonification.md)
-   -- the paper. The "why."
-2. [`../paper/08-sonification-mapping-spec.md`](../paper/08-sonification-mapping-spec.md) -- the
-   complete OTel-span-to-MIDI mapping spec. The "what." Read this before touching `caidence.py`.
-3. [`CONCEPTS.md`](CONCEPTS.md) -- the design approach itself (two-tier DIRECT/DERIVED
-   signals, why dynamics and harmony never cross wires).
-4. [`../CLAUDE.md`](../CLAUDE.md) -- the four working conventions that are load-bearing, and
+1. [`CONCEPTS.md`](CONCEPTS.md) -- the design approach: the two-tier DIRECT/DERIVED signal
+   model, and why dynamics and harmony never cross wires. The "why."
+2. [`../CLAUDE.md`](../CLAUDE.md) -- the four working conventions that are load-bearing, and
    what breaking each one already caused.
 
 ## Engine files (`engine/`)
@@ -42,7 +37,7 @@ Read the docs in this order:
 | `live_producer.py` | Synthetic OTel span generator (real `opentelemetry-sdk`) for testing `live.py`. |
 | `export_otel_trace.py` | `swarm.py`'s spans -> OTLP/JSON. Dev/inspection tool only. The browser demo generates its own spans client-side and does **not** load this output; the checked-in copy was deleted when hosting became real, since it was 208K of dead weight in a public deploy. |
 | `import_otel_hook_trace.py` | A real captured Claude Code session (`.claude/hooks/capture.py`'s output) -> `caidence.py --trace`-loadable JSON. |
-| `make_figures.py` | Regenerates `paper/figures/`. Run from `engine/`; pass `--outdir ../paper/figures`. |
+| `make_figures.py` | Regenerates the analysis figures. Run from `engine/`; pass `--outdir <dir>`. |
 
 `corpus_raw/` (the raw Weimar Jazz Database download) is gitignored and not included in this
 repo -- re-download it with the setup command below if you need to re-run the miner.
@@ -129,4 +124,4 @@ installed version -- see that script's module docstring for the details.
 ## Status
 
 The engine and the browser port both run. The mapping is established; listener decoding is not
-tested. See the paper's final section for what remains open.
+tested; a controlled listening study is the obvious next step.

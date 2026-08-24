@@ -1,7 +1,7 @@
 # Working conventions
 
 OtelJazz renders OpenTelemetry GenAI spans from a multi-agent system as a jazz combo.
-Layout: `paper/` (the paper and its design spec), `engine/` (the Python engine, `caidence.py`
+Layout: `engine/` (the Python engine, `caidence.py`
 and everything it depends on), `web/` (the browser port), `docs/` (orientation and design
 concepts), `src/` + `wrangler.jsonc` (the Cloudflare Worker serving oteljazz.com).
 
