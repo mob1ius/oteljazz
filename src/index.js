@@ -51,6 +51,18 @@ const BROWSER_UA_RE = /Mozilla\/5\.0.*(Chrome|Safari|Firefox|Edg|OPR|Trident)\//
 // be retuned later without making existing rows uninterpretable.
 const BROWSER_SAMPLE_RATE = 0.1;
 
+// Keep only scheme+host+path from a Referer. Query strings are where the sensitive parts live
+// (tokens, search terms), and the referring page's identity is all the analysis needs.
+function refererPathOnly(raw) {
+  if (!raw) return null;
+  try {
+    const u = new URL(raw);
+    return (u.origin + u.pathname).slice(0, 512);
+  } catch {
+    return null;              // unparseable Referer is not worth storing raw
+  }
+}
+
 function isBotUA(ua) {
   if (!ua) return true;                     // no UA at all is not a browser
   if (BOT_UA_RE.test(ua)) return true;
@@ -92,7 +104,11 @@ export default {
         url.pathname.slice(0, 512),
         request.method,
         ua.slice(0, 512),
-        (request.headers.get('referer') || '').slice(0, 512) || null,
+        // Origin + path only, never the query string. A referer routinely carries session
+        // tokens, search terms, and private document URLs -- storing it whole would quietly
+        // collect more sensitive data than the IP address this schema deliberately omits.
+        // Verified against a live request carrying "?token=..." before this was added.
+        refererPathOnly(request.headers.get('referer')),
         cf.country || null,
         typeof cf.asn === 'number' ? cf.asn : null,
         bot ? 1 : 0,
