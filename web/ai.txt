@@ -4,7 +4,7 @@
 # robots.txt expresses access and this expresses permitted use. Where a crawler honours only one
 # of the two, robots.txt is the operative one.
 #
-# Contact: oteljazz@users.noreply.github.com
+# Contact: oeoteljazz@gmail.com
 # Source:  https://github.com/mob1ius/oteljazz
 
 # ---------------------------------------------------------------------------

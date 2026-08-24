@@ -69,6 +69,43 @@ function isBotUA(ua) {
   return !BROWSER_UA_RE.test(ua);
 }
 
+// A user-agent is a CLAIM, not evidence: anyone can send `GPTBot/1.2` from a home connection in
+// one curl, and this was demonstrated against the live site (a forged GPTBot hit logged from
+// AS7922, a residential ISP). Cloudflare's own verifiedBot signal is not populated on this plan,
+// so it cannot arbitrate. What CAN arbitrate is the ASN, which Cloudflare records from the
+// connection itself and the sender does not control.
+//
+// So the claim is recorded separately from the evidence. `claimed_operator` is what the UA says
+// it is; `asn` is where it actually came from. A row claiming an operator from an ASN that
+// operator does not use is an impersonation, and that is now a query rather than a guess (see
+// infra/verify_crawlers.sql). Deliberately no hardcoded ASN allowlist here: published crawler
+// ranges change, and baking a possibly-stale list into the collector would silently mislabel
+// rows at the moment of collection, where it can never be corrected. Classification belongs at
+// analysis time, against ranges fetched then.
+const OPERATOR_CLAIMS = [
+  ['gptbot', /GPTBot/i],
+  ['oai-searchbot', /OAI-SearchBot/i],
+  ['chatgpt-user', /ChatGPT-User/i],
+  ['claudebot', /ClaudeBot|anthropic-ai|Claude-Web/i],
+  ['perplexitybot', /PerplexityBot/i],
+  ['perplexity-user', /Perplexity-User/i],
+  ['ccbot', /CCBot/i],
+  ['google-extended', /Google-Extended/i],
+  ['googlebot', /Googlebot/i],
+  ['bingbot', /bingbot/i],
+  ['applebot', /Applebot/i],
+  ['bytespider', /Bytespider/i],
+  ['amazonbot', /Amazonbot/i],
+  ['meta-externalagent', /meta-externalagent|FacebookBot/i],
+  ['duckduckbot', /DuckDuckBot/i],
+];
+
+function claimedOperator(ua) {
+  if (!ua) return null;
+  for (const [name, re] of OPERATOR_CLAIMS) if (re.test(ua)) return name;
+  return null;                              // self-identifies as nobody in particular
+}
+
 export default {
   async fetch(request, env, ctx) {
     // Serve from the asset store first. _headers (the CSP and caching rules built into dist/) is
@@ -95,30 +132,65 @@ export default {
           ? (cf.botManagement.verifiedBot ? 1 : 0)
           : null;
 
-      const stmt = env.DB.prepare(
-        `INSERT INTO requests
-           (ts, path, method, ua, referer, country, asn, is_bot_ua, cf_verified_bot, sample_rate)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      ).bind(
-        new Date().toISOString(),
-        url.pathname.slice(0, 512),
-        request.method,
-        ua.slice(0, 512),
+      const row = {
+        ts: new Date().toISOString(),
+        path: url.pathname.slice(0, 512),
+        method: request.method,
+        ua: ua.slice(0, 512),
         // Origin + path only, never the query string. A referer routinely carries session
         // tokens, search terms, and private document URLs -- storing it whole would quietly
         // collect more sensitive data than the IP address this schema deliberately omits.
         // Verified against a live request carrying "?token=..." before this was added.
-        refererPathOnly(request.headers.get('referer')),
-        cf.country || null,
-        typeof cf.asn === 'number' ? cf.asn : null,
-        bot ? 1 : 0,
+        referer: refererPathOnly(request.headers.get('referer')),
+        country: cf.country || null,
+        asn: typeof cf.asn === 'number' ? cf.asn : null,
+        claimed: claimedOperator(ua),
+        bot: bot ? 1 : 0,
         verified,
-        rate
-      );
+        rate,
+      };
+      const ip = request.headers.get('cf-connecting-ip') || '';
 
-      // Fire-and-forget: the visitor's response is already on its way, and a rejected insert
-      // (quota exhausted, transient D1 error) must not surface as a failed request.
-      ctx.waitUntil(stmt.run().catch(() => {}));
+      // Everything below runs AFTER the response is on its way. The dedupe check needs an await,
+      // and rule 2 says the visitor never waits for logging.
+      ctx.waitUntil((async () => {
+        try {
+          // Flood guard. Bots deliberately bypass browser sampling, so without this a few
+          // thousand requests with bot-shaped user-agents would exhaust D1's free daily write
+          // budget -- destroying the launch-day dataset, which is the one-time observable this
+          // whole thing exists to capture. Verified as a real hole: 12 concurrent forged-bot
+          // requests all wrote rows.
+          //
+          // One row per (client, path) per minute. That preserves what the research needs (which
+          // operators arrived, when, and what they asked for) while removing the amplification: a
+          // flood from one source now costs one row per path instead of unbounded rows. The IP is
+          // used only as a cache key here and is never stored, so the no-IP rule still holds.
+          if (ip) {
+            const key = new Request(
+              `https://dedupe.oteljazz.invalid/${encodeURIComponent(ip)}${row.path}`
+            );
+            const seen = await caches.default.match(key);
+            if (seen) return;                       // already recorded this client+path recently
+            await caches.default.put(
+              key,
+              new Response('1', { headers: { 'cache-control': 'max-age=60' } })
+            );
+          }
+
+          await env.DB.prepare(
+            `INSERT INTO requests
+               (ts, path, method, ua, referer, country, asn, claimed_operator,
+                is_bot_ua, cf_verified_bot, sample_rate)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          ).bind(
+            row.ts, row.path, row.method, row.ua, row.referer, row.country,
+            row.asn, row.claimed, row.bot, row.verified, row.rate
+          ).run();
+        } catch {
+          // Swallowed: a rejected insert (quota exhausted, transient D1 error) must never
+          // surface as a failed request.
+        }
+      })());
     } catch {
       // Deliberately swallowed. Rule 1: never break the site to record a log line.
     }
