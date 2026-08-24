@@ -27,6 +27,9 @@ let vuBars = document.querySelectorAll("#vu i");
 let statusEl = document.getElementById("statusText");
 let termEl = document.getElementById("term");
 let chordEl = document.getElementById("chordReadout");
+// Mirror of the chord shown inside the radio dial on narrow screens, where the span terminal
+// moves below the radio and the dial would otherwise sit dark and look switched off.
+let chordDialEl = document.getElementById("chordDial");
 let powerBtn = document.getElementById("powerBtn");
 let playing = false;
 let started = false;
@@ -152,7 +155,9 @@ function startEngine() {
       bumped = true; noteCursor++;
     }
     while (chordCursor < pendingChords.length && pendingChords[chordCursor].t <= t) {
-      chordEl.textContent = pendingChords[chordCursor].symbol; chordCursor++;
+      chordEl.textContent = pendingChords[chordCursor].symbol;
+      if (chordDialEl) chordDialEl.textContent = pendingChords[chordCursor].symbol;
+      chordCursor++;
     }
     while (spanCursor < pendingSpanLines.length && pendingSpanLines[spanCursor].t <= t) {
       const it = pendingSpanLines[spanCursor];
@@ -170,6 +175,15 @@ function startEngine() {
 }
 
 powerBtn.onclick = async () => {
+  // iOS silently mutes Web Audio when the physical ring/silent switch is set to silent: the page
+  // reports "Playing...", Safari shows its audio indicator, and no sound comes out -- which looks
+  // like a broken demo rather than a muted phone. Declaring the session as "playback" opts into
+  // the media category, which ignores that switch (the same category a music app uses).
+  // Safari 16.4+; guarded because no other engine implements audioSession.
+  try {
+    if (navigator.audioSession) navigator.audioSession.type = "playback";
+  } catch { /* non-fatal: worst case is the pre-existing silent-switch behaviour */ }
+
   await Tone.start();
   if (!playing) {
     if (!started) { startEngine(); started = true; }

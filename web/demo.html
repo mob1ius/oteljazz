@@ -286,6 +286,9 @@
   .credits a { color: #8a7a55; }
   .credits a:hover { color: var(--brass); }
 
+  /* Hidden on desktop, where the real terminal already fills the dial. */
+  .dial-live { display: none; }
+
   /* Narrow screens: take the readout OUT of the dial instead of shrinking it.
      Inside the dial the terminal is ~31% of the radio's width, so at 375px it lands around 109px
      wide -- about 25 characters, while a real span line runs past 70. No font size fixes that;
@@ -354,6 +357,59 @@
     /* The knobs are drag targets far too small to hit on a phone, and volume is already handled
        by the device's own hardware buttons. */
     .knob-control { display: none; }
+
+    /* Sits over the dial glass baked into the photo, using the same percentages the desktop
+       cutout was pixel-scanned to (54.3 / 30 / 31 / 36.5). */
+    .dial-live {
+      display: flex;
+      position: absolute;
+      left: 54.3%;
+      top: 30%;
+      width: 31%;
+      height: 36.5%;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8%;
+      pointer-events: none;
+    }
+    .dial-chord {
+      color: var(--dial-glow);
+      font-size: clamp(11px, 3.4vw, 22px);
+      letter-spacing: 0.03em;
+      text-shadow: 0 0 8px rgba(255,179,71,0.75);
+      font-variant-numeric: tabular-nums;
+    }
+    .dial-wave {
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      height: 22%;
+    }
+    .dial-wave i {
+      width: 2px;
+      height: 30%;
+      background: var(--phosphor);
+      box-shadow: 0 0 4px var(--phosphor-glow);
+      animation: dialWave 1.4s ease-in-out infinite;
+    }
+    /* Staggered so the bars read as a travelling trace rather than pulsing in unison. */
+    .dial-wave i:nth-child(2) { animation-delay: 0.12s; }
+    .dial-wave i:nth-child(3) { animation-delay: 0.24s; }
+    .dial-wave i:nth-child(4) { animation-delay: 0.36s; }
+    .dial-wave i:nth-child(5) { animation-delay: 0.48s; }
+    .dial-wave i:nth-child(6) { animation-delay: 0.60s; }
+    .dial-wave i:nth-child(7) { animation-delay: 0.72s; }
+    .dial-wave i:nth-child(8) { animation-delay: 0.84s; }
+    .dial-wave i:nth-child(9) { animation-delay: 0.96s; }
+    @keyframes dialWave {
+      0%, 100% { height: 22%; opacity: 0.65; }
+      50%      { height: 100%; opacity: 1; }
+    }
+    /* Respect a stated preference for less motion; the chord alone still shows the dial is live. */
+    @media (prefers-reduced-motion: reduce) {
+      .dial-wave i { animation: none; height: 45%; }
+    }
     .caption {
       position: static;
       font-size: 11px;
@@ -379,6 +435,14 @@
       <div class="knob-control" id="tuneKnob" style="left:81.40%; top:79.90%; width:6.4%;">
         <div class="knob-indicator"></div>
         <div class="knob-label">Tuning</div>
+      </div>
+      <!-- Narrow screens only. The span terminal moves below the radio there, which would leave
+           the dial glass dark and reading as switched off, so the dial keeps the current chord
+           and a moving signal trace: the radio still looks live, and the detail stays legible
+           underneath. aria-hidden because the chord is already announced by the readout below. -->
+      <div class="dial-live" aria-hidden="true">
+        <div class="dial-chord" id="chordDial">--</div>
+        <div class="dial-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
       </div>
     </div>
     <div class="cutout">
