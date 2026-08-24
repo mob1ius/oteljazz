@@ -21,6 +21,10 @@ corpus_raw/
 # Machine-specific Claude Code settings -- local permission overrides, not project config.
 .claude/settings.local.json
 
+# Local-only working files. Never part of the published record. The directory name is
+# deliberately generic so this rule reveals nothing about what is in it.
+local/
+
 # Working notes and drafts. Local-only; not part of the published record.
 docs/BUILD_NOTES.md
 docs/LAUNCH_BRIEF.md
