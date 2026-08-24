@@ -35,16 +35,17 @@
   // The crawler log. See infra/d1_schema.sql for the table and the reasoning about what is
   // deliberately not stored (no IP addresses).
   //
-  // SETUP: database_id below is a placeholder and `wrangler deploy` will fail until it is real.
-  // That is deliberate -- a wrong-but-plausible value would deploy happily and log nothing, and
-  // silent no-logging is the failure mode worth designing against here. To fill it in:
-  //   npx wrangler d1 create oteljazz-logs        # prints the id
+  // database_id is set. The id is not a secret -- it only names the database, and using it still
+  // requires account credentials -- so it lives in the repo rather than in dashboard config,
+  // which keeps the binding reviewable and means a fresh clone deploys correctly.
+  //
+  // Apply the schema once per database, from the repo root, before expecting any rows:
   //   npx wrangler d1 execute oteljazz-logs --remote --file=infra/d1_schema.sql
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "oteljazz-logs",
-      "database_id": "REPLACE_WITH_DATABASE_ID_FROM_WRANGLER_D1_CREATE"
+      "database_id": "c3406719-10f2-4ecb-bb06-17c6ab4c8a87"
     }
   ],
 
