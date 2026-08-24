@@ -141,7 +141,7 @@ three of four checked seeds. That's a property of the Python engine, which has b
 
 It does **not** establish that a listener can decode any of it. No listening study has been run.
 Everything above is a design argument from the perceptual literature plus measurements of the
-mapping's own behaviour, and the distinction is kept explicit throughout rather than left for the
+mapping's own behavior, and the distinction is kept explicit throughout rather than left for the
 prototype's existence to imply. A controlled study is the obvious next step, not a claim made
 here.
 
@@ -178,17 +178,17 @@ corpus model) and [code](https://doi.org/10.5281/zenodo.22035239).
 
 ```
 paper/    the paper, its design spec, and figures
-engine/   the Python engine: caidence.py and everything it depends on
-web/      the browser port: director.js / engine.js / demo.html, plus samples
-docs/     orientation (README.md) and the design writeup (CONCEPTS.md)
+engine/   the Python engine (caidence.py and its deps)
+web/      the browser port + audio samples
+docs/     orientation and the design writeup
 src/      the Cloudflare Worker serving oteljazz.com
-supplementary_audio/   five rendered examples accompanying the paper
+supplementary_audio/   five examples from the paper
 zenodo_deposit/        the data deposit contents
 ```
 
 ## Attribution
 
-These are licence conditions, not courtesies. Anything reusing the audio or the harmonic model
+These are license conditions, not courtesies. Anything reusing the audio or the harmonic model
 carries them:
 
 - Piano: [Salamander Grand Piano](https://archive.org/details/SalamanderGrandPianoV3) by Alexander
