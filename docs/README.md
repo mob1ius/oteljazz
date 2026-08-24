@@ -11,10 +11,10 @@ the Weimar Jazz Database.
 ## Layout
 
 ```
-paper/    the submission (JAES) and its design spec, figures, review notes
+paper/    the paper (under review, JAES), its design spec, and figures
 engine/   the Python engine: caidence.py and everything it depends on
 web/      the browser port: director.js/engine.js/demo.html and the audio sample libraries
-docs/     this file, BUILD_NOTES.md, ROADMAP.md, CONCEPTS.md
+docs/     this file and CONCEPTS.md
 supplementary_audio/   the five rendered examples accompanying the paper submission
 zenodo_deposit/        files for the data deposit (audio + note-events + corpus model), published at doi:10.5281/zenodo.22033353
 ```
@@ -25,11 +25,10 @@ Read the docs in this order:
    -- the paper. The "why."
 2. [`../paper/08-sonification-mapping-spec.md`](../paper/08-sonification-mapping-spec.md) -- the
    complete OTel-span-to-MIDI mapping spec. The "what." Read this before touching `caidence.py`.
-3. **`BUILD_NOTES.md`** -- the running build log. **Read it before starting work here**,
-   especially after a context reset; it has decisions and bug fixes that aren't obvious from the
-   code alone.
-4. `ROADMAP.md` -- where this is going. `CONCEPTS.md` -- the design approach itself
-   (two-tier DIRECT/DERIVED signals, why dynamics and harmony never cross wires).
+3. [`CONCEPTS.md`](CONCEPTS.md) -- the design approach itself (two-tier DIRECT/DERIVED
+   signals, why dynamics and harmony never cross wires).
+4. [`../CLAUDE.md`](../CLAUDE.md) -- the four working conventions that are load-bearing, and
+   what breaking each one already caused.
 
 ## Engine files (`engine/`)
 
@@ -67,8 +66,9 @@ Logic Pro X track setup: **9 tracks** -- 8 Concert Grand (7 chord voices + 1 sol
 bass on ch9. The piano tracks are all the same patch because each holds exactly one note of the
 current chord, sounding in tandem with the others (see `CONCEPTS.md` Section 3); the bass is a
 separate instrument because it plays an independent walking line rather than a chord tone.
-Confirm with `--test-note --channel N` after any track add/remove/reorder -- see `BUILD_NOTES.md`
-for why this has bitten the project more than once:
+Confirm with `--test-note --channel N` after any track add/remove/reorder. A Logic-side track
+reorder silently invalidates the channel table in `VOICES` -- no error, just wrong-sounding
+output -- and this has been the real cause of a "bad mapping" more than once:
 
 ```
 ch1 = arch1 (chord voice)             ch2 = planner
@@ -122,10 +122,11 @@ python3 -m http.server 8000
 `.claude/hooks/capture.py` is wired into this repo's own Claude Code hooks (`.claude/settings.json`)
 and appends one JSON line per hook event to `.otel-hook-data/.state/local_spans/<session>.jsonl`
 as this project itself gets worked on -- real telemetry, not author-authored. Convert a captured
-session with `engine/import_otel_hook_trace.py`, then play it with `caidence.py --trace`. See
-`BUILD_NOTES.md` for why this replaced the `opentelemetry-hooks` package's own (broken, in the
-installed version) local-spans feature.
+session with `engine/import_otel_hook_trace.py`, then play it with `caidence.py --trace`. It
+replaces the `opentelemetry-hooks` package's own local-spans feature, which is dead code in the
+installed version -- see that script's module docstring for the details.
 
 ## Status
 
-See the top of `BUILD_NOTES.md` for what's currently in progress and what's open.
+The engine and the browser port both run. The mapping is established; listener decoding is not
+tested. See the paper's final section for what remains open.

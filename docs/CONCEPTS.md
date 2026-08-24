@@ -2,7 +2,7 @@
 
 This document exists for the parallel academic-paper session (Blue Sky paper idea) as much as for
 future engineering sessions here. It explains the *approach*, not the *code* -- for code detail,
-read `caidence.py` itself; for what was tried and rejected, read `BUILD_NOTES.md`. This is the
+read `caidence.py` itself; for what was tried and rejected, read the repo README. This is the
 "why it's built this way" layer between the two: the design decisions that would otherwise have
 to be re-derived by reading commits, and that the paper needs stated plainly to argue for the
 mapping's validity.
@@ -205,7 +205,7 @@ uncontaminated by any mode variable.
 
 ## 7. Sections as the arrangement layer: tempo and texture over fixed changes
 
-`sections` (see `BUILD_NOTES.md` for the build log) treats a piece as a sequence of movements.
+`sections` treats a piece as a sequence of movements.
 Since the form (Section 3a) supplies the harmony and its own cadence every chorus, sections
 deliberately do NOT touch the changes -- they are purely the arrangement layer, which is exactly
 the head/solos/out-head structure of a real chart: same tune throughout, different treatment.
@@ -288,7 +288,7 @@ Section 2).
 
 **Fixed vs. adaptive structure.** Every structural decision in the engine right now (movement
 boundaries, tempo per section, when a cadence happens) is either fully scripted (`--demo`) or
-fully absent (`live.py`). The next planned engineering step (see `BUILD_NOTES.md` "Open work")
+fully absent (`live.py`). The next planned engineering step
 is to derive these from real swarm shape instead: simultaneous active-agent count driving
 ensemble size (one agent = solo piano, full swarm = full ensemble), subagent-spawn bursts as
 high-intensity/fast sections, sequential/decomposed execution as low-intensity/slow sections, and
