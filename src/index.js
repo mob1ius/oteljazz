@@ -148,6 +148,9 @@ export default {
         bot: bot ? 1 : 0,
         verified,
         rate,
+        // Captured here, not inside waitUntil: `response` is consumed by the runtime once
+        // returned, and reading .status later would be racing that.
+        status: typeof response.status === 'number' ? response.status : null,
       };
       const ip = request.headers.get('cf-connecting-ip') || '';
 
@@ -180,11 +183,11 @@ export default {
           await env.DB.prepare(
             `INSERT INTO requests
                (ts, path, method, ua, referer, country, asn, claimed_operator,
-                is_bot_ua, cf_verified_bot, sample_rate)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+                is_bot_ua, cf_verified_bot, sample_rate, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
           ).bind(
             row.ts, row.path, row.method, row.ua, row.referer, row.country,
-            row.asn, row.claimed, row.bot, row.verified, row.rate
+            row.asn, row.claimed, row.bot, row.verified, row.rate, row.status
           ).run();
         } catch {
           // Swallowed: a rejected insert (quota exhausted, transient D1 error) must never

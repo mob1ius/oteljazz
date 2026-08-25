@@ -24,9 +24,19 @@ CREATE TABLE IF NOT EXISTS requests (
   -- 1.0 means every matching request was recorded. Browser traffic is sampled, so rows must be
   -- weighted by 1/sample_rate to reconstruct real volumes. Recorded per row rather than assumed,
   -- because the rate may be retuned later and old rows must stay interpretable.
-  sample_rate      REAL    NOT NULL
+  sample_rate      REAL    NOT NULL,
+  -- The operator a request CLAIMS to be, parsed from the user-agent. Deliberately separate from
+  -- asn: the claim is spoofable in one curl, the network it arrived from is not. Keeping them in
+  -- different columns is what makes impersonation detectable rather than assumed away.
+  claimed_operator TEXT,
+  -- What the client actually GOT, not merely what it asked for. Without this a probe for
+  -- /.env is indistinguishable from a successful read of it, and "crawler requested N paths"
+  -- cannot be separated from "crawler retrieved N paths" -- the first question a reviewer
+  -- asks of scan traffic.
+  status           INTEGER
 );
 
 CREATE INDEX IF NOT EXISTS idx_requests_ts        ON requests (ts);
 CREATE INDEX IF NOT EXISTS idx_requests_bot_ts    ON requests (is_bot_ua, ts);
 CREATE INDEX IF NOT EXISTS idx_requests_path      ON requests (path);
+CREATE INDEX IF NOT EXISTS idx_requests_status    ON requests (status);
