@@ -144,7 +144,7 @@ def figure1(spans, rows, seed, outdir):
     ax.set_ylim(0, 10.5)
     ax.set_yticks(range(0, 9, 2))
     ax.axhline(rows[0]["chordv"], color=MID, lw=0.8, ls=":", zorder=0)
-    ax.set_title("C   ensemble thickness does NOT return: the channels are independent",
+    ax.set_title("C   thickness does not follow tempo down (r = 0.74 over 1000 seeds)",
                  loc="left", fontsize=8.5, style="italic", pad=4)
     ax.plot([], [], color=INK, lw=1.6, ls="--", label="chord voices sounding")
     ax.plot([], [], color=MID, lw=1.2, ls="-.", label="live agents")
