@@ -158,6 +158,21 @@ function startEngine() {
   }, FILL_TICK_MS / 1000);
   director.fillUntil(LOOKAHEAD_S); // prime the first window before playback starts (~6ms, measured -- not the cause of any startup stall; see BUILD_NOTES)
 
+  // Temporary diagnostic: a CPU profile proved the render loop itself is ticking correctly from
+  // ~3s in, and the queue-fill call completes in ~10ms, yet pushTerm doesn't fire until ~13s in
+  // -- a profiler shows what CODE ran, not what the QUEUES held, so it can't distinguish "spans
+  // never generated yet" from "spans generated but spanCursor stuck past them". This exposes
+  // that state directly. Call window.__oteljazzDebug() in the console during a freeze. Remove
+  // once root-caused.
+  window.__oteljazzDebug = () => ({
+    transportS: Tone.Transport.seconds,
+    spanCursor, spanQueueLen: pendingSpanLines.length,
+    nextSpan: pendingSpanLines[spanCursor],
+    firstSpan: pendingSpanLines[0], lastSpan: pendingSpanLines[pendingSpanLines.length - 1],
+    chordCursor, chordQueueLen: pendingChords.length,
+    nextChord: pendingChords[chordCursor],
+  });
+
   Tone.Transport.scheduleRepeat(() => {
     const t = Tone.Transport.seconds;
     let bumped = false;
