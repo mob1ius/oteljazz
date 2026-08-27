@@ -283,3 +283,36 @@ function setupKnobs() {
     staticGain.gain.value = detune * 0.12;
   });
 }
+
+// Temporary diagnostic: a foreground, focused tab froze for ~20s with no console error, which
+// the earlier scheduleRepeat fix does not explain (that fix was confirmed holding under real
+// backgrounding -- 70s clean, drift <2s, visibilityState genuinely "hidden" -- so a focused tab
+// stalling is a different bug). Audio never glitched in any report; LOOKAHEAD_S schedules audio
+// ~24s into Tone's own Web Audio graph, sample-accurate and independent of the JS main thread
+// from that point on, so a true synchronous main-thread block would look exactly like this:
+// audio keeps playing from what's already committed, every JS-driven visual update freezes,
+// then bursts once the thread frees up.
+// requestAnimationFrame is the cleanest available signal for "is the main thread actually
+// blocked": rAF cannot fire while the thread is busy, so a real block shows up here as a rAF gap
+// at the exact same time, whatever else is happening. If rAF stays healthy while rendering
+// stalls, the block theory is wrong and the real cause is somewhere more specific -- that
+// result would matter as much as confirming it. Remove once this is root-caused.
+(function watchdog() {
+  let last = performance.now();
+  function tick() {
+    const now = performance.now();
+    const gap = now - last;
+    if (gap > 500) {
+      console.warn(
+        `[oteljazz-watchdog] main thread gap: ${gap.toFixed(0)}ms` +
+        (typeof Tone !== "undefined" && Tone.getContext
+          ? ` | transportS=${Tone.Transport.seconds.toFixed(2)} audioCtxState=${Tone.getContext().state}`
+          : ""),
+        { atWallClock: new Date().toISOString(), visible: document.visibilityState, focused: document.hasFocus() }
+      );
+    }
+    last = now;
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+})();
