@@ -155,13 +155,28 @@ function startEngine() {
       bumped = true; noteCursor++;
     }
     while (chordCursor < pendingChords.length && pendingChords[chordCursor].t <= t) {
-      chordEl.textContent = pendingChords[chordCursor].symbol;
-      if (chordDialEl) chordDialEl.textContent = pendingChords[chordCursor].symbol;
+      try {
+        chordEl.textContent = pendingChords[chordCursor].symbol;
+        if (chordDialEl) chordDialEl.textContent = pendingChords[chordCursor].symbol;
+      } catch (err) {
+        console.error("[oteljazz] dropped unrenderable chord entry:", pendingChords[chordCursor], err);
+      }
       chordCursor++;
     }
     while (spanCursor < pendingSpanLines.length && pendingSpanLines[spanCursor].t <= t) {
       const it = pendingSpanLines[spanCursor];
-      pushTerm(`<span class="dim">[${it.t.toFixed(2)}s ${it.service}]</span> ${it.line}`);
+      // spanCursor advances even if rendering throws. Found via two screen recordings where the
+      // terminal froze permanently mid-take (chord/VU kept updating -- proof it was this loop
+      // specifically, since those run in the same tick but don't share a cursor with this one):
+      // an unadvanced cursor means the SAME entry gets retried every tick forever, so one bad
+      // line was permanently wedging the whole terminal. The entry is dropped and logged instead
+      // of silently retried, so a real bug now surfaces in the console rather than reading as a
+      // frozen demo on launch day.
+      try {
+        pushTerm(`<span class="dim">[${it.t.toFixed(2)}s ${it.service}]</span> ${it.line}`);
+      } catch (err) {
+        console.error("[oteljazz] dropped unrenderable span line, terminal would otherwise be stuck here:", it, err);
+      }
       spanCursor++;
     }
     if (bumped) bumpVU(); else decayVU();
