@@ -140,15 +140,25 @@ function decayVU() {
 const LOOKAHEAD_S = 24;
 const FILL_TICK_MS = 1500;
 
-let fillTimer = null, uiTimer = null;
-
+// Both loops below run via Tone.Transport.scheduleRepeat, not setInterval. That is not a style
+// choice -- plain page-level setInterval/setTimeout is throttled by the browser once it decides
+// a page is backgrounded/occluded, and that is exactly how an OBS Browser Source renders (and,
+// it turns out, how at least one automated/headless tab driving this page also read to Chrome).
+// Confirmed live: the terminal and lookahead generation would silently stall for several
+// seconds -- audio and the transport clock kept running the whole time, since Tone's own
+// scheduling rides the AudioContext clock, which browsers deliberately exempt from this
+// throttling so audio apps don't glitch in a background tab -- then dump everything that had
+// backed up in one burst once the timer resumed. scheduleRepeat's callbacks are driven by that
+// same AudioContext clock, so they are exempt for the same reason audio itself never stalled.
+// Both loops also now only run while the Transport is actually playing, which is strictly
+// correct: there is nothing to generate or reveal while paused.
 function startEngine() {
-  fillTimer = setInterval(() => {
+  Tone.Transport.scheduleRepeat(() => {
     director.fillUntil(Tone.Transport.seconds + LOOKAHEAD_S);
-  }, FILL_TICK_MS);
+  }, FILL_TICK_MS / 1000);
   director.fillUntil(LOOKAHEAD_S); // prime the first window before playback starts (~6ms, measured -- not the cause of any startup stall; see BUILD_NOTES)
 
-  uiTimer = setInterval(() => {
+  Tone.Transport.scheduleRepeat(() => {
     const t = Tone.Transport.seconds;
     let bumped = false;
     while (noteCursor < pendingNoteReveals.length && pendingNoteReveals[noteCursor].t <= t) {
@@ -186,7 +196,7 @@ function startEngine() {
     if (noteCursor > 800) { pendingNoteReveals.splice(0, noteCursor); noteCursor = 0; }
     if (spanCursor > 300) { pendingSpanLines.splice(0, spanCursor); spanCursor = 0; }
     if (chordCursor > 100) { pendingChords.splice(0, chordCursor); chordCursor = 0; }
-  }, 90);
+  }, 0.09);
 }
 
 powerBtn.onclick = async () => {
