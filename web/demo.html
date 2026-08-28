@@ -423,9 +423,16 @@
     .status-text { font-size: 12px; }
     .vu { height: 20px; }
     .vu i { width: 4px; }
-    /* The knobs are drag targets far too small to hit on a phone, and volume is already handled
-       by the device's own hardware buttons. */
-    .knob-control { display: none; }
+    /* Previously hidden outright on the reasoning that volume has a hardware substitute (the
+       device's own buttons) -- true for volume, but tuning has no substitute, so hiding both
+       knobs left tuning (and everything the tuning knob drives: the squelch/detune character,
+       the current-draw dimming, the jitter) completely unreachable on mobile. Kept visible and
+       given a real touch target instead: the knobs' own percentage-based width (6.86%/6.4% of
+       radio-wrap, ~26px on a typical phone) sits well under the ~44px floor used for power-btn
+       above, so this overrides to a flat 44px regardless of viewport -- aspect-ratio:1 keeps it
+       square, and growing the box just grows the (invisible at rest) hit area around the same
+       center point the percentage left/top already tracks, not the knob's drawn photo size. */
+    .knob-control { width: 44px !important; }
 
     /* Sits over the dial glass baked into the photo, using the same percentages the desktop
        cutout was pixel-scanned to (54.3 / 30 / 31 / 36.5). */
