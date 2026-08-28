@@ -39,3 +39,7 @@ dist/
 
 # Local wrangler/miniflare state.
 .wrangler/
+
+# Dev-server config for a specific AI coding tool's browser-preview feature. Session-local
+# convenience, not project config -- has no bearing on anyone else cloning the repo.
+.claude/launch.json

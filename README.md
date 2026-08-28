@@ -1,14 +1,14 @@
 # OtelJazz
 
-**An agent swarm, played as a jazz combo.** You don't read the trace. You hear it go wrong.
-
 ![A 1940s tabletop radio whose dial glass is an amber CRT terminal streaming live OpenTelemetry
 spans from three concurrent AI subagents, one of them returning an error, above the chord
 readout D-flat major 7.](docs/assets/hero.jpg)
 
-The dial is not decoration. That's the demo mid-run: OpenTelemetry GenAI spans from three
-subagents working in parallel, one tool call failing, and the chord the ensemble is sounding as
-it happens. A frozen frame of real engine output, not a mockup.
+**An agent swarm, played as a jazz combo.**
+
+The dial is not decoration: this is the demo mid-run, OpenTelemetry GenAI spans from three
+subagents in parallel, one tool call failing, and the chord the ensemble is sounding as it
+happens. A frozen frame of real engine output, not a mockup.
 
 **[Listen at oteljazz.com](https://oteljazz.com)**. Every visit generates a different session, in
 your browser, in about three seconds. No signup, no backend, no cookies.
@@ -17,19 +17,19 @@ your browser, in about three seconds. No signup, no backend, no cookies.
 
 ## The problem this started from
 
-A multi-agent system emits state changes in parallel, at machine speed. A human overseer's visual
-attention is serial, foveal, and slow. A trace tree gives you no coverage at all while you're in a
-meeting, reading code, or looking anywhere else. Hearing is the opposite: preattentive,
-peripheral, temporal. So: render the telemetry as sound.
+A multi-agent system emits state changes in parallel, at machine speed. Human attention is
+serial, foveal, slow: a trace tree gives zero coverage while you're in a meeting, reading code,
+anywhere else. Hearing is the opposite, preattentive, peripheral, temporal. So: render the
+telemetry as sound.
 
-That idea isn't new. Datacenter services have been given instruments for over a decade. What's
-different about an agent swarm is that the population has no fixed ceiling. It grows and shrinks
-at runtime, and what matters about it is semantic, not physical. Not where something is or how
-loaded it is, but whether an agent's goal has drifted, whether two are coordinating in a way they
-shouldn't, whether one has quietly stopped.
+Not new; datacenter services have had sonic monitors for over a decade. What's different about a
+swarm: the population has no fixed ceiling, it grows and shrinks at runtime, and what matters is
+semantic, not physical, not where something is or how loaded it is, but whether a goal has
+drifted, whether two agents are coordinating in a way they shouldn't, whether one has quietly
+stopped.
 
-Everything below is a consequence of taking that seriously, and most of it started as something
-that sounded wrong.
+Everything below follows from taking that seriously, and most of it started as something that
+sounded wrong.
 
 ---
 
@@ -37,18 +37,17 @@ that sounded wrong.
 
 ### 1. One instrument per agent doesn't survive contact with a swarm
 
-The obvious design gives every agent its own voice. It's what you'd do for a subway system with
-a fixed line count, and it works there. It does not work here: independent auditory streams stop
-being separately trackable past three or four, and the degradation is worse when the voices share
-a timbre. An agent population blows through that limit by design.
+The obvious design gives every agent its own voice, the way a subway map gives every line one;
+that works for a fixed, modest line count. It fails here: independent streams stop being
+trackable past three or four, worse when voices share a timbre, and an agent population blows
+through that limit by design.
 
-So the population is rendered as **one harmonic object** instead. Seven piano voices share a
-timbre, an onset grid, and voice-led motion, withholding every cue that would let you pull them
-apart, so they fuse into a single chord. A solo line and a walking bass sit outside
-that mass as the two intentionally segregable exceptions. Perceptual load is roughly three
-objects, not nine streams.
+So the population renders as **one harmonic object** instead: seven piano voices sharing a
+timbre, onset grid, and voice-led motion, withholding every cue that would let you pull them
+apart, fusing into a single chord. A solo line and walking bass sit outside that mass as the two
+segregable exceptions. Perceptual load: roughly three objects, not nine.
 
-What you monitor is that one texture, and the oversight signals are properties *of it*:
+What you monitor is that one texture; the oversight signals are properties *of it*:
 
 | You hear | It means |
 |---|---|
@@ -61,55 +60,54 @@ What you monitor is that one texture, and the oversight signals are properties *
 
 ### 2. Voices that don't know about each other sound like a mistake, not a chord
 
-The first implementation hashed each span independently to a pitch in the current mode. Every
-note was individually defensible and the result was unlistenable: five soloists in the same key
-rather than five-part writing, with no harmonic relationship between voices. It read as noise.
+The first implementation hashed each span independently to a pitch in the current mode: every
+note individually defensible, the result unlistenable, five soloists in the same key rather than
+five-part writing, no harmonic relationship between them. It read as noise.
 
-The fix moved pitch from a per-span decision to a per-chord one. **One shared seven-voice voicing
-is computed at each chord change** and held: voice-led as a group, range-constrained per voice,
-never crossing, with a parallel-fifth-and-octave avoidance pass. A span now just re-articulates
-the tone its voice already holds. Rhythm and dynamics stay per-span and fully telemetry-driven;
-the only thing lost was an uninformative hash. Verified across a 20-chord synthetic walk and a
-full demo run: zero voice crossings, down from roughly a third of all steps.
+The fix moved pitch from a per-span decision to a per-chord one: **one shared seven-voice voicing
+is computed at each chord change** and held, voice-led as a group, range-constrained, never
+crossing, with a parallel-fifth-and-octave avoidance pass. A span now just re-articulates the
+tone its voice already holds; rhythm and dynamics stay per-span, fully telemetry-driven. Verified
+across a 20-chord synthetic walk and a full demo run: zero voice crossings, down from roughly a
+third of all steps.
 
 ### 3. Telemetry must not touch harmony
 
 An early version drew chord changes from each telemetry window, so different activity produced
-different roots. It was harmonically incoherent and, the part that mattered, *indistinguishable
-from noise*, because with the form moving too there was nothing to hear the dynamics against.
+different roots: harmonically incoherent, and worse, indistinguishable from noise, since with the
+form moving too there was nothing to hear the dynamics against.
 
 Now the harmonic form is fixed once per session and tiled. **Telemetry drives dynamics only**:
-tempo, thickness, articulation density, anomaly signals. Form isn't an oversight channel; it's
-the grammar that makes the other channels legible. This separation is the single most important
-rule in the codebase, and it's why the telemetry stays decodable instead of smearing into
-general musical activity.
+tempo, thickness, articulation density, anomaly signals. Form isn't an oversight channel, it's
+the grammar that makes the other channels legible, the single most important rule in the
+codebase, and why the telemetry stays decodable instead of smearing into general musical
+activity.
 
 ### 4. A melody can walk into the ceiling and stay there
 
-After the structural work landed, the output was still bad, and the cause was not structural. The
-solo line's contour walk had no mean reversion: it drifted upward, hit MIDI note 127, and the
-clamp pinned it there permanently, because the clamped value fed back in as the next step's
-anchor. Measured on a 115-second run: **70% of melody notes sat in [120, 127]**, effectively one
-repeated pitch for a hundred seconds, on the loudest and highest voice in the mix.
+After the structural work landed, the output was still bad, and the cause wasn't structural: the
+solo line's contour walk had no mean reversion, drifted upward, hit MIDI note 127, and the clamp
+pinned it there permanently, since the clamped value fed back in as the next step's anchor.
+Measured on a 115-second run: **70% of melody notes sat in [120, 127]**, effectively one repeated
+pitch for a hundred seconds, on the loudest, highest voice in the mix.
 
-Fixed with a bounded, reflecting walk plus an octave-fold safety net. It's recorded here because
-it's the most useful kind of bug: everything about the architecture was right, and one missing
-constraint in a random walk made all of it sound broken.
+Fixed with a bounded, reflecting walk plus an octave-fold safety net. Recorded here because it's
+the most useful kind of bug: the architecture was right, and one missing constraint in a random
+walk made all of it sound broken.
 
 ### 5. Drift had to attack the cue that fusion depends on
 
-Goal-drift was originally a pitch bend, the drifting agent's voice slowly flattening. That was
-the wrong cue, and the reason is the design's own doing: the chorale *deliberately withholds*
-pitch-based segregation cues so the seven voices will fuse. A bend fights the architecture.
+Goal-drift was originally a pitch bend, the drifting voice slowly flattening: wrong cue, since
+the design deliberately withholds pitch-based segregation cues so the seven voices fuse. A bend
+fights the architecture.
 
-The signature is now an **onset lag**. The drifting voice's attack ramps up to 45 ms late while
-the other six stay locked to the shared grid. That is an onset-grid violation, and it attacks
-fusion directly rather than working against it. The bend still fires, demoted to a secondary micro-cue.
+The signature is now an **onset lag**: the drifting voice's attack ramps up to 45 ms late while
+the other six stay locked to the shared grid, an onset-grid violation that attacks fusion
+directly. The bend still fires, demoted to a secondary micro-cue.
 
-45 ms was set by ear during development. It is not derived from a published threshold, and no
-published threshold transfers cleanly, because this is a deliberate departure from a
-machine-precise baseline rather than one voice among natural ensemble jitter. Whether it's
-noticeable is an open question, stated as one.
+45 ms was set by ear during development, not derived from a published threshold: none transfers
+cleanly, since this is a deliberate departure from a machine-precise baseline rather than one
+voice among natural ensemble jitter. Whether it's noticeable is an open question, stated as one.
 
 ---
 
@@ -119,35 +117,34 @@ Nothing about the harmonic language is invented. It's mined from the
 [Weimar Jazz Database](https://jazzomat.hfm-weimar.de/): transcribed solos from Parker, Coltrane,
 Davis, Rollins and seventy others. **456 solos, 406 used after filtering, 74 performers.**
 
-The model is a root-transition matrix plus a chord-quality distribution per root. Checked against
+The model is a root-transition matrix plus a chord-quality distribution per root, checked against
 theory rather than assumed, and it recovers textbook practice on its own:
 
-- The three strongest transitions in the matrix chain into **vi-ii-V-I**, the standard turnaround.
+- The three strongest transitions chain into **vi-ii-V-I**, the standard turnaround.
 - From the dominant, the next root is the tonic **81%** of the time.
-- The chord on the second degree is minor **70%** of the time; on the fifth degree it's a dominant
-  seventh **83%** of the time. That is ii-V, recovered from data.
+- The chord on the second degree is minor **70%** of the time; on the fifth degree it's a
+  dominant seventh **83%** of the time. That's ii-V, recovered from data.
 
-The browser port fetches and uses **the same mined file** as the Python engine. It is not a
+The browser port fetches and uses **the same mined file** as the Python engine, not a
 reimplemented approximation.
 
 ---
 
 ## What this establishes, and what it does not
 
-The prototype establishes **mapping fidelity**: the musical output is measurably structured by the
+The prototype establishes **mapping fidelity**: musical output measurably structured by the
 telemetry driving it. Across a run's phases, tempo returns to its opening value while ensemble
-thickness does not, two telemetry-driven channels dissociating rather than moving as one, in
-three of four checked seeds. That's a property of the Python engine, which has both channels.
+thickness doesn't, two telemetry-driven channels dissociating rather than moving together, in
+three of four checked seeds. A property of the Python engine, which has both channels.
 
-It does **not** establish that a listener can decode any of it. No listening study has been run.
+It does **not** establish that a listener can decode any of it: no listening study has been run.
 Everything above is a design argument from the perceptual literature plus measurements of the
-mapping's own behavior, and the distinction is kept explicit throughout rather than left for the
-prototype's existence to imply. A controlled study is the obvious next step, not a claim made
-here.
+mapping's own behavior, kept explicit rather than left for the prototype's existence to imply. A
+controlled study is the obvious next step, not a claim made here.
 
-The demo's telemetry is a **mock swarm generated in your browser**. Real capture exists in this
-repo: a Claude Code hook writing real `gen_ai.*` spans, and an OTLP receiver that accepts live
-protobuf on :4318. Neither is what oteljazz.com is playing.
+The demo's telemetry is a **synthetic swarm generated in your browser**. Real capture exists in
+this repo: a Claude Code hook writing real `gen_ai.*` spans, and an OTLP receiver that accepts
+live protobuf on :4318. Neither is what oteljazz.com is playing.
 
 ---
 
@@ -158,12 +155,12 @@ cd web && python3 -m http.server 8000
 # open http://localhost:8000/demo.html and press play
 ```
 
-Must be served over HTTP, because the corpus model and audio samples are fetched and `fetch()` is
+Must be served over HTTP: the corpus model and audio samples are fetched, and `fetch()` is
 blocked under `file://`.
 
 For the Python engine (MIDI into Logic Pro X), the mock pipeline, the live OTLP receiver, and
-real-trace capture, see **[`docs/README.md`](docs/README.md)**. The design itself is written up in
-**[`docs/CONCEPTS.md`](docs/CONCEPTS.md)**.
+real-trace capture, see **[`docs/README.md`](docs/README.md)**. The design itself is written up
+in **[`docs/CONCEPTS.md`](docs/CONCEPTS.md)**.
 
 ## Layout
 
