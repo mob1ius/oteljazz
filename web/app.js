@@ -77,6 +77,17 @@ function stopBootTicker() {
 
 startBootTicker();
 termEl.classList.add("booting");
+const bootStartMs = performance.now();
+// On a fast/warm connection the fetch below resolves in well under a second, so the ticker
+// appears for one or two frames and snaps to "ready" -- a flash, not an animation, and it reads
+// as a glitch rather than a boot sequence (confirmed: reported as looking broken on a fast load).
+// Padding to a floor makes the loading state legible regardless of how fast the network is,
+// the same reason a spinner UI holds a minimum display time instead of flickering on and off.
+const MIN_BOOT_MS = 700;
+function afterMinBoot(fn) {
+  const remaining = MIN_BOOT_MS - (performance.now() - bootStartMs);
+  if (remaining > 0) setTimeout(fn, remaining); else fn();
+}
 
 fetch(CORPUS_URL).then(r => r.json()).then(corpus => {
   statusEl.textContent = "Loading instruments...";
@@ -105,12 +116,14 @@ fetch(CORPUS_URL).then(r => r.json()).then(corpus => {
 
   return loadInstruments();
 }).then(() => {
-  statusEl.textContent = "Ready.";
-  stopBootTicker();
-  termEl.classList.remove("booting");
-  termEl.innerHTML = '<span class="dim">&gt; ready. press play.</span>';
-  powerBtn.disabled = false;
-  setupKnobs(); // audio nodes (tuningFilter/staticGain) now exist -- safe to apply initial values
+  afterMinBoot(() => {
+    statusEl.textContent = "Ready.";
+    stopBootTicker();
+    termEl.classList.remove("booting");
+    termEl.innerHTML = '<span class="dim">&gt; ready. press play.</span>';
+    powerBtn.disabled = false;
+    setupKnobs(); // audio nodes (tuningFilter/staticGain) now exist -- safe to apply initial values
+  });
 }).catch(err => {
   statusEl.textContent = "Error: " + err.message;
   stopBootTicker();
