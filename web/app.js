@@ -372,11 +372,31 @@ function setupKnob(el, initial, onChange) {
   el.addEventListener("pointercancel", pointerUp);
 }
 
+// Shared by both knobs' onChange callbacks below -- volLevel and tuneDetune are set
+// independently but the "current draw" and jitter effects read from BOTH at once, since a real
+// shared power supply doesn't care which control is pulling on it. Module-scoped rather than
+// local to setupKnobs() so either callback can update the combined state without threading it
+// through both closures.
+let volLevel = 0.8, tuneDetune = 0;
+function updatePowerLoad() {
+  // Weighted average, not a simple max/sum: volume dominates (a real amp's rail sags mostly
+  // with output level) while tuning-offset still visibly contributes, matching how the tuning
+  // knob's own audio effects (staticGain etc.) are themselves detune-scaled elsewhere.
+  const draw = Math.min(1, volLevel * 0.7 + tuneDetune * 0.5);
+  chordEl.style.setProperty("--current-draw", draw.toFixed(3));
+  if (chordDialEl) chordDialEl.style.setProperty("--current-draw", draw.toFixed(3));
+  // Threshold, not continuous: jitter reads as something breaking loose at the extremes, not a
+  // smooth effect, so it's a binary class flip rather than scaling with draw.
+  termEl.classList.toggle("jitter", volLevel > 0.93 || tuneDetune > 0.85);
+}
+
 function setupKnobs() {
   // Volume: 0..1 -> -40dB (near-silent) .. 0dB (unity). Default 0.8 (-8dB) rather than full
   // unity, so the starting level has headroom instead of opening at the loudest possible setting.
   setupKnob(document.getElementById("volKnob"), 0.8, (v) => {
     Tone.Destination.volume.value = (v - 1) * 40;
+    volLevel = v;
+    updatePowerLoad();
   });
 
   // Tuning: 0..1, 0.5 = perfectly tuned (clean, matches the sound before this feature existed).
@@ -403,6 +423,8 @@ function setupKnobs() {
     // fully gated) the further off station, so it reads as broken reception rather than a tremolo effect.
     staticCrackle.frequency.rampTo(3 + detune * 11, RAMP_S);
     staticCrackle.depth.rampTo(0.3 + detune * 0.6, RAMP_S);
+    tuneDetune = detune;
+    updatePowerLoad();
   });
 }
 
