@@ -50,13 +50,37 @@ let noteCursor = 0, spanCursor = 0, chordCursor = 0;
 
 // Loading real sample files (12 bass + 20 piano, individual mp3s) over the network on a cold
 // cache genuinely takes a few seconds -- put that visibly IN the terminal, not just the status
-// line below it, so the empty dial glass doesn't read as frozen/broken while it happens.
-termEl.innerHTML = '<span class="dim">&gt; connecting to swarm uplink...</span>';
+// line below it, so the empty dial glass doesn't read as frozen/broken while it happens. A CSS
+// glow alone turned out too subtle to register as "loading" on a small monospace terminal (user
+// report: no visible boot animation on the real site), so the actual signal is this scrolling
+// line of note glyphs -- real, ticking motion beats an opacity animation for reading as "alive."
+const BOOT_NOTES = "♪♫♬♩";
+let bootStatusLines = ['<span class="dim">&gt; connecting to swarm uplink...</span>'];
+let bootTickerTimer = null;
+let bootTickerFrame = 0;
+function renderBoot() {
+  const width = 22;
+  const scroll = (BOOT_NOTES.repeat(6) + "  ").slice(bootTickerFrame % (BOOT_NOTES.length * 4));
+  const ticker = scroll.slice(0, width);
+  termEl.innerHTML = bootStatusLines.join("\n") + `\n<span class="dim">&gt; </span>${ticker}`;
+  bootTickerFrame++;
+}
+function startBootTicker() {
+  if (bootTickerTimer) return;
+  bootTickerTimer = setInterval(renderBoot, 110);
+  renderBoot();
+}
+function stopBootTicker() {
+  clearInterval(bootTickerTimer);
+  bootTickerTimer = null;
+}
+
+startBootTicker();
 termEl.classList.add("booting");
 
 fetch(CORPUS_URL).then(r => r.json()).then(corpus => {
   statusEl.textContent = "Loading instruments...";
-  termEl.innerHTML = '<span class="dim">&gt; connecting to swarm uplink...\n&gt; loading instrument samples...</span>';
+  bootStatusLines.push('<span class="dim">&gt; loading instrument samples...</span>');
   director = new Director(corpus.root_transition_matrix_major);
 
   director.onScheduleNote = (voice, note, vel, dur, atS, detuneSemitones) => {
@@ -82,12 +106,14 @@ fetch(CORPUS_URL).then(r => r.json()).then(corpus => {
   return loadInstruments();
 }).then(() => {
   statusEl.textContent = "Ready.";
+  stopBootTicker();
   termEl.classList.remove("booting");
   termEl.innerHTML = '<span class="dim">&gt; ready. press play.</span>';
   powerBtn.disabled = false;
   setupKnobs(); // audio nodes (tuningFilter/staticGain) now exist -- safe to apply initial values
 }).catch(err => {
   statusEl.textContent = "Error: " + err.message;
+  stopBootTicker();
   termEl.classList.remove("booting");
   console.error(err);
 });
