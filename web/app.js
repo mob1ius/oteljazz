@@ -34,6 +34,10 @@ let powerBtn = document.getElementById("powerBtn");
 let playing = false;
 let started = false;
 let termLines = [];
+// Module-scoped (not inside startEngine's closure) so a pause/resume cycle can reset the idle
+// clock -- see the stall-watchdog comment further down for what these track and why.
+let lastPushWallMs = performance.now();
+let stalledSinceWallMs = null;
 
 // Reveal queues: Director generates well AHEAD of playback (see LOOKAHEAD_S below), so audio
 // scheduling (exact, via Tone.Transport.schedule) and on-screen reveal (cosmetic, time-gated by
@@ -164,7 +168,7 @@ function startEngine() {
   // never generated yet" from "spans generated but spanCursor stuck past them". This exposes
   // that state directly. Call window.__oteljazzDebug() in the console during a freeze. Remove
   // once root-caused.
-  window.__oteljazzDebug = () => ({
+  const debugSnapshot = () => ({
     transportS: Tone.Transport.seconds,
     spanCursor, spanQueueLen: pendingSpanLines.length,
     nextSpan: pendingSpanLines[spanCursor],
@@ -172,6 +176,16 @@ function startEngine() {
     chordCursor, chordQueueLen: pendingChords.length,
     nextChord: pendingChords[chordCursor],
   });
+  window.__oteljazzDebug = debugSnapshot;
+
+  // Every manual capture so far has caught the RECOVERED state, not the stall itself -- by the
+  // time a person notices, reacts, and types a command, it has usually already resolved (matches
+  // the "catches up in a burst" pattern seen in every recording). This removes the human from the
+  // loop: logs automatically the instant pushTerm goes quiet for >1.5s while playing, and again
+  // the instant it recovers, bracketing the stall with full state on both ends with zero reaction
+  // time required. lastPushWallMs/stalledSinceWallMs live at module scope, not here, so a
+  // pause/resume cycle can reset the idle clock instead of carrying stale idle time across it.
+  // Remove once root-caused.
 
   Tone.Transport.scheduleRepeat(() => {
     const t = Tone.Transport.seconds;
@@ -199,12 +213,39 @@ function startEngine() {
       // frozen demo on launch day.
       try {
         pushTerm(`<span class="dim">[${it.t.toFixed(2)}s ${it.service}]</span> ${it.line}`);
+        lastPushWallMs = performance.now();
       } catch (err) {
         console.error("[oteljazz] dropped unrenderable span line, terminal would otherwise be stuck here:", it, err);
       }
       spanCursor++;
     }
     if (bumped) bumpVU(); else decayVU();
+
+    // Auto-bracket a stall: fires the instant one starts and the instant it ends, no reaction
+    // time needed. See the comment above lastPushWallMs's declaration for why this exists.
+    // Gated on `playing`: pausing is a legitimate reason for no new pushes and must not read as
+    // a stall (this loop only ticks while Transport is running anyway, but the guard costs
+    // nothing and keeps the intent explicit).
+    const idleMs = performance.now() - lastPushWallMs;
+    // 5000ms, not 1500ms: a local instrumented run showed natural gaps up to ~1.6s between
+    // consecutive span timestamps in the synthetic timeline (bursty pacing is intentional --
+    // see director.js/engine.js), so 1500ms fired on normal quiet stretches with a healthy,
+    // growing queue every time. 5000ms is well clear of that noise floor while still catching
+    // the actual 10-20s freezes users have reported.
+    if (playing && idleMs > 5000) {
+      if (stalledSinceWallMs === null) {
+        stalledSinceWallMs = performance.now();
+        // Stringified inline rather than passed as an object: a log reader that only captures
+        // rendered text (not a live console you can expand) shows an object argument as a bare
+        // "Object" placeholder with no way to recover its fields afterward.
+        console.warn(`[oteljazz-stall] START, idle for ${Math.round(idleMs)}ms ${JSON.stringify(debugSnapshot())}`);
+      }
+    } else if (stalledSinceWallMs !== null) {
+      console.warn(
+        `[oteljazz-stall] RECOVERED after ${Math.round(performance.now() - stalledSinceWallMs)}ms ${JSON.stringify(debugSnapshot())}`
+      );
+      stalledSinceWallMs = null;
+    }
 
     // bound memory for an indefinitely-open tab: once a queue's consumed prefix gets large,
     // drop it and rebase the cursor -- nothing before "now" is ever read again.
@@ -227,6 +268,7 @@ powerBtn.onclick = async () => {
   await Tone.start();
   if (!playing) {
     if (!started) { startEngine(); started = true; }
+    lastPushWallMs = performance.now(); // don't count pause time as an idle stall on resume
     Tone.Transport.start();
     playing = true;
     powerBtn.textContent = "⏸";
