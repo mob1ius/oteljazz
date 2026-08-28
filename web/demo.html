@@ -8,8 +8,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OtelJazz</title>
 <meta name="description" content="OpenTelemetry spans from a multi-agent AI system, rendered as a live jazz combo. You don't read the trace, you hear it go wrong.">
-<link rel="icon" type="image/png" href="favicon.png">
-<link rel="apple-touch-icon" href="favicon.png">
+<!-- Filename itself is the cache-buster, not a query string: favicons are cached by browsers
+     separately from normal page assets and often ignore both Cache-Control and a query-string
+     change, ignoring it for weeks regardless of headers -- only a real URL change reliably
+     forces a refetch. Bump this filename (favicon-v3.png, etc.) on any future icon change. -->
+<link rel="icon" type="image/png" href="favicon-v2.png">
+<link rel="apple-touch-icon" href="favicon-v2.png">
 
 <!-- Social card. Absolute URLs are required: scrapers do not resolve relative paths, and the
      canonical host is oteljazz.com even while the site is also reachable at *.workers.dev.

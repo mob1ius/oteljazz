@@ -36,7 +36,8 @@ FILES=(
   "robots.txt"                # crawler policy; also the thing the crawler log is measuring
   "sitemap.xml"               # requested by the search agents robots.txt explicitly allows
   "ai.txt"
-  "favicon.png"               # without this every browser visit 404s and logs a noise row
+  "favicon-v2.png"             # versioned filename, not favicon.png -- see demo.html's <link> comment;
+                                # without this every browser visit 404s and logs a noise row
   "og.jpg"                    # social card; a real screenshot of the demo, not a mockup
 )
 DIRS=(
