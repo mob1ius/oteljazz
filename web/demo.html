@@ -305,7 +305,14 @@
     width: 9%; height: 34%;
     background: #2a1c0a;
     border-radius: 2px;
-    transform-origin: 50% 165%;
+    /* Must pivot around the KNOB's center, not the indicator's own midpoint (the rotate()
+       default) -- the indicator's box only spans 10%..44% of the knob's height, so its own
+       center sits at parent-relative 27%, well off the knob's true 50%. transform-origin maps
+       the pivot into the indicator's OWN local coordinate space: solving
+       10% + x% * 34% = 50% gives x% = (50-10)/34 = 117.65%, the offset at which the knob's real
+       center falls. Without this the tip visibly drifts off the knob as it rotates further from
+       horizontal-center -- confirmed via a screenshot at a mid-range angle. */
+    transform-origin: 50% 117.65%;
     transform: translateX(-50%) rotate(0deg);
     box-shadow: 0 0 3px rgba(0,0,0,0.6);
     pointer-events: none;
