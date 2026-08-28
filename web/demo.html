@@ -180,6 +180,46 @@
     97% { opacity: 0.97; }
     98% { opacity: 1; }
   }
+  /* Tube warm-up, applied only while the corpus/sample fetch is in flight (see app.js) so the
+     wait -- genuinely 9-20s on a cold real-network connection, per BUILD_NOTES -- reads as a
+     tube visibly heating up rather than a dead/frozen terminal. A real valve amp's glow doesn't
+     snap on: filament brightness overshoots then settles, and settling is irregular, not a clean
+     ease. tubeWarmup runs once (the overshoot-and-settle) and glassBreathe loops underneath it
+     for as long as the class stays on, so the display keeps visibly doing something even if the
+     load runs long. Both are opacity-only, like crtFlicker, so they layer instead of fighting it. */
+  .term.booting {
+    animation: tubeWarmup 1.4s cubic-bezier(0.2, 0.9, 0.3, 1) 1,
+               glassBreathe 2.6s ease-in-out infinite 1.4s;
+  }
+  .term.booting::before {
+    content: "";
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at center, var(--phosphor-glow-wide), transparent 70%);
+    opacity: 0;
+    animation: warmupBloom 1.4s cubic-bezier(0.2, 0.9, 0.3, 1) 1;
+    pointer-events: none;
+  }
+  @keyframes tubeWarmup {
+    0% { opacity: 0; }
+    12% { opacity: 0.35; }
+    28% { opacity: 0.15; }
+    45% { opacity: 0.85; }
+    58% { opacity: 0.3; }
+    72% { opacity: 1; }
+    84% { opacity: 0.75; }
+    100% { opacity: 1; }
+  }
+  @keyframes warmupBloom {
+    0%, 100% { opacity: 0; }
+    45% { opacity: 0; }
+    58% { opacity: 0.5; }
+    72% { opacity: 0.1; }
+    80% { opacity: 0.3; }
+  }
+  @keyframes glassBreathe {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.88; }
+  }
   .term .dim { color: var(--phosphor-dim); text-shadow: none; }
   .term .ok { color: var(--phosphor); }
   .term .err { color: #ff6b5a; font-weight: bold; text-shadow: 0 0 4px rgba(255,107,90,0.7); }
@@ -268,6 +308,7 @@
     font-size: 12px;
     color: #666;
     font-family: 'SF Mono', Menlo, Consolas, monospace;
+    font-style: italic;
   }
   /* Attribution is a LICENSE CONDITION here, not a courtesy, so it ships on the page rather
      than living only in the docs: the piano samples are CC BY 3.0 (attribution required on
@@ -458,7 +499,7 @@
         </div>
       </div>
     </div>
-    <div class="caption">oteljazz -- semantic sonification of multi-agent AI coordination</div>
+    <div class="caption">OpenTelemetry spans, played by a jazz combo</div>
   </div>
 </div>
 

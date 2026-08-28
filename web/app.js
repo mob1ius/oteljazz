@@ -52,6 +52,7 @@ let noteCursor = 0, spanCursor = 0, chordCursor = 0;
 // cache genuinely takes a few seconds -- put that visibly IN the terminal, not just the status
 // line below it, so the empty dial glass doesn't read as frozen/broken while it happens.
 termEl.innerHTML = '<span class="dim">&gt; connecting to swarm uplink...</span>';
+termEl.classList.add("booting");
 
 fetch(CORPUS_URL).then(r => r.json()).then(corpus => {
   statusEl.textContent = "Loading instruments...";
@@ -81,11 +82,13 @@ fetch(CORPUS_URL).then(r => r.json()).then(corpus => {
   return loadInstruments();
 }).then(() => {
   statusEl.textContent = "Ready.";
+  termEl.classList.remove("booting");
   termEl.innerHTML = '<span class="dim">&gt; ready. press play.</span>';
   powerBtn.disabled = false;
   setupKnobs(); // audio nodes (tuningFilter/staticGain) now exist -- safe to apply initial values
 }).catch(err => {
   statusEl.textContent = "Error: " + err.message;
+  termEl.classList.remove("booting");
   console.error(err);
 });
 
@@ -93,7 +96,7 @@ fetch(CORPUS_URL).then(r => r.json()).then(corpus => {
 // pink-noise bed mixed in proportional to how far off-center the knob is (radio static). Both
 // sit AFTER the reverb/eq/comp chain, right before the destination, so "detuning" affects the
 // whole mix at once like a real radio's tuning dial rather than any one instrument.
-let tuningFilter, staticNoise, staticGain;
+let tuningFilter, staticNoise, staticGain, staticColor, staticCrackle;
 
 function loadInstruments() {
   return new Promise((resolve, reject) => {
@@ -102,7 +105,16 @@ function loadInstruments() {
     function check() { loaded++; if (loaded === need) resolve(); }
 
     tuningFilter = new Tone.Filter({ frequency: 20000, type: "lowpass", rolloff: -12 }).toDestination();
-    staticGain = new Tone.Gain(0).connect(tuningFilter);
+    // staticColor gives the two tuning directions distinct timbre instead of identical noise at
+    // different volumes -- a real superhet dial doesn't sound the same tuning down past a station
+    // as tuning up past it. Type/frequency are set per-direction in setupKnobs(); starts lowpass
+    // (the below-center/rumble side) and gets swapped to highpass when the knob crosses center.
+    staticColor = new Tone.Filter({ frequency: 20000, type: "lowpass", rolloff: -24 });
+    // staticCrackle chops the static into a chattery squelch rather than a smooth hiss -- rate
+    // scales with detune in setupKnobs() so it's calm near center and chattery at the extremes.
+    staticCrackle = new Tone.Tremolo({ frequency: 6, depth: 0.7, spread: 0 }).connect(tuningFilter).start();
+    staticGain = new Tone.Gain(0).connect(staticColor);
+    staticColor.connect(staticCrackle);
     staticNoise = new Tone.Noise("pink").connect(staticGain).start();
 
     const reverb = new Tone.Reverb({ decay: 2.2, preDelay: 0.02, wet: 0.2 }).connect(tuningFilter);
@@ -331,13 +343,29 @@ function setupKnobs() {
   });
 
   // Tuning: 0..1, 0.5 = perfectly tuned (clean, matches the sound before this feature existed).
-  // Moving either direction away from center simultaneously muffles (lowpass cutoff drops) and
-  // introduces static (pink noise mixed in) -- both effects scale with distance from center, not
-  // direction, since a real dial sounds equally "off" tuned too far either way.
+  // Moving either direction away from center muffles the whole mix (lowpass cutoff drops) and
+  // brings in static, scaling with distance from center like before -- but now with two things a
+  // flat linear .value= snap can't give: an audible SWEEP as the knob moves (rampTo, so tuning
+  // glides through the muffle/static like a real dial's IF whine instead of jump-cutting to the
+  // new setting), and a squelch CHARACTER that depends on which side of center you're on, not just
+  // how far -- tuning below center colors the static into a dull lowpassed rumble, tuning above
+  // colors it into a bright highpassed hiss/whine, so the two directions are distinguishable by
+  // ear alone. RAMP_S is short enough to feel responsive to a drag, long enough to actually sweep.
+  const RAMP_S = 0.12;
   setupKnob(document.getElementById("tuneKnob"), 0.5, (v) => {
     const detune = Math.abs(v - 0.5) * 2; // 0 at center, 1 at either extreme
-    tuningFilter.frequency.value = 20000 - detune * 19000; // 20000Hz..1000Hz
-    staticGain.gain.value = detune * 0.12;
+    const below = v < 0.5;
+    tuningFilter.frequency.rampTo(20000 - detune * 19000, RAMP_S); // 20000Hz..1000Hz
+    staticGain.gain.rampTo(detune * 0.14, RAMP_S);
+    staticColor.type = below ? "lowpass" : "highpass";
+    staticColor.frequency.rampTo(
+      below ? 2200 - detune * 1800 : 400 + detune * 5000, // below: 2200Hz..400Hz rumble; above: 400Hz..5400Hz whine
+      RAMP_S
+    );
+    // Calm near center, chattery squelch bursts at the extremes -- 3Hz..14Hz, deeper too (more
+    // fully gated) the further off station, so it reads as broken reception rather than a tremolo effect.
+    staticCrackle.frequency.rampTo(3 + detune * 11, RAMP_S);
+    staticCrackle.depth.rampTo(0.3 + detune * 0.6, RAMP_S);
   });
 }
 
