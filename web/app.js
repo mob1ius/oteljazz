@@ -48,12 +48,13 @@ let pendingSpanLines = [];
 let pendingChords = [];
 let noteCursor = 0, spanCursor = 0, chordCursor = 0;
 
-// Loading real sample files (12 bass + 20 piano, individual mp3s) over the network on a cold
-// cache genuinely takes a few seconds -- put that visibly IN the terminal, not just the status
-// line below it, so the empty dial glass doesn't read as frozen/broken while it happens. A CSS
-// glow alone turned out too subtle to register as "loading" on a small monospace terminal (user
-// report: no visible boot animation on the real site), so the actual signal is this scrolling
-// line of note glyphs -- real, ticking motion beats an opacity animation for reading as "alive."
+// Corpus/sample loading (12 bass + 20 piano individual mp3s, plus the corpus JSON) runs silently
+// in the background -- the terminal stays blank until the visitor actually presses play. Putting
+// a loading animation in the terminal before that point put motion behind glass the visitor
+// hasn't asked to look at yet, and on a fast connection it flashed by fast enough to read as a
+// glitch instead of an animation. The animation moved to powerBtn.onclick's first-press warm-up
+// instead (see BOOT_NOTES / startBootTicker below), where it always plays for a fixed, deliberate
+// duration -- a real "power on" beat instead of an incidental loading side-effect.
 const BOOT_NOTES = "♪♫♬♩";
 let bootStatusLines = ['<span class="dim">&gt; connecting to swarm uplink...</span>'];
 let bootTickerTimer = null;
@@ -74,24 +75,12 @@ function stopBootTicker() {
   clearInterval(bootTickerTimer);
   bootTickerTimer = null;
 }
-
-startBootTicker();
-termEl.classList.add("booting");
-const bootStartMs = performance.now();
-// On a fast/warm connection the fetch below resolves in well under a second, so the ticker
-// appears for one or two frames and snaps to "ready" -- a flash, not an animation, and it reads
-// as a glitch rather than a boot sequence (confirmed: reported as looking broken on a fast load).
-// Padding to a floor makes the loading state legible regardless of how fast the network is,
-// the same reason a spinner UI holds a minimum display time instead of flickering on and off.
-const MIN_BOOT_MS = 700;
-function afterMinBoot(fn) {
-  const remaining = MIN_BOOT_MS - (performance.now() - bootStartMs);
-  if (remaining > 0) setTimeout(fn, remaining); else fn();
-}
+// 2100ms: 3x the original 700ms floor, tuned up once 700ms itself proved too brief to read
+// clearly as a tube warming up rather than a flash.
+const BOOT_WARMUP_MS = 2100;
 
 fetch(CORPUS_URL).then(r => r.json()).then(corpus => {
   statusEl.textContent = "Loading instruments...";
-  bootStatusLines.push('<span class="dim">&gt; loading instrument samples...</span>');
   director = new Director(corpus.root_transition_matrix_major);
 
   director.onScheduleNote = (voice, note, vel, dur, atS, detuneSemitones) => {
@@ -116,18 +105,11 @@ fetch(CORPUS_URL).then(r => r.json()).then(corpus => {
 
   return loadInstruments();
 }).then(() => {
-  afterMinBoot(() => {
-    statusEl.textContent = "Ready.";
-    stopBootTicker();
-    termEl.classList.remove("booting");
-    termEl.innerHTML = '<span class="dim">&gt; ready. press play.</span>';
-    powerBtn.disabled = false;
-    setupKnobs(); // audio nodes (tuningFilter/staticGain) now exist -- safe to apply initial values
-  });
+  statusEl.textContent = "Ready.";
+  powerBtn.disabled = false;
+  setupKnobs(); // audio nodes (tuningFilter/staticGain) now exist -- safe to apply initial values
 }).catch(err => {
   statusEl.textContent = "Error: " + err.message;
-  stopBootTicker();
-  termEl.classList.remove("booting");
   console.error(err);
 });
 
@@ -318,7 +300,23 @@ powerBtn.onclick = async () => {
 
   await Tone.start();
   if (!playing) {
-    if (!started) { startEngine(); started = true; }
+    if (!started) {
+      // First press only: the terminal has been blank since page load (see the fetch chain
+      // above), so this is the visitor's first look at it. Play a fixed-length "power on" warm-up
+      // -- the scrolling note ticker plus the tube-glow CSS class -- before any real span content
+      // appears, then hand off to startEngine()'s normal reveal loop. The button stays disabled
+      // for the warm-up's duration so a second click can't start the engine mid-animation.
+      powerBtn.disabled = true;
+      statusEl.textContent = "Powering on...";
+      termEl.classList.add("booting");
+      startBootTicker();
+      await new Promise((resolve) => setTimeout(resolve, BOOT_WARMUP_MS));
+      stopBootTicker();
+      termEl.classList.remove("booting");
+      powerBtn.disabled = false;
+      startEngine();
+      started = true;
+    }
     lastPushWallMs = performance.now(); // don't count pause time as an idle stall on resume
     Tone.Transport.start();
     playing = true;
