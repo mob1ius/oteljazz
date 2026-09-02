@@ -1,5 +1,72 @@
 # Changelog
 
+## v1.2.1 — 2026-09-02
+
+Crawler classification fix, found live in the launch data.
+
+### Fixed
+
+- `src/index.js` — `OPERATOR_CLAIMS` recognized `ClaudeBot` but not `Claude-SearchBot`, a
+  separate token in Anthropic's own documented UA taxonomy (training crawl, search-index fetch,
+  and user-triggered fetch are three distinct UAs, not one). The hyphen broke the pattern match,
+  so a self-identifying crawler with a contact email in its own UA string was logged as a bot but
+  left `claimed_operator=NULL`, indistinguishable from generic unlabeled noise. Added
+  `claude-searchbot` and `claude-user` as their own entries.
+- Backfilled 155 historical rows in the `requests` table matching the corrected pattern. Once
+  reclassified, `claude-searchbot` turned out to be Anthropic's **highest-volume** crawler on the
+  site (155 rows vs. 70 for `claudebot`), a fact the previous classifier made invisible rather
+  than wrong. Worth carrying forward as a general lesson: a crawler taxonomy has to track a
+  vendor's actual UA family, not one representative pattern per vendor, or real volume silently
+  disappears into the unlabeled bucket.
+
+## v1.2.0 — 2026-08-28
+
+Browser demo hardening and the crawler-tracking research infrastructure, both shipped and
+deployed for the public launch.
+
+### Fixed
+
+- Terminal freeze on the live demo, two separate causes. An unrenderable span line could wedge
+  the reveal cursor permanently, since it only advanced after a successful render; now guarded so
+  a render failure can't stall the queue. Background/occluded browser tabs throttle `setInterval`,
+  which the fill and UI-render loops depended on; both moved to `Tone.Transport.scheduleRepeat`,
+  which uses a Worker-based clock exempt from that throttling.
+- Knob pointer indicator drifting off the physical knob when turned.
+- Knobs were hidden entirely below 820px viewport width on the reasoning that they're too small
+  to hit on a phone. True for volume, which has a hardware substitute; not true for tuning, which
+  has none and drives all of the knob work below. Restored on mobile with a 44px touch target
+  (up from ~26px) instead of being removed.
+
+### Added
+
+- A tube-radio boot warm-up (scrolling note ticker, tube-glow CSS) that plays once, for a fixed
+  2100ms, triggered by the visitor's own first press of the power button rather than during
+  background asset loading, where it either flashed by too fast to read or ran in a state
+  requiring no visitor interaction with the terminal.
+- Current-draw dimming and terminal jitter tied to the volume/tuning knobs at their extremes;
+  asymmetric squelch character and an audible sweep on the tuning dial depending on which side of
+  center and how far.
+- A minimalist GitHub icon linking the repo, next to the on-page caption.
+- Automatic stall-bracketing diagnostics (`window.__oteljazzDebug`, auto-logged START/RECOVERED
+  console warnings with full queue-state snapshots) for catching a real freeze with zero reaction
+  time, tuned to a 5000ms threshold after an earlier 1500ms threshold proved too sensitive to the
+  synthetic swarm's own natural pacing.
+- Crawler-tracking research infrastructure: a D1-backed request log (`infra/d1_schema.sql`)
+  recording timestamp, path, method, UA, referer (path only), country, ASN, a bot heuristic, the
+  UA's claimed operator identity, sample rate, and response status, with no IP address ever
+  stored. Bots logged in full; browser traffic sampled (10%) with the rate stored per row so
+  volumes reconstruct later. Deliberately separates what a UA *claims* to be from the ASN it
+  actually arrived from, since the first is spoofable in one `curl` and the second is not.
+
+### Changed
+
+- Favicon replaced with a legible high-contrast VU-bar glyph; filename versioned
+  (`favicon-v2.png`) since browsers cache favicons independently of normal HTTP caching and often
+  ignore a same-URL change.
+- Tab title and meta description corrected to match the on-page caption and to use "spans"
+  instead of "trace" throughout, the technically accurate term for a per-span streaming mapping.
+- README compressed, restructured image-first, and corrected to the same terminology.
+
 ## v1.1.0 — 2026-08-26
 
 Corrects a result. The v1.0.0 archive should not be used to reproduce the accompanying
