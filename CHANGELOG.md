@@ -1,5 +1,46 @@
 # Changelog
 
+## v1.3.0 — 2026-09-02
+
+Live OTLP, including real audio: the browser demo can now be driven by a real, running system's
+telemetry instead of only the synthetic swarm, and the crawler-logging Worker is now a reusable
+module rather than a site-specific file. Two independent efforts, both scoped in
+`docs/ROADMAP.md`.
+
+### Added
+
+- `src/otlp-decode.js` — a hand-rolled OTLP/HTTP protobuf decoder for `ExportTraceServiceRequest`,
+  no dependency. Verified against real bytes from `engine/live_producer.py`'s actual
+  `OTLPSpanExporter`, not a hand-built fixture, including a genuine `ERROR` status span.
+- `src/live-relay.js` — a Durable Object (`LIVE_RELAY` binding), one instance per session id,
+  accepting OTLP/HTTP POSTs at `/live/<session>/v1/traces` and broadcasting decoded spans to any
+  browser WebSocket at `/live/<session>/ws`.
+- `web/director.js`'s `LiveSwarmAdapter` and `Director.feedSpan(span, nowS)` — real spans now
+  drive the same chorale voicing, comp density, and anomaly-signature logic the synthetic swarm
+  does. `_generateBar`'s mapping is unchanged and unaware which source populated it; `feedSpan`
+  only changes what feeds `swarm.spans`, converting a real span into the exact shape
+  `SwarmEngine._add` already produces. One per-span mapping, two populators.
+- `web/app.js`'s `startLiveMode()`, behind `?live=<session>`, entirely separate from the synthetic
+  boot chain. Reuses `startEngine()`/`wireDirectorCallbacks()` unchanged; only `currentLookaheadS`
+  differs (1.5s live vs. 24s synthetic, since there is nothing to pre-generate for a span that
+  hasn't happened yet).
+- `src/operator-claims.js` and `src/crawler-log.js` — the crawler-logging Worker extracted from
+  `src/index.js` into a reusable module (`createCrawlerLogHandler({ assetPattern, sampleRate,
+  tableName })`), so a future project's site drops it in rather than hand-porting it. `index.js`
+  is now an 11-line config wrapper. Dedupe-cache namespace derived from the request's own hostname
+  instead of hardcoded, so two deploys never collide.
+
+### Fixed
+
+- A real clock bug in live audio, found via `window.__oteljazzDebug()` mid-build and fixed before
+  shipping, not left in: an early version stamped incoming spans against `performance.now()` since
+  Director construction, a different clock origin than `Tone.Transport.seconds`, which
+  `_generateBar`'s bar windows actually use and which only starts counting at play. Spans arrived
+  timestamped later than any bar the fill loop had reached and were silently never consumed.
+- `infra/d1_schema.sql`'s header genericized for a per-project database name (part of the
+  crawler-log extraction above), and a stale `functions/_middleware.js` comment reference fixed,
+  left over from before this project moved off Cloudflare Pages Functions.
+
 ## v1.2.1 — 2026-09-02
 
 Crawler classification fix, found live in the launch data.

@@ -142,9 +142,16 @@ Everything above is a design argument from the perceptual literature plus measur
 mapping's own behavior, kept explicit rather than left for the prototype's existence to imply. A
 controlled study is the obvious next step, not a claim made here.
 
-The demo's telemetry is a **synthetic swarm generated in your browser**. Real capture exists in
-this repo: a Claude Code hook writing real `gen_ai.*` spans, and an OTLP receiver that accepts
-live protobuf on :4318. Neither is what oteljazz.com is playing.
+By default, the demo's telemetry is a **synthetic swarm generated in your browser**. That's what
+oteljazz.com plays for every visitor who just presses play. Real capture also exists: a Claude
+Code hook writing real `gen_ai.*` spans, and an OTLP receiver that accepts live protobuf on :4318
+for the Python engine's MIDI output. Point your own OTLP exporter at
+`oteljazz.com/live/<session>/v1/traces` and open `oteljazz.com/?live=<session>` to hear the
+browser demo itself driven by that same real data, chorale voicing and anomaly detection included,
+not just the terminal echoing span text. No listener discovery, no auth beyond the session id
+itself being a shared secret (`src/live-relay.js`); only an agent literally named `orchestrator`
+gets the fixed lead voice, everything else pools onto the worker voices like a synthetic subagent
+would (`web/director.js`'s `feedSpan`).
 
 ---
 
