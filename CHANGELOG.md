@@ -1,5 +1,41 @@
 # Changelog
 
+## v1.3.2 — 2026-09-02
+
+Security hardening pass on the live-OTLP relay, the newest and least-reviewed attack surface in
+the repo: a public, unauthenticated ingest endpoint whose output gets rendered with `innerHTML`.
+One real, exploitable finding; two proactive hardenings. All three verified against the deployed
+site with adversarial input, not just read for plausibility.
+
+### Fixed
+
+- **Stored HTML injection.** `spanToLine` (`src/live-relay.js`) embedded `gen_ai.operation.name`
+  and `gen_ai.tool.name` directly into an HTML template with no escaping; `web/app.js` did the
+  same with `gen_ai.agent.name` in its own wrapping template. Both are attacker-controlled --
+  this relay has no auth, so anyone who knows a session id can set these via their own OTLP
+  exporter -- and both landed in `pushTerm`'s `innerHTML` sink. The site's CSP (`script-src
+  'self'`) blocks inline `<script>`/event-handler execution, but `style-src` allows
+  `'unsafe-inline'` and plain HTML injection (fake links, visual spoofing) isn't a CSP concern at
+  all, so this was a real bug, not one the CSP already covered. Fixed by escaping once,
+  server-side, in `spanToLine`, and having the client consume the resulting `line` as already-safe
+  with no further interpolation of raw fields -- app.js's own template literal (the second
+  injection point) was removed rather than patched, so there is exactly one place HTML gets built
+  from untrusted data instead of two to keep in sync. Verified with a real OTel SDK span carrying
+  `<script>`/`<img onerror>`/`javascript:` payloads in its attributes: the broadcast `line` field
+  came back fully entity-escaped, and the raw `op`/`tool` fields (which feed `feedSpan`'s
+  non-HTML audio mapping) stayed correctly untouched.
+
+### Added
+
+- A hard 2MB request body cap on `/v1/traces`, checked against `Content-Length` before the body
+  is even read and against the actual decoded length as a backstop.
+- A 50-requests/second rate limit per session on ingest, checked before decode or any D1 write --
+  the same amplification risk `src/crawler-log.js`'s flood guard already exists to prevent
+  (unauthenticated ingest with an unconditional write per request can exhaust the shared D1 write
+  budget for every session on this Worker, not just the one being flooded). Verified against the
+  deployed site with 60 concurrent requests: exactly 50 passed through to decode, exactly 10 were
+  rejected with 429, matching the threshold precisely under real concurrent load.
+
 ## v1.3.1 — 2026-09-02
 
 Runtime observability for the live-OTLP relay, which shipped in v1.3.0 as a genuine black box --
