@@ -51,5 +51,19 @@
 
   "observability": {
     "enabled": true
-  }
+  },
+
+  // Live-OTLP relay (v1.3.0, docs/ROADMAP.md). One Durable Object instance per session id
+  // (src/index.js derives it via idFromName), each an isolated room: real spans POSTed to
+  // /live/<session>/v1/traces broadcast only to browser tabs connected to
+  // wss://oteljazz.com/live/<session>/ws for that same session id. See src/live-relay.js for
+  // what this version does and does not do yet.
+  "durable_objects": {
+    "bindings": [
+      { "name": "LIVE_RELAY", "class_name": "LiveRelay" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["LiveRelay"] }
+  ]
 }

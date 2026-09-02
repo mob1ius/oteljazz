@@ -79,6 +79,41 @@ function stopBootTicker() {
 // clearly as a tube warming up rather than a flash.
 const BOOT_WARMUP_MS = 2100;
 
+// Live-OTLP mode (v1.3.0, docs/ROADMAP.md): ?live=<session> connects to the Durable Object relay
+// in src/live-relay.js instead of running the synthetic demo. v1 scope only, see that file's
+// header for what this does and does not do yet -- real spans appear as real terminal text; they
+// do not yet drive the chorale voicing, so there's no audio in this mode. Deliberately a
+// completely separate code path from the synthetic boot chain below rather than a branch woven
+// through it, so this can't regress the synthetic demo every visitor without ?live= actually uses.
+function startLiveMode(session) {
+  termEl.innerHTML = '<span class="dim">&gt; connecting to live session...</span>';
+  statusEl.textContent = "Live mode (no audio yet)";
+  powerBtn.disabled = true;
+  powerBtn.title = "Live mode has no audio yet -- see docs/ROADMAP.md";
+
+  const proto = location.protocol === "https:" ? "wss:" : "ws:";
+  const ws = new WebSocket(`${proto}//${location.host}/live/${encodeURIComponent(session)}/ws`);
+
+  ws.onopen = () => {
+    termLines = [];
+    pushTerm(`<span class="dim">&gt; live session "${session}" connected. waiting for spans...</span>`);
+  };
+  ws.onmessage = (ev) => {
+    let msg;
+    try { msg = JSON.parse(ev.data); } catch { return; }
+    if (msg.type !== "spans") return;
+    for (const span of msg.spans) {
+      pushTerm(`<span class="dim">[${span.service}]</span> ${span.line}`);
+    }
+  };
+  ws.onerror = () => pushTerm('<span class="err">&gt; connection error</span>');
+  ws.onclose = () => pushTerm('<span class="dim">&gt; disconnected</span>');
+}
+
+const liveSession = new URLSearchParams(location.search).get("live");
+if (liveSession) {
+  startLiveMode(liveSession);
+} else {
 fetch(CORPUS_URL).then(r => r.json()).then(corpus => {
   statusEl.textContent = "Loading instruments...";
   director = new Director(corpus.root_transition_matrix_major);
@@ -112,6 +147,7 @@ fetch(CORPUS_URL).then(r => r.json()).then(corpus => {
   statusEl.textContent = "Error: " + err.message;
   console.error(err);
 });
+}
 
 // Tuning knob's effect chain: a lowpass filter (muffles as you tune away from center) plus a
 // pink-noise bed mixed in proportional to how far off-center the knob is (radio static). Both
