@@ -41,6 +41,20 @@ import { decodeExportTraceServiceRequest } from './otlp-decode.js';
 // gen_ai.* attribute names this reads, matching the semantic conventions engine/caidence.py and
 // engine/live_producer.py already use -- see live_producer.py's emit_one for the producer side
 // of this exact same attribute set.
+// Every gen_ai.* attribute below is attacker-controlled: this relay has no auth (see class
+// header), so anyone who knows a session id can put arbitrary strings in these fields via their
+// own OTLP exporter. app.js's pushTerm() renders the result with innerHTML, not textContent (the
+// terminal needs the <span class="dim/ok/err"> markup), so an unescaped attribute value is a
+// straightforward stored HTML-injection bug -- found in a security pass, not exploited live. This
+// site's CSP (script-src 'self') blocks inline <script>/event-handler execution, but style-src
+// allows 'unsafe-inline' and plain HTML injection (fake links, visual spoofing) isn't a CSP
+// concern at all, so escaping here is load-bearing, not just defense in depth on top of the CSP.
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}
+
 function spanToLine(span) {
   const attrs = span.attributes || {};
   const service = attrs['gen_ai.agent.name'] || attrs['gen_ai.agent.id'] || 'unknown';
@@ -52,9 +66,15 @@ function spanToLine(span) {
     ? (span.endTimeUnixNano - span.startTimeUnixNano) / 1e9
     : 0;
 
-  let line = `<span class="dim">span</span> ${op}`;
-  if (tool) line += ` <span class="dim">tool=</span>${tool}`;
-  if (tokens != null) line += ` <span class="dim">tokens=</span>${tokens}`;
+  // All HTML construction from untrusted data happens exactly here, once -- app.js consumes
+  // `line` as already-safe and does no interpolation of its own with raw span fields (it used to,
+  // via span.service in its own template literal; that was a second, separate injection point,
+  // fixed by building the full line including the [service] prefix here instead). The raw
+  // op/tool/tokens/service fields below stay UNescaped: those feed Director.feedSpan()'s audio
+  // mapping, a non-HTML consumer, where HTML-escaping a legitimate tool name would just corrupt it.
+  let line = `<span class="dim">[${escapeHtml(service)}]</span> <span class="dim">span</span> ${escapeHtml(op)}`;
+  if (tool) line += ` <span class="dim">tool=</span>${escapeHtml(tool)}`;
+  if (tokens != null) line += ` <span class="dim">tokens=</span>${escapeHtml(tokens)}`;
   line += span.status === 'error'
     ? ` <span class="err">ERROR</span>`
     : ` <span class="ok">OK</span>`;
@@ -146,7 +166,42 @@ export class LiveRelay {
           this._log('ingest_rejected', { reason: 'bad content-type', contentType });
           return new Response('expected application/x-protobuf', { status: 415 });
         }
+
+        // Rejected upfront, before reading the body: a real OTLP export batch from any of this
+        // repo's own producers is KB-sized; 2MB is generous headroom for a legitimately large
+        // batch while still bounding the worst case. There is no auth on this endpoint (see class
+        // header), so this is the only thing standing between an attacker and an unbounded read
+        // into memory per request.
+        const MAX_BODY_BYTES = 2 * 1024 * 1024;
+        const declaredLen = Number(request.headers.get('content-length') || 0);
+        if (declaredLen > MAX_BODY_BYTES) {
+          this._log('ingest_rejected', { reason: 'payload too large', declaredLen });
+          return new Response('payload too large', { status: 413 });
+        }
+
+        // Rate limit, checked before decode/D1 so a flood costs as little CPU as possible per
+        // request. Same underlying risk src/crawler-log.js's flood guard was built for --
+        // unauthenticated ingest with an unconditional D1 write per request would otherwise let a
+        // burst of requests (malicious or just a runaway exporter retry loop) exhaust the D1
+        // write budget for every session on this Worker, not just this one. Global per-instance
+        // counter, not per-client: this is one session being asked to accept spans faster than a
+        // real telemetry stream plausibly would, regardless of how many distinct senders that is.
+        const nowMs = Date.now();
+        if (nowMs - this.rateWindowStartMs > 1000) {
+          this.rateWindowStartMs = nowMs;
+          this.rateWindowCount = 0;
+        }
+        this.rateWindowCount = (this.rateWindowCount || 0) + 1;
+        if (this.rateWindowCount > 50) {
+          this._log('ingest_rate_limited', { windowCount: this.rateWindowCount });
+          return new Response('rate limited', { status: 429 });
+        }
+
         const bytes = new Uint8Array(await request.arrayBuffer());
+        if (bytes.length > MAX_BODY_BYTES) {
+          this._log('ingest_rejected', { reason: 'payload too large (actual)', actualLen: bytes.length });
+          return new Response('payload too large', { status: 413 });
+        }
         const spans = decodeExportTraceServiceRequest(bytes);
         const lines = spans.map(spanToLine);
         const msg = JSON.stringify({ type: 'spans', spans: lines });

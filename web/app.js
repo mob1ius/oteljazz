@@ -143,7 +143,12 @@ async function startLiveMode(session) {
     try { msg = JSON.parse(ev.data); } catch { return; }
     if (msg.type !== "spans") return;
     for (const span of msg.spans) {
-      pushTerm(`<span class="dim">[${span.service}]</span> ${span.line}`);
+      // span.line is already fully-formed, HTML-escaped HTML (including its own [service]
+      // prefix) built server-side in src/live-relay.js's spanToLine -- do not interpolate any
+      // raw span field into a template literal here. An earlier version did exactly that with
+      // span.service, which is attacker-controlled (this relay has no auth) and was a stored
+      // HTML-injection bug into this same innerHTML sink, found in a security pass.
+      pushTerm(span.line);
       // + currentLookaheadS, not the bare transport time: _generateBar only ever processes each
       // bar once, advancing generatedUntilS monotonically, so a span stamped at exactly "now"
       // would target a bar already generated moments ago and never get re-checked. The frontier
