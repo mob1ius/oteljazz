@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.3.3 — 2026-09-02
+
+The project-wide diagnostic gap: `src/crawler-log.js`, which runs on every page view, had two
+completely empty `catch {}` blocks around its D1 insert and its own top-level request handling.
+Correct that a logging failure must never surface as a broken page (Rule 1, that file's own
+header) -- wrong that it also meant nobody would ever know if it broke. A quietly exhausted D1
+write budget or a transient outage could stop the crawler dataset from accumulating for hours
+with nothing to notice it, on the single highest-traffic code path in the whole repo.
+
+### Fixed
+
+- Both swallowed catches now `console.error` a structured JSON line (source, event, error
+  detail) instead of nothing, matching the pattern `src/live-relay.js` already got in v1.3.1 --
+  a pattern that had already caught a real bug there once. The one remaining silent catch
+  (`refererPathOnly`'s unparseable-Referer case) stays silent on purpose: it's routine and benign,
+  logging it would be noise instead of signal, not a corresponding gap.
+- Verified deployed: real page load still 200s, dry-run bundle resolved clean, no behavior change
+  toward visitors -- the fix is purely that a failure is now visible via `wrangler tail`/dashboard
+  instead of nowhere at all.
+
 ## v1.3.2 — 2026-09-02
 
 Security hardening pass on the live-OTLP relay, the newest and least-reviewed attack surface in
