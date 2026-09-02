@@ -44,3 +44,23 @@ CREATE INDEX IF NOT EXISTS idx_requests_ts        ON requests (ts);
 CREATE INDEX IF NOT EXISTS idx_requests_bot_ts    ON requests (is_bot_ua, ts);
 CREATE INDEX IF NOT EXISTS idx_requests_path      ON requests (path);
 CREATE INDEX IF NOT EXISTS idx_requests_status    ON requests (status);
+
+-- Durable, queryable observability for src/live-relay.js (v1.3.0's live-OTLP path). One row per
+-- session id, updated in place rather than one row per event: a live session can receive
+-- thousands of spans, and per-event rows would turn "how many live sessions have run" into a
+-- GROUP BY over a table sized by span volume instead of session count. Ephemeral per-event detail
+-- (a single decode failure's actual error message, a single connect's timestamp) belongs in
+-- Cloudflare's own logs (console.log/error, already enabled -- see wrangler.jsonc), which are
+-- fine to lose after their retention window; a session's cumulative shape is what's worth keeping
+-- past that window.
+CREATE TABLE IF NOT EXISTS live_sessions (
+  session         TEXT    PRIMARY KEY,   -- the session id from the /live/<session>/... path
+  first_seen      TEXT    NOT NULL,      -- ISO-8601 UTC, first request this session ever made
+  last_seen       TEXT    NOT NULL,      -- ISO-8601 UTC, updated on every event
+  span_count      INTEGER NOT NULL DEFAULT 0,   -- total spans successfully ingested and broadcast
+  ingest_count    INTEGER NOT NULL DEFAULT 0,   -- POST /v1/traces requests, not spans -- one export call can carry many spans
+  decode_errors   INTEGER NOT NULL DEFAULT 0,   -- malformed OTLP payloads rejected with 400
+  ws_connects     INTEGER NOT NULL DEFAULT 0    -- cumulative browser connections, not concurrent -- see src/live-relay.js if a live gauge is ever needed
+);
+
+CREATE INDEX IF NOT EXISTS idx_live_sessions_last_seen ON live_sessions (last_seen);

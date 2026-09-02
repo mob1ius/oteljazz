@@ -112,6 +112,46 @@ python3 -m http.server 8000
 # open http://localhost:8000/demo.html
 ```
 
+## Live browser mode
+
+The deployed demo at oteljazz.com plays a synthetic swarm by default. Point a real OTLP/HTTP
+exporter at it instead and the browser demo itself, chorale voicing and anomaly detection
+included, plays your real system's telemetry. This is separate from the receiver below: that one
+feeds the Python engine's MIDI output, this one feeds the browser directly over a Cloudflare
+Durable Object relay (`src/live-relay.js`).
+
+Pick a session id (any string; it doubles as a shared secret -- see the security note in
+`src/live-relay.js`'s header before using anything guessable), then:
+
+```bash
+# Point your OTLP/HTTP exporter's endpoint at:
+#   https://oteljazz.com/live/<your-session-id>/v1/traces
+# content-type must be application/x-protobuf -- the standard OTLP/HTTP default for every real
+# SDK exporter. JSON encoding is not supported by this relay.
+
+# Verify quickly using this repo's own test producer, which uses the real opentelemetry-sdk
+# exporter rather than a hand-built payload:
+cd engine
+python3 -m venv .venv && source .venv/bin/activate   # if you haven't already, see Setup above
+pip install opentelemetry-sdk opentelemetry-exporter-otlp-proto-http
+python3 live_producer.py --trace synthetic --speed 4 \
+  --endpoint https://oteljazz.com/live/<your-session-id>/v1/traces
+```
+
+Then open `https://oteljazz.com/?live=<your-session-id>` in a browser before or during that run.
+The corpus/instrument load takes a moment as normal; press play once the button enables. Real
+spans stream into the terminal and drive real chords/notes within about a second of arriving.
+
+What maps: `gen_ai.agent.name` (falling back to `gen_ai.agent.id`) becomes the voice identity, an
+agent literally named `orchestrator` gets the fixed lead voice, everything else pools onto the
+worker voices the same way a synthetic subagent id does. `gen_ai.operation.name`,
+`gen_ai.tool.name`, `gen_ai.usage.output_tokens`, and the span's OTel status code (`ERROR` maps to
+the same dissonant/anomaly-eligible treatment a scripted error status gets) all carry through.
+
+No listener discovery: only browser tabs open to your exact session id hear your spans, and
+nobody else's spans can appear in yours. There's no server-side auth beyond the session id itself,
+so don't reuse anything you wouldn't want a stranger to guess.
+
 ## Real-trace capture
 
 `.claude/hooks/capture.py` is wired into this repo's own Claude Code hooks (`.claude/settings.json`)

@@ -20,13 +20,19 @@
 
 function readVarint(buf, pos) {
   let result = 0n, shift = 0n;
-  while (true) {
+  // A real varint is at most 10 bytes (64 bits, 7 bits/byte). Without this cap, a garbage byte
+  // stream where every byte happens to have its continuation bit set reads past the buffer
+  // forever -- buf[pos] on an out-of-bounds index is `undefined` in JS, not a thrown error, and
+  // `undefined & 0x80` coerces to 0, which would eventually break the loop on its own, but only
+  // after walking arbitrarily far past the buffer first. Capped rather than relying on that.
+  for (let i = 0; i < 10; i++) {
+    if (pos >= buf.length) throw new Error("varint runs past end of buffer");
     const byte = buf[pos++];
     result |= BigInt(byte & 0x7f) << shift;
-    if ((byte & 0x80) === 0) break;
+    if ((byte & 0x80) === 0) return [result, pos];
     shift += 7n;
   }
-  return [result, pos];
+  throw new Error("varint longer than 10 bytes");
 }
 
 // Walks one message into { fieldNumber: [ {wireType, start, end} ... ] }, non-recursively --
@@ -53,7 +59,26 @@ function decodeMessage(buf, start, end) {
     } else if (wireType === 5) {
       fieldStart = pos; fieldEnd = pos + 4; pos = fieldEnd;
     } else {
-      break;                                          // unsupported wire type (groups, deprecated) -- stop rather than misparse
+      // Wire types 3/4 (deprecated START_GROUP/END_GROUP) never appear anywhere in a real OTLP
+      // trace export -- this isn't a general-purpose protobuf library tolerating an unknown-but-
+      // legitimate field from some future proto revision, it's a consumer of one specific, stable
+      // schema. Throwing here (rather than the silent `break` this used to be) is what actually
+      // catches garbage input: found live, a POST of a plain string returned 200 with 0 spans
+      // instead of 400, because its first tag byte happened to decode to an invalid wire type and
+      // the old silent-stop behavior read that as "a valid but empty message" instead of what it
+      // was, garbage from the very first byte.
+      throw new Error(`unsupported wire type ${wireType} for field ${fieldNumber}`);
+    }
+    // A length-delimited field (wire type 2, the one that matters in practice) can declare any
+    // length at all, including one running past the actual buffer -- the only field a
+    // non-protobuf payload can claim an arbitrarily large size for. JS silently returns
+    // `undefined` on an out-of-bounds typed-array read rather than throwing, so without this
+    // check malformed input parsed "successfully" into nonsense instead of failing loudly.
+    // Found live: a POST of random bytes to /v1/traces returned 200 with 0 spans instead of the
+    // intended 400, defeating the whole point of tracking decode_errors in live_sessions
+    // (infra/d1_schema.sql) -- this is that fix.
+    if (fieldEnd !== null && fieldEnd > buf.length) {
+      throw new Error(`field ${fieldNumber} (wire type ${wireType}) declares length past end of buffer`);
     }
     (fields[fieldNumber] ??= []).push({ wireType, start: fieldStart, end: fieldEnd });
   }
