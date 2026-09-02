@@ -1,7 +1,11 @@
--- D1 schema for the oteljazz.com crawler log.
+-- D1 schema for the crawler log written by src/crawler-log.js (generalized in v1.3.0 for reuse
+-- across projects -- see docs/ROADMAP.md). Table name matches that module's default; a project
+-- passing a different `tableName` to createCrawlerLogHandler() should adjust CREATE TABLE and the
+-- index names below to match.
 --
--- Apply with:
---   npx wrangler d1 execute oteljazz-logs --remote --file=infra/d1_schema.sql
+-- Apply against a project's own D1 database (each project gets its own, this schema is not
+-- shared across sites) with:
+--   npx wrangler d1 execute <your-database-name> --remote --file=infra/d1_schema.sql
 --
 -- WHAT THIS DELIBERATELY DOES NOT STORE: IP addresses. The research question is which crawlers
 -- arrive and whether they honor robots.txt, and that is answerable from user-agent, ASN, and
@@ -19,7 +23,7 @@ CREATE TABLE IF NOT EXISTS requests (
   referer          TEXT,
   country          TEXT,              -- Cloudflare's two-letter code
   asn              INTEGER,           -- operator identity for unlabelled crawlers
-  is_bot_ua        INTEGER NOT NULL,  -- our own heuristic (see functions/_middleware.js)
+  is_bot_ua        INTEGER NOT NULL,  -- our own heuristic (see src/crawler-log.js's isBotUA)
   cf_verified_bot  INTEGER,           -- Cloudflare's verdict; NULL when unavailable on this plan
   -- 1.0 means every matching request was recorded. Browser traffic is sampled, so rows must be
   -- weighted by 1/sample_rate to reconstruct real volumes. Recorded per row rather than assumed,
