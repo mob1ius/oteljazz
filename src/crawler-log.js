@@ -164,13 +164,21 @@ export function createCrawlerLogHandler({ assetPattern, sampleRate = 0.1, tableN
               row.ts, row.path, row.method, row.ua, row.referer, row.country,
               row.asn, row.claimed, row.bot, row.verified, row.rate, row.status
             ).run();
-          } catch {
-            // Swallowed: a rejected insert (quota exhausted, transient D1 error) must never
-            // surface as a failed request.
+          } catch (err) {
+            // Still never surfaces as a failed request -- the response is already away by the
+            // time this runs (see the comment above ctx.waitUntil). What changed is that this
+            // used to swallow the error toward US too, not just toward the visitor: a quietly
+            // exhausted D1 write budget or a transient outage could stop the crawler dataset from
+            // accumulating for hours with nothing to notice it. This is this project's own
+            // OtelJazz.mike-516.workers.dev's echo of the exact gap src/live-relay.js had until a
+            // security/observability pass found it -- same fix, applied here for the same reason:
+            // logging the failure doesn't compromise "never break the site," it just stops
+            // "never break the site" from also meaning "never find out it broke."
+            console.error(JSON.stringify({ source: 'crawler-log', event: 'd1_write_failed', error: String(err), path: row.path }));
           }
         })());
-      } catch {
-        // Deliberately swallowed. Rule 1: never break the site to record a log line.
+      } catch (err) {
+        console.error(JSON.stringify({ source: 'crawler-log', event: 'request_handling_failed', error: String(err) }));
       }
 
       return response;
