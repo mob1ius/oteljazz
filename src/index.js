@@ -87,6 +87,13 @@ const OPERATOR_CLAIMS = [
   ['oai-searchbot', /OAI-SearchBot/i],
   ['chatgpt-user', /ChatGPT-User/i],
   ['claudebot', /ClaudeBot|anthropic-ai|Claude-Web/i],
+  // Distinct from ClaudeBot above -- Anthropic's own documented UA taxonomy, three separate
+  // tokens for three separate purposes (training crawl vs. search-index fetch vs. user-triggered
+  // fetch). The ClaudeBot pattern doesn't match either: the hyphen breaks it. Found live --
+  // Claude-SearchBot hit /robots.txt and /sitemap.xml self-identified with a contact email and
+  // was still logged as claimed_operator=NULL before this fix.
+  ['claude-searchbot', /Claude-SearchBot/i],
+  ['claude-user', /Claude-User/i],
   ['perplexitybot', /PerplexityBot/i],
   ['perplexity-user', /Perplexity-User/i],
   ['ccbot', /CCBot/i],
