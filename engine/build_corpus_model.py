@@ -130,6 +130,13 @@ def mine_bach(limit=None):
 
     major_transitions, cadence_bigrams, interval_counts = collections.Counter(), collections.Counter(), collections.Counter()
     used, skipped, errored = 0, 0, 0
+    # Chords that individually fail roman-numeral analysis inside an otherwise-successful piece
+    # used to vanish with zero trace, not even a count -- unlike the per-piece `errored` above,
+    # which at least shows up in the progress line. This feeds the actual corpus numbers the
+    # paper cites, so a silent, uncounted drop rate here is a research-integrity gap, not just a
+    # missing log line: there was no way to tell "a few odd chords get skipped, as expected" from
+    # "something's systematically broken and quietly eating most of the data" without this.
+    chord_errored = 0
 
     for i, path in enumerate(paths):
         try:
@@ -145,6 +152,7 @@ def mine_bach(limit=None):
                 try:
                     degrees.append(roman.romanNumeralFromChord(c, key).scaleDegree)
                 except Exception:
+                    chord_errored += 1
                     continue
             if len(degrees) < 4:
                 skipped += 1
@@ -153,12 +161,13 @@ def mine_bach(limit=None):
             cadence_bigrams[(degrees[-2], degrees[-1])] += 1
             interval_counts.update(melodic_intervals_from_score(score))
             used += 1
-        except Exception:
+        except Exception as e:
             errored += 1
+            print(f"  [error] {path}: {e}")
         if (i + 1) % 50 == 0:
-            print(f"  {i + 1}/{len(paths)} processed (used={used}, skipped={skipped}, errored={errored})")
+            print(f"  {i + 1}/{len(paths)} processed (used={used}, skipped={skipped}, errored={errored}, chord_errored={chord_errored})")
 
-    print(f"Done: {used} major-key pieces used, {skipped} skipped, {errored} errored.")
+    print(f"Done: {used} major-key pieces used, {skipped} skipped, {errored} errored, {chord_errored} individual chords dropped.")
     return {
         "source_label": "bach (music21 core corpus, major-key only, algorithmic roman numerals)",
         "composers": ["J.S. Bach"],
@@ -220,6 +229,7 @@ def mine_lieder(root, limit=None):
             used += 1
         except Exception as e:
             errored += 1
+            print(f"  [error] {analysis_path}: {e}")
         if (i + 1) % 30 == 0:
             print(f"  {i + 1}/{len(analysis_paths)} processed (used={used}, skipped={skipped}, errored={errored})")
 

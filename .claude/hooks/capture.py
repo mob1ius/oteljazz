@@ -118,8 +118,14 @@ def main():
         path = os.path.join(LOCAL_SPANS_DIR, f"{safe_session_key(session_id)}.jsonl")
         with open(path, "a", encoding="utf-8") as fh:
             fh.write(json.dumps(span, ensure_ascii=True, default=str) + "\n")
-    except Exception:
-        pass  # fail-open: never block the session over a capture bug
+    except Exception as e:
+        # Fail-open stays: never block the actual Claude Code session over a capture bug, same
+        # "never break the primary thing" rule src/crawler-log.js follows for the same reason.
+        # What used to be missing is that a capture failure was invisible even to someone looking
+        # for it -- stdout is this hook's own protocol response (the {"continue": True} below),
+        # so it can't carry a diagnostic without corrupting that; stderr can, and Claude Code
+        # hooks don't treat it as part of the response contract.
+        print(f"[capture.py] failed to record span: {e}", file=sys.stderr)
     finally:
         print(json.dumps({"continue": True}))
 

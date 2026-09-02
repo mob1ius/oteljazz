@@ -140,7 +140,14 @@ async function startLiveMode(session) {
   };
   ws.onmessage = (ev) => {
     let msg;
-    try { msg = JSON.parse(ev.data); } catch { return; }
+    // The relay (src/live-relay.js) is the only sender, so a parse failure here means either a
+    // bug on that side or genuine network corruption -- rare, but silent failure here reads
+    // exactly like the terminal-freeze bug this whole session's stall-detector was built to
+    // catch: new spans just stop appearing with zero clue why. Logged rather than swallowed.
+    try { msg = JSON.parse(ev.data); } catch (err) {
+      console.error("[oteljazz] live message failed to parse, dropped:", ev.data, err);
+      return;
+    }
     if (msg.type !== "spans") return;
     for (const span of msg.spans) {
       // span.line is already fully-formed, HTML-escaped HTML (including its own [service]
