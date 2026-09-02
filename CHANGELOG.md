@@ -1,5 +1,34 @@
 # Changelog
 
+## v1.3.4 — 2026-09-02
+
+Expanded the v1.3.3 silent-catch sweep project-wide (Python engine, browser, the Claude Code
+hook), not just the Worker. Grepped every catch/except across the whole repo, kept the ones that
+are genuinely benign (sys.exit on missing deps, expected queue/statistics edge cases, feature
+detection with a documented fallback) and fixed the four that weren't.
+
+### Fixed
+
+- `web/app.js` -- a WebSocket message that fails to parse in live mode was silently dropped.
+  live-relay.js is the only sender, so this would only fire on a real bug or genuine corruption,
+  but a silent failure here reads exactly like the terminal-freeze bug this session's own
+  stall-detector was built to catch: spans just stop appearing with no clue why. Now logged.
+- `engine/build_corpus_model.py` -- a chord that failed roman-numeral analysis inside an
+  otherwise-successful piece vanished with zero trace, not even a count, unlike its sibling
+  per-piece catch which at least tracked one. This feeds the actual corpus numbers the paper
+  cites, so an uncounted drop rate there was a research-integrity gap, not just a missing log
+  line -- no way to tell "a few odd chords, expected" from "something's quietly eating most of
+  the data." Added a counter (`chord_errored`) reported in both the progress line and the final
+  summary. Both of the file's per-piece `except Exception as e:` blocks captured `e` and only
+  counted it without ever printing it; now both do.
+- `.claude/hooks/capture.py` -- the hook capturing real Claude Code session telemetry (the actual
+  data behind this project's "real-trace capture" feature) failed completely silently on any
+  error. Fail-open is correct and unchanged -- this must never block the session it's hooked
+  into, same reasoning as crawler-log.js's Rule 1 -- but stdout is the hook's own protocol
+  response, so a diagnostic can't go there without corrupting it. Now written to stderr instead,
+  which Claude Code doesn't treat as part of the response contract. Verified with malformed
+  input: stdout still returns exactly `{"continue": true}`, stderr now carries the actual error.
+
 ## v1.3.3 — 2026-09-02
 
 The project-wide diagnostic gap: `src/crawler-log.js`, which runs on every page view, had two
