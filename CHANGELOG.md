@@ -1,5 +1,41 @@
 # Changelog
 
+## v1.3.1 — 2026-09-02
+
+Runtime observability for the live-OTLP relay, which shipped in v1.3.0 as a genuine black box --
+decode failures and connection activity were caught and swallowed with no visibility anywhere.
+Plus a setup guide for the feature itself, which also didn't exist yet.
+
+### Added
+
+- `live_sessions` table (`infra/d1_schema.sql`) -- one row per session id, upserted on every
+  event, tracking span/ingest/decode-error/connect counts and first/last-seen. Durable and
+  queryable after the fact, matching how crawler activity is already queryable, rather than only
+  visible while watching logs live.
+- Structured `console.log`/`console.error` on every event in `src/live-relay.js` (connect,
+  disconnect, ingest, decode failure), each carrying the session id explicitly since Cloudflare's
+  log viewer doesn't group by Durable Object instance on its own. Visible immediately in
+  `wrangler tail` or the dashboard -- observability was already enabled (`wrangler.jsonc`), this
+  just gives it something worth showing.
+- `docs/README.md`'s new "Live browser mode" section: how to point a real OTLP/HTTP exporter at
+  the relay and what actually maps to what, using `engine/live_producer.py` (already in the repo,
+  already verified against this exact path) as the reference example.
+
+### Fixed
+
+- `src/otlp-decode.js` never bounds-checked a length-delimited field's declared length against
+  the actual buffer, and treated an unsupported wire type as "stop and return what's parsed so
+  far" rather than an error. Found by the observability work above, immediately: a POST of a
+  plain string to `/v1/traces` returned 200 with 0 spans instead of 400, because its first tag
+  byte happened to decode to an invalid wire type and the old behavior read that as a validly
+  empty message instead of what it was, garbage from the first byte. Both gaps meant
+  `decode_errors` could never actually increment no matter how malformed the input. Fixed with an
+  explicit bounds check and a hard error on an unsupported wire type -- this decoder consumes one
+  specific, stable proto schema, not an arbitrary one, so there's no legitimate case where an
+  unrecognized wire type should be silently tolerated. Verified: garbage now returns 400 and
+  increments `decode_errors`; real OTel SDK payloads still decode and drive audio exactly as
+  before (regression-checked against the deployed site, not just locally).
+
 ## v1.3.0 — 2026-09-02
 
 Live OTLP, including real audio: the browser demo can now be driven by a real, running system's
