@@ -79,46 +79,12 @@ function stopBootTicker() {
 // clearly as a tube warming up rather than a flash.
 const BOOT_WARMUP_MS = 2100;
 
-// Live-OTLP mode (v1.3.0, docs/ROADMAP.md): ?live=<session> connects to the Durable Object relay
-// in src/live-relay.js instead of running the synthetic demo. v1 scope only, see that file's
-// header for what this does and does not do yet -- real spans appear as real terminal text; they
-// do not yet drive the chorale voicing, so there's no audio in this mode. Deliberately a
-// completely separate code path from the synthetic boot chain below rather than a branch woven
-// through it, so this can't regress the synthetic demo every visitor without ?live= actually uses.
-function startLiveMode(session) {
-  termEl.innerHTML = '<span class="dim">&gt; connecting to live session...</span>';
-  statusEl.textContent = "Live mode (no audio yet)";
-  powerBtn.disabled = true;
-  powerBtn.title = "Live mode has no audio yet -- see docs/ROADMAP.md";
-
-  const proto = location.protocol === "https:" ? "wss:" : "ws:";
-  const ws = new WebSocket(`${proto}//${location.host}/live/${encodeURIComponent(session)}/ws`);
-
-  ws.onopen = () => {
-    termLines = [];
-    pushTerm(`<span class="dim">&gt; live session "${session}" connected. waiting for spans...</span>`);
-  };
-  ws.onmessage = (ev) => {
-    let msg;
-    try { msg = JSON.parse(ev.data); } catch { return; }
-    if (msg.type !== "spans") return;
-    for (const span of msg.spans) {
-      pushTerm(`<span class="dim">[${span.service}]</span> ${span.line}`);
-    }
-  };
-  ws.onerror = () => pushTerm('<span class="err">&gt; connection error</span>');
-  ws.onclose = () => pushTerm('<span class="dim">&gt; disconnected</span>');
-}
-
-const liveSession = new URLSearchParams(location.search).get("live");
-if (liveSession) {
-  startLiveMode(liveSession);
-} else {
-fetch(CORPUS_URL).then(r => r.json()).then(corpus => {
-  statusEl.textContent = "Loading instruments...";
-  director = new Director(corpus.root_transition_matrix_major);
-
-  director.onScheduleNote = (voice, note, vel, dur, atS, detuneSemitones) => {
+// Shared by both boot paths (synthetic below, live in startLiveMode) so there is exactly one
+// place wiring Director's output callbacks to Tone.js scheduling and the reveal queues -- a
+// second copy here would be exactly the kind of drift CLAUDE.md's per-span-mapping rule warns
+// about, even though that rule is written about the Python engine's batch/live split, not this.
+function wireDirectorCallbacks(d) {
+  d.onScheduleNote = (voice, note, vel, dur, atS, detuneSemitones) => {
     Tone.Transport.schedule((time) => {
       const sampler = voice === "bass" ? bassSampler : pianoSampler;
       // A continuous-deviation signature (drift/conflict -- see director.js's ANOMALY
@@ -135,8 +101,70 @@ fetch(CORPUS_URL).then(r => r.json()).then(corpus => {
     }, atS);
     pendingNoteReveals.push({ t: atS });
   };
-  director.onSpanLine = (item) => { pendingSpanLines.push(item); };
-  director.onChordChange = (item) => { pendingChords.push({ t: item.t, symbol: item.symbol }); };
+  d.onSpanLine = (item) => { pendingSpanLines.push(item); };
+  d.onChordChange = (item) => { pendingChords.push({ t: item.t, symbol: item.symbol }); };
+}
+
+// Live-OTLP mode (v1.3.0, docs/ROADMAP.md): ?live=<session> connects to the Durable Object relay
+// in src/live-relay.js instead of running the synthetic demo. Real spans now drive real audio --
+// director.js's Director.feedSpan() converts each incoming span into the exact shape
+// SwarmEngine._add already produces, so _generateBar's chorale voicing/comp/anomaly logic runs
+// unchanged on real data (see feedSpan's own comment). currentLookaheadS is set small (not the
+// synthetic path's 24s) since live spans arrive in real time and there is nothing to pre-generate
+// far ahead of; startEngine() itself is unchanged, just parametrized on that variable.
+async function startLiveMode(session) {
+  termEl.innerHTML = '<span class="dim">&gt; connecting to live session...</span>';
+  statusEl.textContent = "Loading instruments...";
+
+  try {
+    const corpus = await fetch(CORPUS_URL).then(r => r.json());
+    director = new Director(corpus.root_transition_matrix_major, { live: true });
+    wireDirectorCallbacks(director);
+    await loadInstruments();
+    currentLookaheadS = LIVE_LOOKAHEAD_S;
+    statusEl.textContent = "Ready. (live)";
+    powerBtn.disabled = false;
+    setupKnobs();
+  } catch (err) {
+    statusEl.textContent = "Error: " + err.message;
+    console.error(err);
+    return;
+  }
+
+  const proto = location.protocol === "https:" ? "wss:" : "ws:";
+  const ws = new WebSocket(`${proto}//${location.host}/live/${encodeURIComponent(session)}/ws`);
+
+  ws.onopen = () => {
+    termLines = [];
+    pushTerm(`<span class="dim">&gt; live session "${session}" connected. waiting for spans...</span>`);
+  };
+  ws.onmessage = (ev) => {
+    let msg;
+    try { msg = JSON.parse(ev.data); } catch { return; }
+    if (msg.type !== "spans") return;
+    for (const span of msg.spans) {
+      pushTerm(`<span class="dim">[${span.service}]</span> ${span.line}`);
+      // + currentLookaheadS, not the bare transport time: _generateBar only ever processes each
+      // bar once, advancing generatedUntilS monotonically, so a span stamped at exactly "now"
+      // would target a bar already generated moments ago and never get re-checked. The frontier
+      // bar the fill loop is about to generate next sits currentLookaheadS ahead of now -- that's
+      // the only bar a freshly-arrived span can still land in.
+      director.feedSpan(span, Tone.Transport.seconds + currentLookaheadS);
+    }
+  };
+  ws.onerror = () => pushTerm('<span class="err">&gt; connection error</span>');
+  ws.onclose = () => pushTerm('<span class="dim">&gt; disconnected</span>');
+}
+
+const liveSession = new URLSearchParams(location.search).get("live");
+if (liveSession) {
+  startLiveMode(liveSession);
+} else {
+fetch(CORPUS_URL).then(r => r.json()).then(corpus => {
+  statusEl.textContent = "Loading instruments...";
+  director = new Director(corpus.root_transition_matrix_major);
+
+  wireDirectorCallbacks(director);
 
   return loadInstruments();
 }).then(() => {
@@ -211,6 +239,12 @@ function decayVU() {
 // fewer generation ticks but more up-front CPU per tick; smaller = smoother but more frequent.
 // 24s (about half a chorus at 96bpm) is comfortably ahead of the ~1s tick interval below.
 const LOOKAHEAD_S = 24;
+// Live mode has nothing to pre-generate 24s ahead of -- a real span hasn't happened yet. Small
+// and positive only so Tone.Transport.schedule always gets a moment of buffer, not scheduling
+// into the past. currentLookaheadS is what startEngine() actually reads; the synthetic boot path
+// leaves it at its default (LOOKAHEAD_S), startLiveMode sets it before enabling play.
+const LIVE_LOOKAHEAD_S = 1.5;
+let currentLookaheadS = LOOKAHEAD_S;
 const FILL_TICK_MS = 1500;
 
 // Both loops below run via Tone.Transport.scheduleRepeat, not setInterval. That is not a style
@@ -227,9 +261,9 @@ const FILL_TICK_MS = 1500;
 // correct: there is nothing to generate or reveal while paused.
 function startEngine() {
   Tone.Transport.scheduleRepeat(() => {
-    director.fillUntil(Tone.Transport.seconds + LOOKAHEAD_S);
+    director.fillUntil(Tone.Transport.seconds + currentLookaheadS);
   }, FILL_TICK_MS / 1000);
-  director.fillUntil(LOOKAHEAD_S); // prime the first window before playback starts (~6ms, measured -- not the cause of any startup stall; see BUILD_NOTES)
+  director.fillUntil(currentLookaheadS); // prime the first window before playback starts (~6ms measured for the synthetic 24s case -- not the cause of any startup stall; see BUILD_NOTES)
 
   // Temporary diagnostic: a CPU profile proved the render loop itself is ticking correctly from
   // ~3s in, and the queue-fill call completes in ~10ms, yet pushTerm doesn't fire until ~13s in

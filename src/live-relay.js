@@ -3,13 +3,15 @@
  * browser tabs over WebSocket. v1 of the live path (see docs/ROADMAP.md's "A" section, and
  * engine/live.py's own docstring for the precedent of scoping a live path's v0.1 explicitly).
  *
- * WHAT THIS VERSION DOES: real spans arrive, get decoded, and appear as real text in the demo's
- * terminal, genuinely proving the wire end to end.
- * WHAT THIS VERSION DOES NOT DO YET: feed those spans into director.js's chorale voicing,
- * anomaly signatures, or chord scheduling. director.js is currently a fully self-contained
- * generator (its own SwarmEngine drives synthetic activity internally) with no external-input
- * hook at all -- building that hook is real design work, scoped separately, not done here.
- * Shipping a real, honestly-scoped, working slice now rather than a half-wired everything.
+ * WHAT THIS DOES: real spans arrive, get decoded, and broadcast in a shape carrying both a
+ * ready-to-render terminal line AND the raw op/tool/tokens/status fields. app.js's live mode
+ * consumes both: the terminal line for display, and the raw fields via director.js's
+ * Director.feedSpan() to actually drive the chorale voicing, comp density, and anomaly
+ * candidates -- the SAME per-span mapping the synthetic demo uses (see feedSpan's own comment
+ * for how the shapes are kept identical on purpose).
+ * WHAT'S STILL A REAL LIMITATION: only the literal agent name "orchestrator" gets the fixed
+ * 1:1 "planner" voice VoicePool already reserves for it; every other real agent name pools onto
+ * the generic worker voices, same as any synthetic subagent id does.
  *
  * One Durable Object instance per session id (see index.js's idFromName), so two people pointing
  * their own instrumented systems at oteljazz.com at the same time never see each other's spans --
@@ -46,7 +48,10 @@ function spanToLine(span) {
     ? ` <span class="err">ERROR</span>`
     : ` <span class="ok">OK</span>`;
 
-  return { t: tS, durS, service, line, status: span.status };
+  // `line` is pre-built HTML for the terminal (app.js's default consumer, always used).
+  // op/tool/tokens are the same values in raw form, for feedSpan()'s audio mapping (app.js,
+  // live-mode only) -- added rather than making that path re-derive them from `line`'s HTML.
+  return { t: tS, durS, service, line, status: span.status, op, tool: tool || null, tokens: tokens ?? null };
 }
 
 export class LiveRelay {

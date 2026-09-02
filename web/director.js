@@ -85,11 +85,38 @@ function applySwing(t) {
 }
 function clampNote(n) { return Math.max(0, Math.min(127, Math.round(n))); }
 
+// Live-mode counterpart to SwarmEngine (engine.js), used when Director is constructed with
+// {live: true}. Exposes the exact same three-method surface _generateBar actually calls
+// (advanceUntil/spans/trimBefore -- see director.js's _generateBar body, which reads
+// this.swarm.spans and calls this.swarm.advanceUntil/trimBefore and has NO other opinion about
+// where spans come from). That's the whole point: _generateBar's per-span mapping logic is
+// completely unaware whether spans are synthetic or real, so there is exactly one mapping
+// implementation feeding on either one, matching CLAUDE.md's rule against a second per-span
+// mapping for live-mode convenience -- this only swaps the POPULATOR of `spans`, never the
+// consumer.
+class LiveSwarmAdapter {
+  constructor() {
+    this.spans = [];
+  }
+  // No-op: a live adapter has no synthetic phases to advance. Real spans arrive via feed()
+  // whenever the transport layer above (app.js's WebSocket handler) receives one, on their own
+  // schedule, not this one.
+  advanceUntil() {}
+  // Identical to SwarmEngine.trimBefore -- bounds memory for a session left open indefinitely.
+  trimBefore(before) {
+    if (this.spans.length > 2000) {
+      this.spans = this.spans.filter(s => s.start >= before);
+    }
+  }
+  feed(span) { this.spans.push(span); }
+}
+
 export class Director {
-  constructor(corpusMatrix) {
+  constructor(corpusMatrix, { live = false } = {}) {
     this.rng = new Rng(cryptoSeed());
     this.matrix = corpusMatrix;
-    this.swarm = new SwarmEngine(this.rng);
+    this.live = live;
+    this.swarm = live ? new LiveSwarmAdapter() : new SwarmEngine(this.rng);
 
     this.keyPc = this.rng.int(12);                       // random starting key, not always Bb
     this.mode = this.rng.bool(0.7) ? "major" : "minor";   // mostly major, matches corpus skew
@@ -125,6 +152,36 @@ export class Director {
     this.onScheduleNote = null;   // (voice, midiNote, velocity, durationS, atS)
     this.onSpanLine = null;       // ({t, service, line}) for the terminal
     this.onChordChange = null;    // ({t, symbol})
+  }
+
+  // Live mode only: called by app.js's WebSocket handler for every real span the relay
+  // broadcasts (see src/live-relay.js's spanToLine -- op/tool/tokens/status/service match its
+  // output shape). Converts to the exact object shape SwarmEngine._add already produces
+  // ({agent, op, start, duration, tokens, status, tool}), so _generateBar's window filter
+  // (`this.swarm.spans.filter(...)`) treats a real span identically to a synthetic one -- it has
+  // no branch for live vs. synthetic because the shape is the same either way.
+  //
+  // `nowS` is the caller's current position on the SAME clock _generateBar's barStart/barEnd
+  // already use (Tone.Transport.seconds -- see this file's own header: "everything shares ONE
+  // clock"). Director stays Tone-agnostic by design (grep this file for "Tone." -- it never
+  // imports it), so app.js passes the transport time in rather than Director guessing one of
+  // its own; an earlier version stamped performance.now() since construction instead, which runs
+  // on a different origin than Transport.seconds (construction happens well before Transport
+  // ever starts) and silently starved every bar's window filter -- spans arrived timestamped
+  // later than any bar the fill loop had actually reached, so `s.start < barEnd` never matched
+  // and nothing was ever consumed despite feed() genuinely being called. Caught via
+  // window.__oteljazzDebug(): chordQueueLen was advancing normally while spanQueueLen sat at 0.
+  feedSpan(span, nowS) {
+    if (!this.live) return;
+    this.swarm.feed({
+      agent: span.service,
+      op: span.op || "chat",
+      start: nowS,
+      duration: Math.max(0.05, span.durS || 0.3),
+      tokens: Math.round(span.tokens || 50),
+      status: span.status === "error" ? "error" : "ok",
+      ...(span.tool ? { tool: span.tool } : {}),
+    });
   }
 
   _ensureChorus(chorusIdx) {
