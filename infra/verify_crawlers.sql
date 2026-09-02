@@ -36,10 +36,22 @@
 --
 --   AND ua NOT IN ('curl/8.7.1', 'python-httpx/0.28.1', '')
 --   AND ua NOT LIKE '%TestVerifyBot%'
+--   AND ua NOT LIKE '%Claude/1.40609.1%'   -- the Claude Browser dev-tool's own UA, used for this
+--                                          -- project's own UI verification against the live site
 --
 -- This list is not exhaustive and not meant to be maintained proactively -- add to it when a new
 -- round of manual verification introduces a new self-test UA, the same way the list above was
 -- built by checking what was actually in the table rather than guessed in advance.
+--
+-- WHAT WAS DELIBERATELY *NOT* ADDED, checked and rejected on 2026-09-02: a full-history sweep
+-- (`GROUP BY ua ORDER BY count(*) DESC`) turned up a wide spread of older Chrome UA strings
+-- (versions 78, 88, 89, 95, 131...) scattered across Aug 24 - Sep 1, and generic HTTP-client UAs
+-- (Go-http-client, python-requests, axios, aiohttp, fasthttp) that were never run by this
+-- project's own testing. The Claude Browser tool's UA is consistent and self-identifying (the
+-- Claude/1.40609.1 marker above); none of these match it. Tagging them as noise without real
+-- evidence would be the opposite mistake this whole note exists to prevent: discarding real
+-- data. The generic HTTP-client UAs in particular are exactly the "unlabelled automation" class
+-- query 4 below already exists to surface as signal, not noise.
 
 -- 1. Claim vs. origin. Every (claimed operator, ASN) pair seen, most active first.
 --    Expect a genuine operator to appear from a small, stable set of ASNs it owns.
