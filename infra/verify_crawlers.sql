@@ -21,6 +21,25 @@
 --
 -- Note the finding this makes possible is better than the one originally planned: reporting
 -- compliance AND impersonation together is a stronger result than compliance alone.
+--
+-- SELF-TEST NOISE. Every curl/script used to verify this project's own Worker/relay code during
+-- development gets logged exactly like real traffic, since the collector has no way to tell "the
+-- operator testing their own deploy" from "a visitor." This is not hypothetical: as of 2026-09-02
+-- there are 37 rows in `requests` from this session's own verification work alone (25x
+-- curl/8.7.1, 6x blank UA, 5x python-httpx/0.28.1, 1x a UA deliberately containing the string
+-- "GPTBot" to test the claimed-operator regex, which is why it shows up in query 1 below looking
+-- exactly like a real, plausible-impersonation GPTBot hit until the UA is actually read). None of
+-- this is a defect in the collector -- excluding it there would mean guessing in advance which
+-- future UAs are "real," which is exactly the kind of hardcoded assumption this schema avoids
+-- elsewhere. It is a real gap in every query below, though: none of them exclude it, so any of
+-- them run today would silently fold known test noise into a finding. Filter it at analysis time:
+--
+--   AND ua NOT IN ('curl/8.7.1', 'python-httpx/0.28.1', '')
+--   AND ua NOT LIKE '%TestVerifyBot%'
+--
+-- This list is not exhaustive and not meant to be maintained proactively -- add to it when a new
+-- round of manual verification introduces a new self-test UA, the same way the list above was
+-- built by checking what was actually in the table rather than guessed in advance.
 
 -- 1. Claim vs. origin. Every (claimed operator, ASN) pair seen, most active first.
 --    Expect a genuine operator to appear from a small, stable set of ASNs it owns.
