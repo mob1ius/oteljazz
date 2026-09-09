@@ -142,6 +142,19 @@ export class LiveRelay {
     }
 
     if (request.headers.get('Upgrade') === 'websocket') {
+      // Ingest already has a body-size cap and a rate limit; the viewer side had neither, which
+      // left the one genuinely unbounded resource on this whole object. Sockets accumulate in a
+      // Set and every ingest broadcasts to all of them, so N idle connections cost memory AND
+      // multiply the per-span send work -- on a public, unauthenticated endpoint where anyone
+      // knowing a session id can open as many as they like. 32 is far above real use (a few
+      // browser tabs watching one session) and far below anything that threatens the DO's memory
+      // limit. Rejected with 503, not 429: this is "this room is full", not "you are being
+      // throttled", and a legitimate viewer should retry rather than back off permanently.
+      const MAX_SOCKETS = 32;
+      if (this.sockets.size >= MAX_SOCKETS) {
+        this._log('ws_rejected', { reason: 'socket_limit', openSockets: this.sockets.size });
+        return new Response('too many concurrent viewers for this session', { status: 503 });
+      }
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
       server.accept();
