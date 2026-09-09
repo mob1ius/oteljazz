@@ -645,12 +645,14 @@ powerBtn.onclick = async () => {
     Tone.Transport.start();
     playing = true;
     powerBtn.textContent = "⏸";
+    powerBtn.setAttribute("aria-label", "Pause");
     statusEl.textContent = "Playing...";
   } else {
     Tone.Transport.pause();
     playing = false;
     restAudioMeter();
     powerBtn.textContent = "▶";
+    powerBtn.setAttribute("aria-label", "Play");
     statusEl.textContent = "Paused.";
   }
 };
@@ -684,6 +686,7 @@ window.addEventListener("keydown", (e) => {
   }
   konamiPos = e.code === KONAMI[konamiPos] ? konamiPos + 1 : (e.code === KONAMI[0] ? 1 : 0);
   if (konamiPos === KONAMI.length) { konamiPos = 0; toggleServiceMode(); e.preventDefault(); return; }
+  if (e.key === "`") { consoleEnter(); e.preventDefault(); return; }
   if (e.code === "Space") {
     e.preventDefault(); // stop the page from scrolling on space
     powerBtn.click();
@@ -821,8 +824,16 @@ function consoleExit() {
   pushTerm('<span class="dim">&gt; console closed.</span>');
 }
 
-document.querySelector(".dial-glass").addEventListener("click", () => {
+const dialGlassTarget = document.querySelector(".dial-glass");
+dialGlassTarget.addEventListener("click", () => {
   if (!consoleActive) consoleEnter();
+});
+// Keyboard route in. Click was the only way to open the console, which left keyboard-only
+// visitors with no path to it at all. Enter (not Space) on the focused glass, because Space is
+// already bound globally to play/pause and would fire both. Backtick works from anywhere, the
+// way it does in most consoles.
+dialGlassTarget.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !consoleActive) { consoleEnter(); e.preventDefault(); }
 });
 
 // =============================================================================================
