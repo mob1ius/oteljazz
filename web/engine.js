@@ -458,23 +458,6 @@ class SwarmEngine {
     return span;
   }
 
-  // Most recent span for `agent` with start < t, or null. Deliberately a scan over `this.spans`
-  // rather than a "last write wins" pointer updated as spans are generated: advanceUntil(barEnd)
-  // runs whole PHASES atomically (a single _fanOut call can generate 10-20+ seconds of spans in
-  // one shot), so a last-write-wins pointer ends up holding a span from WAY past `t` by the time
-  // a caller checks it -- confirmed by direct instrumentation: a bar at t=7.5 saw worker2's
-  // "last" span sitting at t=31.85, 24s in the future relative to that bar. That made every busy
-  // agent look NOT live (its one remembered span was always past barEnd), which silently starved
-  // both the comp (chord thickness never reflected real swarm activity) and anomaly-signature
-  // targeting (no candidates were ever found). This is the fix: ask for the state as of a
-  // specific time, don't cache a single "current" span that a fast-forwarding generator outruns.
-  mostRecentSpanBefore(agent, t) {
-    let best = null;
-    for (const s of this.spans) {
-      if (s.agent === agent && s.start < t && (!best || s.start > best.start)) best = s;
-    }
-    return best;
-  }
 
   _toolCall(agentId, at) {
     const server = this.rng.choice(MCP_SERVER_NAMES);

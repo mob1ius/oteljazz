@@ -39,7 +39,12 @@
      script-src 'self' with no third-party origin at all, and it removes a launch-day failure
      mode -- under SRI a CDN-side build change fails the load SILENTLY, which would take the
      demo down at exactly the moment traffic peaks. Same-origin scripts don't need SRI. -->
-<script src="vendor/Tone.js"></script>
+<!-- defer: without it the parser stops here to download and execute 341 KB before rendering
+     anything, so the cabinet can't paint until Tone.js is done. Safe because app.js only touches
+     the Tone global inside functions (never at module-evaluation time), and a deferred classic
+     script and a module script both run in the deferred phase in document order -- so Tone.js is
+     still guaranteed to have executed before app.js does. -->
+<script src="vendor/Tone.js" defer></script>
 <style>
   :root {
     --wood-dark: #3a2418;
