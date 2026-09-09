@@ -292,6 +292,22 @@ function pushTerm(line) {
 // deterministically on the other end (see Director's constructor comment), so the link itself is
 // tiny regardless of how long or eventful the session gets.
 function setupShareLink(seed) {
+  // The cabinet's model plate carries the same seed as an etched serial number -- the share
+  // feature's own value surfaced inside the fiction rather than only on a web button below it.
+  // Base36 so it reads like a plausible serial rather than a raw 32-bit integer.
+  const plate = document.getElementById("modelPlate");
+  const serial = document.getElementById("modelPlateSerial");
+  if (plate && serial) {
+    serial.textContent = "OJ-" + Number(seed).toString(36).toUpperCase().padStart(7, "0");
+    plate.addEventListener("click", async () => {
+      const url = `${location.origin}${location.pathname}?seed=${seed}`;
+      try { await navigator.clipboard.writeText(url); } catch { /* same non-secure-context case the share button handles */ }
+      const was = serial.textContent;
+      serial.textContent = "COPIED";
+      setTimeout(() => { serial.textContent = was; }, 1400);
+    });
+  }
+
   const row = document.getElementById("shareRow");
   const btn = document.getElementById("shareBtn");
   const copied = document.getElementById("shareCopied");
@@ -648,6 +664,26 @@ powerBtn.onclick = async () => {
 // Global, not scoped to an element: the page has no text inputs to steal these keys from.
 const KEY_NUDGE = 0.05;
 window.addEventListener("keydown", (e) => {
+  // The console owns the keyboard while open, so typing "b" doesn't fire a shortcut mid-word.
+  // (The comment above about "no text inputs to steal these keys from" predates the console.)
+  if (consoleActive) {
+    if (e.key === "Escape") { consoleExit(); return; }
+    if (e.key === "Enter") {
+      const cmd = consoleBuf;
+      consoleBuf = "";
+      termLines.pop();
+      pushTerm('<span class="dim">&gt;</span> ' + escapeHtml(cmd));
+      consoleRun(cmd);
+      if (consoleActive) consolePrompt();
+      e.preventDefault();
+      return;
+    }
+    if (e.key === "Backspace") { consoleBuf = consoleBuf.slice(0, -1); consoleRedraw(); e.preventDefault(); return; }
+    if (e.key.length === 1 && consoleBuf.length < 48) { consoleBuf += e.key; consoleRedraw(); e.preventDefault(); return; }
+    return;
+  }
+  konamiPos = e.code === KONAMI[konamiPos] ? konamiPos + 1 : (e.code === KONAMI[0] ? 1 : 0);
+  if (konamiPos === KONAMI.length) { konamiPos = 0; toggleServiceMode(); e.preventDefault(); return; }
   if (e.code === "Space") {
     e.preventDefault(); // stop the page from scrolling on space
     powerBtn.click();
@@ -707,6 +743,147 @@ function flashVoiceActivity(voice) {
   void led.offsetWidth; // force reflow -- see comment above
   led.classList.add("flicker");
 }
+
+// =============================================================================================
+// Console: the dial glass is a convincing fake terminal, so let people actually touch it. Click
+// the glass to take focus, type, Enter to run, Escape to leave. Deliberately a handful of
+// in-fiction commands rather than a real shell -- nothing here reaches anything outside the page.
+//
+// SECURITY: whatever gets typed is echoed back through pushTerm(), which renders with innerHTML
+// (the terminal needs its <span class="dim/ok/err"> markup). User input therefore MUST be escaped
+// on the way in -- the same rule, and the same reason, as src/live-relay.js escaping OTLP
+// attributes server-side before they reach this identical sink.
+// =============================================================================================
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+}
+
+let consoleActive = false;
+let consoleBuf = "";
+
+function consolePrompt() {
+  pushTerm('<span class="dim">&gt;</span> ' + escapeHtml(consoleBuf) + '<span class="term-caret">_</span>');
+}
+// The prompt line is re-rendered in place as you type rather than appended, so a long command
+// doesn't scroll the whole span feed away one keystroke at a time.
+function consoleRedraw() { termLines.pop(); consolePrompt(); }
+
+function consoleRun(raw) {
+  const cmd = raw.trim();
+  const [verb, ...rest] = cmd.split(/\s+/);
+  switch (verb.toLowerCase()) {
+    case "": break;
+    case "help":
+      pushTerm('<span class="dim">available: help, whoami, ls, seed, chord, voices, about, clear, exit</span>');
+      break;
+    case "whoami":
+      pushTerm('<span class="ok">overseer</span> <span class="dim">-- you are listening, not driving. the swarm does not know you are here.</span>');
+      break;
+    case "ls":
+      pushTerm('<span class="dim">orchestrator/  subagents/  corpus_model_jazz.json  robots.txt  ai.txt</span>');
+      break;
+    case "seed":
+      pushTerm('<span class="dim">session seed:</span> <span class="ok">' + escapeHtml(String(director && director.seed)) + '</span>');
+      break;
+    case "chord":
+      pushTerm('<span class="dim">sounding:</span> <span class="ok">' + escapeHtml(chordEl.textContent || "--") + '</span>');
+      break;
+    case "voices":
+      pushTerm('<span class="dim">' + escapeHtml(soloedVoices.size ? [...soloedVoices].join(" ") : "all nine, fused") + '</span>');
+      break;
+    case "about":
+      pushTerm('<span class="dim">OtelJazz -- OpenTelemetry spans from a multi-agent system, played by a jazz combo.</span>');
+      pushTerm('<span class="dim">harmony mined from 406 transcribed solos. telemetry drives dynamics only.</span>');
+      break;
+    case "clear": termLines = []; break;
+    case "exit": consoleExit(); return;
+    default:
+      pushTerm('<span class="err">?</span> <span class="dim">' + escapeHtml(verb) + ': not a command. try help</span>');
+  }
+}
+
+function consoleEnter() {
+  if (consoleActive) return;
+  consoleActive = true;
+  termEl.classList.add("console-live");
+  consoleBuf = "";
+  pushTerm('<span class="dim">&gt; console. type help, or esc to leave.</span>');
+  consolePrompt();
+}
+function consoleExit() {
+  if (!consoleActive) return;
+  consoleActive = false;
+  consoleBuf = "";
+  termEl.classList.remove("console-live");
+  termLines.pop();
+  pushTerm('<span class="dim">&gt; console closed.</span>');
+}
+
+document.querySelector(".dial-glass").addEventListener("click", () => {
+  if (!consoleActive) consoleEnter();
+});
+
+// =============================================================================================
+// Konami -> service mode. Exposes the engine internals window.__oteljazzDebug() already returns,
+// which until now were console-only: transport time, queue depths, cursors. An engineer's panel
+// on an engineer's radio. The arrow keys in the sequence also nudge the knobs (they share the
+// handler below), but up-up-down-down and left-right-left-right each net to zero, so the dial
+// lands exactly where it started -- no cleanup needed.
+// =============================================================================================
+const KONAMI = ["ArrowUp","ArrowUp","ArrowDown","ArrowDown","ArrowLeft","ArrowRight","ArrowLeft","ArrowRight","KeyB","KeyA"];
+let konamiPos = 0;
+let serviceTimer = null;
+
+function toggleServiceMode() {
+  const el = document.getElementById("servicePanel");
+  if (!el) return;
+  const turningOn = el.hidden;
+  el.hidden = !turningOn;
+  clearInterval(serviceTimer);
+  if (turningOn) {
+    const tick = () => {
+      const d = window.__oteljazzDebug ? window.__oteljazzDebug() : null;
+      el.textContent = d
+        ? `transport ${d.transportS.toFixed(2)}s | spans ${d.spanCursor}/${d.spanQueueLen} | chords ${d.chordCursor}/${d.chordQueueLen} | seed ${director ? director.seed : "-"}`
+        : "engine not started -- press play";
+    };
+    tick();
+    serviceTimer = setInterval(tick, 500);
+  }
+}
+
+// =============================================================================================
+// Station drift: rarely, the dial wanders off station on its own and the signal degrades before
+// settling back. A real superhet does this; a web page never does, which is exactly why it is
+// worth doing. Goes through the tuning knob's own programmatic handle, so the audible result is
+// identical to a listener having nudged it themselves -- no second audio path.
+// =============================================================================================
+const DRIFT_CHANCE = 0.06;
+const DRIFT_CHECK_MS = 45000;
+function maybeStationDrift() {
+  if (!playing || !tuneKnobHandle || Math.random() > DRIFT_CHANCE) return;
+  const dir = Math.random() < 0.5 ? -1 : 1;
+  const depth = 0.10 + Math.random() * 0.10;
+  const steps = 14;
+  let i = 0;
+  pushTerm('<span class="dim">&gt; signal drifting...</span>');
+  const away = setInterval(() => {
+    tuneKnobHandle.nudge((dir * depth) / steps);
+    if (++i >= steps) {
+      clearInterval(away);
+      setTimeout(() => {
+        let j = 0;
+        const back = setInterval(() => {
+          tuneKnobHandle.nudge((-dir * depth) / steps);
+          if (++j >= steps) { clearInterval(back); pushTerm('<span class="dim">&gt; ...station recovered.</span>'); }
+        }, 90);
+      }, 1600);
+    }
+  }, 90);
+}
+setInterval(maybeStationDrift, DRIFT_CHECK_MS);
 
 // --- Knob interaction: vertical drag (mouse or touch), like turning a real knob by dragging up/
 // down rather than trying to trace a circular path -- the standard software-knob convention.

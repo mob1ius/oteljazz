@@ -662,6 +662,54 @@
     color: #e0cc9e;
     border-color: rgba(201,162,75,0.4);
   }
+  /* Blinking caret for the console (see app.js). Steps, not a fade: a terminal cursor is on or
+     off, never halfway. */
+  @keyframes caretBlink { 0%,49% { opacity: 1; } 50%,100% { opacity: 0; } }
+  .term-caret { animation: caretBlink 1.05s steps(1, end) infinite; color: var(--phosphor); }
+  .term.console-live { cursor: text; }
+  .dial-glass { cursor: text; }
+
+  /* Service panel: engineer's readout, hidden until the konami sequence. Monospace, dim, sits
+     under the cabinet so it never covers the dial it is reporting on. */
+  .service-panel {
+    width: var(--radio-w);
+    margin: 10px auto 0;
+    padding: 7px 12px;
+    font-family: 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    color: var(--phosphor-dim);
+    background: rgba(8,5,0,0.7);
+    border: 1px solid rgba(201,162,75,0.25);
+    border-radius: 5px;
+    text-align: center;
+  }
+
+  /* Etched brass model plate on the cabinet. Positioned as a percentage of the photo like every
+     other overlay here, so it tracks the image at any width. */
+  .model-plate {
+    position: absolute;
+    left: 6.5%;
+    bottom: 11%;
+    z-index: 3;
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    padding: 2px 6px;
+    font-family: 'SF Mono', Menlo, Consolas, monospace;
+    font-size: clamp(5px, 0.72vw, 8px);
+    letter-spacing: 0.08em;
+    color: rgba(255, 226, 170, 0.5);
+    background: linear-gradient(180deg, rgba(140,110,50,0.35), rgba(70,52,22,0.35));
+    border: 1px solid rgba(201,162,75,0.3);
+    border-radius: 2px;
+    cursor: pointer;
+    text-shadow: 0 1px 0 rgba(0,0,0,0.6);
+    transition: color 0.15s ease-out, border-color 0.15s ease-out;
+  }
+  .model-plate:hover { color: rgba(255,236,190,0.85); border-color: rgba(201,162,75,0.6); }
+  .model-plate-label { opacity: 0.55; }
+
   .share-row {
     width: min(920px, 94vw);
     margin: 10px auto 0;
@@ -863,6 +911,9 @@
          overlay rather than a pseudo-element on .radio, because .radio carries the photo as a
          background and an inset highlight there would be clipped by its own overflow. -->
     <div class="brass-sweep" aria-hidden="true"><i id="brassSweep"></i></div>
+    <button type="button" class="model-plate" id="modelPlate" title="Session serial -- click to copy">
+      <span class="model-plate-label">MODEL</span><span id="modelPlateSerial">----</span>
+    </button>
     <div class="radio">
       <div class="knob-control" id="volKnob" style="left:59.07%; top:80.27%; width:6.86%;">
         <div class="knob-indicator"></div>
@@ -939,6 +990,11 @@
        to clear -- cleaner than a permanently-visible button that does nothing most of the time. -->
   <button type="button" class="voice-clear" id="voiceClear" title="Clear all">&times;</button>
 </div>
+
+<!-- Service panel (konami) and the cabinet's model plate. The plate shows the session seed as
+     a serial number -- the share feature's own value, surfaced inside the fiction instead of only
+     on a web button. Click to copy. -->
+<div class="service-panel" id="servicePanel" hidden></div>
 
 <div class="caption">
   <span>OpenTelemetry spans, played by a jazz combo</span>
