@@ -112,8 +112,19 @@ class LiveSwarmAdapter {
 }
 
 export class Director {
-  constructor(corpusMatrix, { live = false } = {}) {
-    this.rng = new Rng(cryptoSeed());
+  constructor(corpusMatrix, { live = false, seed } = {}) {
+    // `seed`, when given, replaces the normal fresh-per-visit cryptoSeed() -- everything
+    // downstream (key, mode, form, and in synthetic mode the swarm activity itself, since
+    // SwarmEngine takes this SAME rng instance rather than seeding its own) derives from this
+    // one stream (see cryptoSeed()'s own comment on why one stream is enough), so a shared seed
+    // reproduces a session byte-for-byte in synthetic mode. Not meaningful for live mode's
+    // actual span content, which is real external data, not generated -- only the harmonic
+    // form/key/mode/anomaly-roll side of a live session is seed-reproducible, not what an agent
+    // swarm actually did. This project's own Rng is a fully deterministic PRNG (see engine.js),
+    // so there is no platform/browser-version dependence to worry about the way there would be
+    // with a built-in Math.random().
+    this.seed = seed || cryptoSeed();
+    this.rng = new Rng(this.seed);
     this.matrix = corpusMatrix;
     this.live = live;
     this.swarm = live ? new LiveSwarmAdapter() : new SwarmEngine(this.rng);

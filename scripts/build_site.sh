@@ -41,7 +41,7 @@ FILES=(
   "og.jpg"                    # social card; a real screenshot of the demo, not a mockup
 )
 DIRS=(
-  "assets"                    # radio_overlay.png
+  "assets"                    # radio_overlay.webp
   "samples"                   # salamander_piano/, pizz_bass/
   "vendor"                    # Tone.js (vendored, verified against the CDN's SRI hash)
 )

@@ -55,6 +55,7 @@
     --phosphor-dim: #8a5c10;
     --phosphor-glow: rgba(255,176,0,0.85);
     --phosphor-glow-wide: rgba(255,140,0,0.45);
+    --radio-w: min(920px, 94vw);
   }
   * { box-sizing: border-box; }
   html, body {
@@ -64,9 +65,16 @@
     color: #eee;
     overflow-x: hidden;
   }
+  /* Column, not the default row: the radio and every control under it (voice picker, caption,
+     share/replay rows) are siblings here and must stack as one centered unit. They used to live
+     OUTSIDE this 100vh block entirely, which put every one of them exactly one viewport below the
+     fold -- invisible on load, and the reason the voice picker's "flush against the cabinet"
+     styling never actually applied: the two elements were never adjacent in layout at all.
+     min-height (not height) so a short viewport overflows and scrolls rather than clipping. */
   .stage {
     min-height: 100vh;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     padding: 24px;
@@ -79,8 +87,10 @@
      simply drop it out of the dial and into normal flow. */
   .radio-wrap {
     position: relative;
-    width: min(920px, 94vw);
-    /* Matches assets/radio_overlay.png's real pixel dimensions (1312x816) exactly, rather than
+    /* One source of truth for the cabinet's width -- .voice-picker matches it and derives its
+       overlap offset from it, so the two can't drift apart at any viewport size. */
+    width: var(--radio-w);
+    /* Matches assets/radio_overlay.webp's real pixel dimensions (1312x816) exactly, rather than
        the approximate 16:10 the CSS-drawn version used, so the image is never letterboxed or
        cropped inside this box. */
     aspect-ratio: 1312 / 816;
@@ -89,8 +99,11 @@
     position: absolute;
     inset: 0;
     overflow: hidden;
-    border-radius: 28px;
-    background: #000 url("assets/radio_overlay.png") center / 100% 100% no-repeat;
+    /* Top corners only: the voice-picker panel sits flush against the bottom edge now (see its
+       own rule) and rounds ITS bottom corners instead, so the two read as one continuous
+       cabinet rather than two stacked boxes with their own separate rounded corners. */
+    border-radius: 28px 28px 0 0;
+    background: #000 url("assets/radio_overlay.webp") center / 100% 100% no-repeat;
     box-shadow: 0 30px 60px rgba(0,0,0,0.6);
   }
   /* .cutout is positioned absolutely over the blank dial-glass rectangle baked into the
@@ -287,7 +300,7 @@
     transition: height 0.08s linear, background 0.08s linear;
   }
   /* Interactive knob overlays -- positioned over the two brass knobs baked into
-     assets/radio_overlay.png (found by cropping/eyeballing the actual image, same method as the
+     assets/radio_overlay.webp (found by cropping/eyeballing the actual image, same method as the
      dial-glass cutout). Deliberately near-invisible at rest (a knob-shaped hit target plus a
      thin pointer indicator) rather than a drawn replacement knob, so the photo's own knob stays
      the visible object and this just adds the pointer + interactivity on top of it. */
@@ -333,9 +346,12 @@
     pointer-events: none;
     text-shadow: 0 1px 2px rgba(0,0,0,0.8);
   }
+  /* Normal flow, not absolute: it sits after the voice picker in .stage's column now. It used to
+     be absolutely positioned at bottom:-34px on .radio-wrap, which parked it in exactly the space
+     the picker needs to sit flush in -- the two would overlap. The narrow-screen media query below
+     already forced it static for the same layout reason, so this just makes that the default. */
   .caption {
-    position: absolute;
-    bottom: -34px; left: 0; right: 0;
+    margin-top: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -357,6 +373,199 @@
   }
   .gh-link:hover, .gh-link:focus-visible {
     color: var(--dial-glow);
+  }
+  /* Attached flush to .radio-wrap's bottom edge (0 margin-top, same width, same brass border
+     language, rounding only the bottom corners since .radio now rounds only its top) so this
+     reads as a lower control strip on the SAME cabinet, not a second floating panel. Wood-grain
+     gradient reuses the exact --wood-* tokens the radio photo's own CSS-drawn parts use
+     elsewhere on the page, and the brass rivets below echo the photo's actual bezel screws. */
+  .voice-picker {
+    position: relative;
+    width: var(--radio-w);
+    /* Pulled UP over the image's dead bottom margin. radio_overlay.webp has the cabinet floating
+       on a black background, and its real bottom edge sits 59 of 816 rows (7.2% of image height)
+       above the file's last row -- measured by scanning the actual pixels, not eyeballed. Docking
+       at the file's bottom therefore left this strip meeting black background instead of wood,
+       which is what made the seam visible. 0.045 = (816/1312 aspect) x 0.072, so the overlap
+       tracks the cabinet edge exactly at every viewport width. Cropping the image instead would
+       have been simpler but would invalidate every .cutout/.dial-live percentage below, all of
+       which were pixel-scanned against these exact 1312x816 dimensions. */
+    margin: calc(var(--radio-w) * -0.045) auto 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    padding: 14px 20px 12px;
+    background: linear-gradient(180deg, var(--wood-mid), var(--wood-dark));
+    border: 1px solid var(--brass-dark);
+    border-top: none;
+    border-radius: 0 0 20px 20px;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.4), 0 12px 24px rgba(0,0,0,0.45);
+  }
+  /* Rivets: four small brass dots along the strip's own top edge, echoing the ones baked into
+     radio_overlay.webp along the cabinet's real bezel, so the seam between photo and CSS strip
+     reads as one continuous row of hardware instead of a visible join. Pure decoration
+     (aria-hidden via being a ::before/::after pair, not a real element needing a role). */
+  .voice-picker::before, .voice-picker::after {
+    content: "";
+    position: absolute;
+    top: 6px;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #e8cf8a, var(--brass-dark) 70%);
+    box-shadow: 0 1px 1px rgba(0,0,0,0.5);
+  }
+  .voice-picker::before { left: 14px; }
+  .voice-picker::after { right: 14px; }
+  /* A thin divider between the seven fused chord voices and bass/melody (the two that already
+     sit outside the chord by design -- see README's "two intentionally segregable exceptions"),
+     so the panel's own layout echoes that grouping instead of presenting nine undifferentiated
+     buttons. */
+  .voice-group-divider {
+    align-self: stretch;
+    width: 1px;
+    margin: 2px 2px;
+    background: linear-gradient(180deg, transparent, var(--brass-dark), transparent);
+  }
+  /* A small channel-strip mute switch, not a pill chip -- a physical button with an LED, matching
+     the brass/wood vocabulary the rest of the page already uses instead of a generic web-app
+     control. Multi-select (see app.js): any number can be "on" at once, unlike a radio-button
+     solo. */
+  .voice-switch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    width: 42px;
+    padding: 7px 3px 5px;
+    font-family: 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 9px;
+    letter-spacing: 0.03em;
+    color: #b8a67e;
+    background: linear-gradient(180deg, #2c2013, #1c140b);
+    border: 1px solid rgba(0,0,0,0.4);
+    border-radius: 4px;
+    cursor: pointer;
+    /* Physical-button depth: a light top edge and a dark bottom edge read as a raised cap even
+       at this size, and both invert on :active so a press genuinely looks pressed in, not just
+       recolored. */
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -2px 0 rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.4);
+    transition: color 0.15s ease-out, background 0.15s ease-out, border-color 0.15s ease-out, transform 0.08s ease-out;
+  }
+  .voice-switch:hover {
+    color: #e0cc9e;
+    border-color: rgba(201,162,75,0.4);
+  }
+  .voice-switch:active {
+    box-shadow: inset 0 2px 0 rgba(0,0,0,0.5), inset 0 -1px 0 rgba(255,255,255,0.04);
+    transform: translateY(1px);
+  }
+  .voice-led {
+    position: relative;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #241a10;
+    box-shadow: inset 0 1px 1px rgba(0,0,0,0.7);
+    transition: background 0.15s ease-out, box-shadow 0.15s ease-out;
+  }
+  /* Lit (soloed, via app.js's .on class): a bright core plus a soft wide bloom, two separate
+     shadow layers rather than one, since a single blurred shadow reads as a fuzzy dot while a
+     tight-plus-wide pair reads as an actual light source the way a real console LED does. */
+  .voice-switch.on .voice-led {
+    background: var(--dial-glow);
+    box-shadow:
+      0 0 2px 1px #fff8e8,
+      0 0 5px 1px var(--phosphor-glow, rgba(255,176,0,0.85)),
+      0 0 11px 3px rgba(255,176,0,0.4);
+  }
+  .voice-switch.on {
+    color: var(--dial-glow);
+    border-color: rgba(255,176,0,0.45);
+    background: linear-gradient(180deg, #453314, #2e2210);
+  }
+  /* Activity flicker (app.js's flashVoiceActivity, called from onScheduleNote for every voice on
+     every note played, on or off): a brief, dimmer amber pulse independent of the steady .on
+     glow above, so the panel doubles as a real per-voice activity meter, not just a static solo
+     toggle -- a listener can watch which voices are actually sounding right now even with
+     nothing soloed. Deliberately dimmer/faster than the steady .on state (own animation, own
+     peak brightness) so the two stay visually distinct: soloed reads as "chosen," flicker reads
+     as "active," and a voice that's both looks like the steady glow with a brighter flash riding
+     on top of it rather than the two being confusable. */
+  @keyframes voiceFlicker {
+    0%   { background: #ffcf7a; box-shadow: 0 0 3px 1px rgba(255,207,122,0.9), 0 0 7px 2px rgba(255,176,0,0.35); }
+    100% { background: #241a10; box-shadow: inset 0 1px 1px rgba(0,0,0,0.7); }
+  }
+  .voice-led.flicker {
+    animation: voiceFlicker 0.4s ease-out;
+  }
+  /* On top of an already-soloed (steady-lit) voice, the flicker still needs to visibly ADD
+     brightness rather than the animation's own end-state (unlit) briefly overriding the steady
+     glow -- swap the keyframe's rest state to match .on's lit color instead of the dark default. */
+  .voice-switch.on .voice-led.flicker {
+    animation-name: voiceFlickerOnTop;
+  }
+  @keyframes voiceFlickerOnTop {
+    0%   { box-shadow: 0 0 3px 1px #fff8e8, 0 0 7px 2px rgba(255,207,122,0.7), 0 0 14px 4px rgba(255,176,0,0.5); }
+    100% { box-shadow: 0 0 2px 1px #fff8e8, 0 0 5px 1px var(--phosphor-glow, rgba(255,176,0,0.85)), 0 0 11px 3px rgba(255,176,0,0.4); }
+  }
+  /* Cleaner operation: hidden until something is actually soloed (nothing to clear otherwise),
+     via :has() rather than app.js toggling a class -- one less thing for the click handler to
+     remember to keep in sync with the Set's own state. */
+  .voice-clear {
+    display: none;
+    width: 20px;
+    height: 20px;
+    align-items: center;
+    justify-content: center;
+    margin-left: 4px;
+    font-size: 15px;
+    line-height: 1;
+    color: #6a5c42;
+    background: none;
+    border: 1px solid rgba(0,0,0,0.3);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: color 0.15s ease-out, border-color 0.15s ease-out;
+  }
+  .voice-picker:has(.on) .voice-clear {
+    display: flex;
+  }
+  .voice-clear:hover {
+    color: #e0cc9e;
+    border-color: rgba(201,162,75,0.4);
+  }
+  .share-row {
+    width: min(920px, 94vw);
+    margin: 10px auto 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-family: 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 11px;
+  }
+  .share-btn {
+    color: #766a52;
+    background: none;
+    border: 1px solid rgba(255,176,0,0.18);
+    border-radius: 999px;
+    padding: 5px 14px;
+    cursor: pointer;
+    transition: color 0.15s ease-out, border-color 0.15s ease-out;
+  }
+  .share-btn:hover {
+    color: var(--dial-glow);
+    border-color: rgba(255,176,0,0.5);
+  }
+  .share-copied {
+    color: var(--dial-glow);
+    opacity: 0;
+    transition: opacity 0.15s ease-out;
+  }
+  .share-copied.visible {
+    opacity: 1;
   }
   /* Attribution is a LICENSE CONDITION here, not a courtesy, so it ships on the page rather
      than living only in the docs: the piano samples are CC BY 3.0 (attribution required on
@@ -404,7 +613,7 @@
       inset: auto;
       width: 100%;
       aspect-ratio: 1312 / 816;
-      border-radius: 14px;
+      border-radius: 14px 14px 0 0;
       box-shadow: 0 12px 28px rgba(0,0,0,0.55);
     }
     /* Out of the dial, into normal flow, restyled as its own panel. */
@@ -556,14 +765,56 @@
         </div>
       </div>
     </div>
-    <div class="caption">
-      <span>OpenTelemetry spans, played by a jazz combo</span>
-      <a class="gh-link" href="https://github.com/mob1ius/oteljazz" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub">
-        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
-      </a>
-    </div>
   </div>
+
+<!-- Click any number of switches to narrow the mix down to just those voices (click one again to
+     release it). Mixer-style multi-toggle, not a single exclusive solo -- see app.js's
+     soloedVoices Set. Isolates any combination of the nine voices the fused chord deliberately
+     hides from casual listening (README's "one harmonic object" design rationale); this is a
+     deliberate way to un-fuse them on demand, not a change to the default experience, which is
+     every switch off. Order matches CHORD_VOICE_ORDER (web/engine.js) plus bass/melody, the same
+     order the engine itself schedules in. -->
+<div class="voice-picker" id="voicePicker" role="group" aria-label="Narrow the mix to specific voices">
+  <button type="button" class="voice-switch" data-voice="arch1" aria-pressed="false"><span class="voice-led"></span>Arch1</button>
+  <button type="button" class="voice-switch" data-voice="planner" aria-pressed="false"><span class="voice-led"></span>Planner</button>
+  <button type="button" class="voice-switch" data-voice="worker2" aria-pressed="false"><span class="voice-led"></span>W2</button>
+  <button type="button" class="voice-switch" data-voice="worker3" aria-pressed="false"><span class="voice-led"></span>W3</button>
+  <button type="button" class="voice-switch" data-voice="tools" aria-pressed="false"><span class="voice-led"></span>Tools</button>
+  <button type="button" class="voice-switch" data-voice="worker1" aria-pressed="false"><span class="voice-led"></span>W1</button>
+  <button type="button" class="voice-switch" data-voice="arch2" aria-pressed="false"><span class="voice-led"></span>Arch2</button>
+  <!-- Divider: the chord voices above are the fused seven; bass/melody below are the two the
+       design already keeps intentionally segregable, so the panel's own grouping echoes that
+       rather than presenting nine undifferentiated switches. -->
+  <div class="voice-group-divider" aria-hidden="true"></div>
+  <button type="button" class="voice-switch" data-voice="bass" aria-pressed="false"><span class="voice-led"></span>Bass</button>
+  <button type="button" class="voice-switch" data-voice="melody" aria-pressed="false"><span class="voice-led"></span>Melody</button>
+  <!-- Hidden by default via CSS (:has(.on)), so it only appears once there's actually something
+       to clear -- cleaner than a permanently-visible button that does nothing most of the time. -->
+  <button type="button" class="voice-clear" id="voiceClear" title="Clear all">&times;</button>
 </div>
+
+<div class="caption">
+  <span>OpenTelemetry spans, played by a jazz combo</span>
+  <a class="gh-link" href="https://github.com/mob1ius/oteljazz" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub">
+    <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+  </a>
+</div>
+
+<!-- Hidden until a session (and therefore a seed) exists -- setupShareLink() in app.js reveals
+     it once Director has one. Copies rather than navigates: the point is handing someone else
+     the exact URL, not leaving the current page. -->
+<div class="share-row" id="shareRow" hidden>
+  <button type="button" class="share-btn" id="shareBtn">Copy link to this exact session</button>
+  <span class="share-copied" id="shareCopied" aria-live="polite"></span>
+</div>
+
+<!-- Hidden until the first anomaly of a session has actually been captured -- app.js records a
+     short clip starting the moment an anomaly is REVEALED (not when it's scheduled, which can be
+     up to LOOKAHEAD_S ahead), so this only appears once there's genuinely something to replay. -->
+<div class="share-row" id="anomalyReplayRow" hidden>
+  <button type="button" class="share-btn" id="anomalyReplayBtn">&#9654; Replay last anomaly</button>
+</div>
+</div><!-- /.stage -->
 
 <footer class="credits">
   Piano: <a href="https://archive.org/details/SalamanderGrandPianoV3" rel="noopener noreferrer" target="_blank">Salamander Grand Piano</a>

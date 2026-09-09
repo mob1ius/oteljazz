@@ -23,6 +23,14 @@ for (const oct of [2, 3, 4, 5, 6]) {
 }
 
 let bassSampler, pianoSampler, director;
+// Anomaly-replay recorder, created once Tone's context exists (see loadInstruments). Connected
+// to Tone.Destination directly rather than any individual instrument node -- that's the one
+// place the full final mix (chords, bass, melody, and the tuning-dial effects chain) actually
+// converges, so this captures exactly what a listener hears regardless of internal routing.
+let anomalyRecorder = null;
+let anomalyRecordingActive = false;
+let lastAnomalyReplayUrl = null;
+const ANOMALY_CAPTURE_MS = 8000; // covers a typical anomaly window (drift/conflict run several seconds) plus its resolution
 let vuBars = document.querySelectorAll("#vu i");
 let statusEl = document.getElementById("statusText");
 let termEl = document.getElementById("term");
@@ -34,6 +42,10 @@ let powerBtn = document.getElementById("powerBtn");
 let playing = false;
 let started = false;
 let termLines = [];
+// Empty = normal fused chord (default). Any voice names present = only those sound -- a mixer-
+// style multi-toggle (pick any combination), not a single mutually-exclusive solo. See the
+// voice-picker click handler further down and onScheduleNote's play-time check above.
+const soloedVoices = new Set();
 // Module-scoped (not inside startEngine's closure) so a pause/resume cycle can reset the idle
 // clock -- see the stall-watchdog comment further down for what these track and why.
 let lastPushWallMs = performance.now();
@@ -86,6 +98,19 @@ const BOOT_WARMUP_MS = 2100;
 function wireDirectorCallbacks(d) {
   d.onScheduleNote = (voice, note, vel, dur, atS, detuneSemitones) => {
     Tone.Transport.schedule((time) => {
+      // Checked here, at the moment a note actually plays, not when it was scheduled: a note can
+      // be queued up to LOOKAHEAD_S (24s synthetic, less live) before it sounds, so checking at
+      // schedule time would mean toggling solo takes up to 24s to audibly take effect. Checked at
+      // play time instead, so it's responsive from the very next note regardless of how far
+      // ahead the engine had already queued. No new mapping logic -- this is a pure UI filter on
+      // an event the SAME single onScheduleNote implementation already produces, not a second one.
+      //
+      // Called unconditionally, BEFORE the solo filter below, not after: the whole point of the
+      // activity flicker is showing which voices are really sounding even while others are
+      // isolated, so a voice silenced by solo still needs to flash -- only actual audio gets
+      // filtered, not the visual read of what the mix would be doing unfiltered.
+      flashVoiceActivity(voice);
+      if (soloedVoices.size > 0 && !soloedVoices.has(voice)) return;
       const sampler = voice === "bass" ? bassSampler : pianoSampler;
       // A continuous-deviation signature (drift/conflict -- see director.js's ANOMALY
       // SIGNATURES block) bends just ONE voice while its neighbors stay in tune. bassSampler/
@@ -172,9 +197,17 @@ const liveSession = new URLSearchParams(location.search).get("live");
 if (liveSession) {
   startLiveMode(liveSession);
 } else {
+// A shared seed only reproduces the synthetic path faithfully (see Director's own comment on
+// why), so this is read once, here, outside startLiveMode entirely -- a `?seed=` on a `?live=`
+// URL would silently do nothing, which is worse than not supporting it there, so it simply isn't
+// wired into that path at all rather than accepting a param it can't honor.
+const requestedSeedRaw = new URLSearchParams(location.search).get("seed");
+const requestedSeed = requestedSeedRaw ? Number(requestedSeedRaw) : undefined;
+
 fetch(CORPUS_URL).then(r => r.json()).then(corpus => {
   statusEl.textContent = "Loading instruments...";
-  director = new Director(corpus.root_transition_matrix_major);
+  director = new Director(corpus.root_transition_matrix_major, { seed: requestedSeed });
+  setupShareLink(director.seed);
 
   wireDirectorCallbacks(director);
 
@@ -200,6 +233,12 @@ function loadInstruments() {
     let loaded = 0;
     const need = 2;
     function check() { loaded++; if (loaded === need) resolve(); }
+
+    // Created here rather than at module scope: Tone.Recorder needs a running AudioContext,
+    // which doesn't exist until Tone.start() has actually run (the first play click), and
+    // loadInstruments() is already the point where every other audio node gets built.
+    anomalyRecorder = new Tone.Recorder();
+    Tone.Destination.connect(anomalyRecorder);
 
     tuningFilter = new Tone.Filter({ frequency: 20000, type: "lowpass", rolloff: -12 }).toDestination();
     // staticColor gives the two tuning directions distinct timbre instead of identical noise at
@@ -235,6 +274,77 @@ function pushTerm(line) {
   if (termLines.length > 14) termLines.shift();
   termEl.innerHTML = termLines.join("\n");
 }
+
+// Reveals the share row (hidden until a session exists) and wires it to copy a URL carrying this
+// session's actual seed. Director.seed is the ONLY thing that needs to travel -- everything else
+// about the session (key, mode, form, and every synthetic swarm event) is reconstructed from it
+// deterministically on the other end (see Director's constructor comment), so the link itself is
+// tiny regardless of how long or eventful the session gets.
+function setupShareLink(seed) {
+  const row = document.getElementById("shareRow");
+  const btn = document.getElementById("shareBtn");
+  const copied = document.getElementById("shareCopied");
+  row.hidden = false;
+  const url = `${location.origin}${location.pathname}?seed=${seed}`;
+  btn.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      // Clipboard API needs a secure context and permission that isn't guaranteed everywhere
+      // (older browsers, some embedded webviews) -- fall back to selecting the text so the
+      // visitor can still copy it manually with Ctrl/Cmd-C rather than the button doing nothing.
+      const ta = document.createElement("textarea");
+      ta.value = url;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); } catch { /* nothing more to fall back to */ }
+      document.body.removeChild(ta);
+    }
+    copied.textContent = "Copied!";
+    copied.classList.add("visible");
+    setTimeout(() => copied.classList.remove("visible"), 1800);
+  };
+}
+
+// Called from the span-reveal loop below the instant an anomaly line is actually shown to the
+// listener (not when Director scheduled it, which can be up to LOOKAHEAD_S earlier) -- that's
+// the moment worth capturing around. One recording at a time: if a second anomaly reveals while
+// one is already being captured, it's skipped rather than restarting mid-recording, since
+// ANOMALY_MIN_GAP_S (director.js) already keeps real overlaps rare and a torn/restarted
+// recording would be worse than occasionally missing a replay of a second anomaly.
+function startAnomalyRecording() {
+  if (!anomalyRecorder || anomalyRecordingActive) return;
+  anomalyRecordingActive = true;
+  anomalyRecorder.start();
+  setTimeout(async () => {
+    let blob;
+    try {
+      blob = await anomalyRecorder.stop();
+    } catch (err) {
+      console.error("[oteljazz] anomaly recording failed:", err);
+      anomalyRecordingActive = false;
+      return;
+    }
+    anomalyRecordingActive = false;
+    if (lastAnomalyReplayUrl) URL.revokeObjectURL(lastAnomalyReplayUrl); // don't leak the previous clip's memory
+    lastAnomalyReplayUrl = URL.createObjectURL(blob);
+    const row = document.getElementById("anomalyReplayRow");
+    row.hidden = false;
+  }, ANOMALY_CAPTURE_MS);
+}
+
+document.getElementById("anomalyReplayBtn").onclick = () => {
+  if (!lastAnomalyReplayUrl) return;
+  new Audio(lastAnomalyReplayUrl).play().catch((err) => {
+    // Autoplay/decoding can fail depending on the browser's exact MediaRecorder output format
+    // (Tone.Recorder's container varies by browser -- webm in Chrome/Firefox, mp4 in Safari);
+    // logged rather than silently doing nothing, since there's no good in-page fallback UI for
+    // "your browser recorded a format it then refused to play back."
+    console.error("[oteljazz] anomaly replay failed to play:", err);
+  });
+};
 
 function bumpVU() {
   vuBars.forEach((bar) => {
@@ -329,6 +439,10 @@ function startEngine() {
       try {
         pushTerm(`<span class="dim">[${it.t.toFixed(2)}s ${it.service}]</span> ${it.line}`);
         lastPushWallMs = performance.now();
+        // service === "oversight-grammar" is _logAnomaly's own marker (director.js) -- matched
+        // here, at reveal time, not when Director scheduled the underlying event, which is what
+        // actually lines the recording up with the moment a listener hears it.
+        if (it.service === "oversight-grammar") startAnomalyRecording();
       } catch (err) {
         console.error("[oteljazz] dropped unrenderable span line, terminal would otherwise be stuck here:", it, err);
       }
@@ -415,6 +529,74 @@ powerBtn.onclick = async () => {
 
 setInterval(() => { if (!playing) decayVU(); }, 200);
 
+// Keyboard shortcuts: space toggles play/pause (the physical radio has one button, this is its
+// keyboard equivalent, not a separate feature), left/right sweep the tuning dial the way turning
+// it by hand does, up/down do the same for volume. Nudges go through the same setupKnob() handle
+// a pointer drag uses, so a keyboard nudge and a mouse drag are indistinguishable to every
+// downstream consumer (rampTo sweeps, current-draw dimming, jitter threshold, all of it).
+// Global, not scoped to an element: the page has no text inputs to steal these keys from.
+const KEY_NUDGE = 0.05;
+window.addEventListener("keydown", (e) => {
+  if (e.code === "Space") {
+    e.preventDefault(); // stop the page from scrolling on space
+    powerBtn.click();
+  } else if (e.code === "ArrowLeft" && tuneKnobHandle) {
+    e.preventDefault();
+    tuneKnobHandle.nudge(-KEY_NUDGE);
+  } else if (e.code === "ArrowRight" && tuneKnobHandle) {
+    e.preventDefault();
+    tuneKnobHandle.nudge(KEY_NUDGE);
+  } else if (e.code === "ArrowUp" && volKnobHandle) {
+    e.preventDefault();
+    volKnobHandle.nudge(KEY_NUDGE);
+  } else if (e.code === "ArrowDown" && volKnobHandle) {
+    e.preventDefault();
+    volKnobHandle.nudge(-KEY_NUDGE);
+  }
+});
+
+// Voice narrowing: click a switch to add or remove that voice from the isolated set (see
+// onScheduleNote's play-time check for the actual audio filtering). Any combination, not a
+// single exclusive pick -- toggling every switch off returns to the normal fused chord. Delegated
+// to the picker container rather than bound per-switch, so it works the same regardless of how
+// many switches exist.
+document.getElementById("voicePicker").addEventListener("click", (e) => {
+  const sw = e.target.closest(".voice-switch");
+  if (!sw) return;
+  const voice = sw.dataset.voice;
+  if (soloedVoices.has(voice)) soloedVoices.delete(voice);
+  else soloedVoices.add(voice);
+  sw.classList.toggle("on", soloedVoices.has(voice));
+  sw.setAttribute("aria-pressed", String(soloedVoices.has(voice)));
+});
+
+// Cleaner operation: one click back to the default fused chord instead of having to remember
+// and re-click every switch you turned on. The button itself only appears once something is
+// soloed (CSS :has(), demo.html), so there's nothing to wire for "is there anything to clear."
+document.getElementById("voiceClear").addEventListener("click", () => {
+  soloedVoices.clear();
+  for (const sw of document.querySelectorAll(".voice-switch")) {
+    sw.classList.remove("on");
+    sw.setAttribute("aria-pressed", "false");
+  }
+});
+
+// Called from onScheduleNote for every voice on every note actually played, on or off, so the
+// panel doubles as a real per-voice activity meter rather than a static solo toggle -- watch
+// which voices are really sounding right now even with nothing isolated. Removing then re-adding
+// the class (with a forced reflow between) is required to RESTART a CSS animation that's already
+// playing or just finished; simply adding a class already present does nothing if the animation
+// already ran to completion, which is exactly the common case here (the same voice sounds again
+// a beat or two later, animation long since finished, needs to fire fresh each time).
+function flashVoiceActivity(voice) {
+  const sw = document.querySelector(`.voice-switch[data-voice="${voice}"]`);
+  if (!sw) return; // "melody"/"bass"/every chord voice all have switches; anything else just no-ops
+  const led = sw.querySelector(".voice-led");
+  led.classList.remove("flicker");
+  void led.offsetWidth; // force reflow -- see comment above
+  led.classList.add("flicker");
+}
+
 // --- Knob interaction: vertical drag (mouse or touch), like turning a real knob by dragging up/
 // down rather than trying to trace a circular path -- the standard software-knob convention.
 // Rotation range -135deg..+135deg (270 total), matching how these knobs are actually drawn.
@@ -452,6 +634,17 @@ function setupKnob(el, initial, onChange) {
   el.addEventListener("pointermove", pointerMove);
   el.addEventListener("pointerup", pointerUp);
   el.addEventListener("pointercancel", pointerUp);
+
+  // Programmatic handle for keyboard control -- `value` above is otherwise a closure variable
+  // with no way in except a real pointer drag. Reuses render()/onChange() so a keyboard nudge is
+  // indistinguishable downstream from a mouse drag ending at the same value.
+  return {
+    nudge(delta) {
+      value = Math.max(0, Math.min(1, value + delta));
+      render();
+      onChange(value);
+    },
+  };
 }
 
 // Shared by both knobs' onChange callbacks below -- volLevel and tuneDetune are set
@@ -472,10 +665,14 @@ function updatePowerLoad() {
   termEl.classList.toggle("jitter", volLevel > 0.93 || tuneDetune > 0.85);
 }
 
+// Populated by setupKnobs() below; module-scoped so the keyboard handler (wired once, at load
+// time, before any knob exists) can reach whichever knob is live once it does.
+let volKnobHandle = null, tuneKnobHandle = null;
+
 function setupKnobs() {
   // Volume: 0..1 -> -40dB (near-silent) .. 0dB (unity). Default 0.8 (-8dB) rather than full
   // unity, so the starting level has headroom instead of opening at the loudest possible setting.
-  setupKnob(document.getElementById("volKnob"), 0.8, (v) => {
+  volKnobHandle = setupKnob(document.getElementById("volKnob"), 0.8, (v) => {
     Tone.Destination.volume.value = (v - 1) * 40;
     volLevel = v;
     updatePowerLoad();
@@ -491,7 +688,7 @@ function setupKnobs() {
   // colors it into a bright highpassed hiss/whine, so the two directions are distinguishable by
   // ear alone. RAMP_S is short enough to feel responsive to a drag, long enough to actually sweep.
   const RAMP_S = 0.12;
-  setupKnob(document.getElementById("tuneKnob"), 0.5, (v) => {
+  tuneKnobHandle = setupKnob(document.getElementById("tuneKnob"), 0.5, (v) => {
     const detune = Math.abs(v - 0.5) * 2; // 0 at center, 1 at either extreme
     const below = v < 0.5;
     tuningFilter.frequency.rampTo(20000 - detune * 19000, RAMP_S); // 20000Hz..1000Hz
