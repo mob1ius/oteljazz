@@ -1,5 +1,87 @@
 # Changelog
 
+## v1.4.0 — 2026-09-09
+
+Cabinet effects, an analog VU meter, a typeable console, and a performance/security pass. The
+demo previously reacted to telemetry only through audio and a text feed; most of what follows
+makes the cabinet itself respond to signals the engine was already emitting.
+
+### Added
+
+- **Anomaly CRT tear.** Drift/collusion/poisoned-spawn now desyncs the dial: a displaced scanline
+  band sweeps down and the text skews for ~400ms. The anomaly is the point of the whole grammar
+  and was previously audio-only, with the screen perfectly calm during the one moment the design
+  exists for. Fires at REVEAL time (`oversight-grammar` marker) so it lands with what is heard.
+- **Error bleed.** An `ERROR`-status span warms the whole glass red for a beat. The characters
+  were already red, but at any distance where individual characters aren't legible a failure
+  looked identical to a success -- which is most of the time, for a display meant to be watched
+  peripherally.
+- **Voice birth surge.** A voice's first appearance in a session gets a brighter, slower swell,
+  distinct from the ordinary per-note activity flicker: an agent spawning and an agent merely
+  being busy were previously indistinguishable at a glance.
+- **Chord-change brass sweep.** A specular highlight travels across the cabinet on each chord
+  change. Harmony is the one channel deliberately NOT telemetry-driven (CLAUDE.md), so it gets a
+  slower, material cue rather than the electrical vocabulary everything else uses.
+- **Analog VU meter with real ballistics**, replacing eight digital bars -- a 1980s artifact on a
+  1940s cabinet. Driven by actual master-output RMS via `Tone.Meter`, not the random per-tick
+  heights the bars used. Asymmetric follower: fast attack, slow release.
+- **Filament breathing and speaker-cone motion**, both from the same RMS (`--audio-rms`). The
+  glass swells with the music; the grille moves by well under a percent. Consciously invisible.
+- **Cold-start warmth ramp.** The glass starts cold and dim and settles to amber across the boot
+  warm-up, like a valve heater coming up.
+- **A typeable console.** Click the dial glass (or press backtick) for a cursor: `help`, `whoami`,
+  `ls`, `seed`, `chord`, `voices`, `about`, `clear`, `exit`. The terminal was already a convincing
+  fake; letting people touch it was the unrealized move.
+- **Service mode (konami).** Exposes the internals `window.__oteljazzDebug()` already returned but
+  which were console-only: transport time, queue depths, cursors, seed. The sequence's arrow keys
+  also nudge the knobs, but up-up-down-down and left-right-left-right each net to zero, so the
+  dial lands exactly where it started.
+- **Station drift.** Rarely, the dial wanders off station on its own and the signal degrades
+  before settling back. Goes through the tuning knob's own programmatic handle, so the audible
+  result is identical to a listener having nudged it -- no second audio path.
+- **Model plate.** The session seed etched on the cabinet as a serial number, click to copy. The
+  share feature's own value, surfaced inside the fiction rather than only on a button below it.
+
+### Performance
+
+- `assets/radio_overlay.png` (1525 KB) converted to WebP (138 KB) -- **91% smaller**, and the
+  single largest asset on the site by a wide margin. It was a pure RGB photograph with no alpha
+  channel shipped as a PNG. Verified before switching: PSNR ~40 dB, and a 2x-zoom comparison of
+  the herringbone speaker grille (the highest-frequency region in the image) is visually
+  indistinguishable. Total payload 4.3 MB -> 3.0 MB.
+- `vendor/Tone.js` now loads with `defer`. It was render-blocking: the parser stopped to download
+  and execute 341 KB before the cabinet could paint. Safe because `app.js` only touches the `Tone`
+  global inside functions, and a deferred classic script and a module script both execute in the
+  deferred phase in document order.
+- Removed `mostRecentSpanBefore` from `web/engine.js` -- dead code, no callers remained.
+- Measured and deliberately did NOT change `pushTerm`'s `innerHTML` rebuild: 45us per call at
+  roughly one span per second is 0.045 ms/sec. It looked like a hot path and isn't; the terminal
+  needs its markup, and `textContent` (2.7us) can't carry it.
+
+### Fixed
+
+- **A background-throttling bug introduced during this work and caught before it shipped.** The
+  audio-meter pump first used `requestAnimationFrame`, which does not fire at all in a hidden or
+  occluded page -- precisely the anti-pattern this file already carries a warning about, and
+  precisely how an OBS Browser Source (how this demo is captured) renders. It published a frozen
+  `0.000` while the meter itself read a healthy -35 dB. Moved to `Tone.Transport.scheduleRepeat`,
+  which rides the AudioContext clock, and re-verified with `document.hidden === true`.
+- `src/live-relay.js`: capped concurrent WebSocket viewers per session at 32. Ingest already had
+  a 2 MB body limit and a rate limit; the viewer side had neither, leaving the one genuinely
+  unbounded resource on a public, unauthenticated endpoint -- sockets accumulate in a Set and
+  every ingest broadcasts to all of them, so idle connections cost memory *and* multiply per-span
+  send work.
+- Accessibility: the console was click-only, leaving keyboard users no path to it at all (now
+  backtick from anywhere, or Enter on the focused glass, which is `tabindex="0"` with a role and
+  label). The power button's accessible name was a bare glyph and now tracks state as Play/Pause.
+
+### Security note
+
+The console echoes typed input back through `pushTerm()`, which renders with `innerHTML` -- the
+same sink, and the same rule, as `src/live-relay.js` escaping OTLP attributes server-side. Input
+is escaped on the way in; verified by typing `<img src=x onerror=alert(1)>` and confirming no
+element is created.
+
 ## v1.3.4 — 2026-09-02
 
 Expanded the v1.3.3 silent-catch sweep project-wide (Python engine, browser, the Claude Code
