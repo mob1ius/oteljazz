@@ -31,7 +31,8 @@ let anomalyRecorder = null;
 let anomalyRecordingActive = false;
 let lastAnomalyReplayUrl = null;
 const ANOMALY_CAPTURE_MS = 8000; // covers a typical anomaly window (drift/conflict run several seconds) plus its resolution
-let vuBars = document.querySelectorAll("#vu i");
+let vuNeedleEl = document.getElementById("vuNeedle");
+let audioMeter = null;
 let statusEl = document.getElementById("statusText");
 let termEl = document.getElementById("term");
 let chordEl = document.getElementById("chordReadout");
@@ -109,7 +110,9 @@ function wireDirectorCallbacks(d) {
       // activity flicker is showing which voices are really sounding even while others are
       // isolated, so a voice silenced by solo still needs to flash -- only actual audio gets
       // filtered, not the visual read of what the mix would be doing unfiltered.
-      flashVoiceActivity(voice);
+      // Birth takes precedence over the ordinary flicker for a voice's very first note: firing
+      // both would just overwrite the slower swell with the faster flash.
+      if (!noteVoiceSeen(voice)) flashVoiceActivity(voice);
       if (soloedVoices.size > 0 && !soloedVoices.has(voice)) return;
       const sampler = voice === "bass" ? bassSampler : pianoSampler;
       // A continuous-deviation signature (drift/conflict -- see director.js's ANOMALY
@@ -240,6 +243,14 @@ function loadInstruments() {
     anomalyRecorder = new Tone.Recorder();
     Tone.Destination.connect(anomalyRecorder);
 
+    // Master-output RMS, published to CSS as --audio-rms (0..1) once per animation frame. Drives
+    // the glass's filament breathing and the speaker cone's motion -- both deliberately tiny, so
+    // the cabinet is never perfectly static while it's playing without either effect being
+    // consciously noticeable. Read on rAF rather than in the Transport loops: this is a display
+    // concern at screen refresh rate, not a scheduling one, and it must keep running (decaying to
+    // rest) while paused. Smoothed with an asymmetric follower -- fast attack so a chord lands
+    // immediately, slow release so it settles like a real needle instead of strobing per note.
+
     tuningFilter = new Tone.Filter({ frequency: 20000, type: "lowpass", rolloff: -12 }).toDestination();
     // staticColor gives the two tuning directions distinct timbre instead of identical noise at
     // different volumes -- a real superhet dial doesn't sound the same tuning down past a station
@@ -346,15 +357,106 @@ document.getElementById("anomalyReplayBtn").onclick = () => {
   });
 };
 
-function bumpVU() {
-  vuBars.forEach((bar) => {
-    const h = 15 + Math.random() * 85;
-    bar.style.height = h + "%";
-    bar.style.background = h > 70 ? "#ff7a4a" : h > 40 ? "var(--dial-glow)" : "#5a4a2a";
-  });
+// ---------------------------------------------------------------------------------------------
+// Cabinet effects. All of these are driven by events the engine ALREADY emits (anomaly reveal,
+// error status, chord change, first-sight of a voice, audio RMS) -- none of them introduce a new
+// signal or touch the mapping. Retriggering a CSS animation requires removing the class, forcing
+// a reflow, and re-adding it; see flashVoiceActivity's comment for why. These fire at most a few
+// times a second, well inside the budget measured for flashVoiceActivity (0.79 ms/sec at 10/sec).
+// ---------------------------------------------------------------------------------------------
+const dialGlassEl = document.querySelector(".dial-glass");
+const brassSweepEl = document.getElementById("brassSweep");
+const seenVoices = new Set();
+
+function retrigger(el, cls, ms) {
+  if (!el) return;
+  el.classList.remove(cls);
+  void el.offsetWidth;
+  el.classList.add(cls);
+  setTimeout(() => el.classList.remove(cls), ms);
 }
-function decayVU() {
-  vuBars.forEach(bar => { bar.style.height = "8%"; bar.style.background = "#3a3428"; });
+
+// The anomaly is the whole point of the grammar and was previously audio-only. Fired at REVEAL
+// time so the tear lands with what the listener hears.
+function crtGlitch() {
+  retrigger(termEl, "glitch", 460);
+  retrigger(dialGlassEl, "glitch", 460);
+}
+
+// An ERROR span warms the entire glass, not just the (already red) characters -- at any distance
+// where individual characters aren't legible, a failure previously looked exactly like a success.
+function errorBleed() { retrigger(dialGlassEl, "err-bleed", 900); }
+
+// Harmony is the one channel deliberately NOT telemetry-driven, so it gets a slower, material
+// cue (light moving over metal) rather than the electrical vocabulary everything else uses.
+function brassSweep() { retrigger(brassSweepEl, "run", 1200); }
+
+// A voice's first appearance in a session reads differently from it merely being busy again.
+function noteVoiceSeen(voice) {
+  if (seenVoices.has(voice)) return false;
+  seenVoices.add(voice);
+  const sw = document.querySelector(`.voice-switch[data-voice="${voice}"]`);
+  if (sw) retrigger(sw.querySelector(".voice-led"), "birth", 950);
+  return true;
+}
+
+// Points the needle. Takes an already-smoothed 0..1 level (the follower lives in the meter pump
+// in loadInstruments, so attack/release stay asymmetric like real meter ballistics). -42..+42
+// degrees matches the arc drawn in demo.html; the needle turns red past the hot arc's start.
+// Master-output RMS -> --audio-rms (0..1), read once per animation frame, driving the VU
+// needle, the glass's filament breathing, and the speaker cone's motion.
+//
+// Started on the first play click, AFTER Tone.start(), not at page load with the other audio
+// nodes. Measured, not assumed: a Meter constructed and connected while the AudioContext is
+// still suspended reads a flat -Infinity forever even once the context resumes, while one
+// created after Tone.start() on the very same graph reads correctly (-29..-43 dB on the same
+// material). The rest of loadInstruments() gets away with pre-start construction because
+// samplers and the recorder only need the context by the time they're USED; an analyser has to
+// have been live at connect time.
+//
+// rAF rather than a Transport loop: this is a display concern at screen refresh rate, and it
+// must keep running (decaying to rest) while paused. The follower is asymmetric -- fast attack
+// so a chord lands immediately, slow release so the needle settles like real meter ballistics
+// instead of strobing on every note.
+function startAudioMeter() {
+  if (audioMeter) return;
+  audioMeter = new Tone.Meter({ smoothing: 0.2 });
+  Tone.Destination.connect(audioMeter);
+  let rms = 0;
+  // Transport.scheduleRepeat, NOT requestAnimationFrame -- and this is the same rule, for the
+  // same reason, as the two loops further down. rAF does not fire at all in a hidden or occluded
+  // page, and setInterval gets throttled there; an OBS Browser Source (how this demo is actually
+  // captured) renders exactly that way. A first cut of this used rAF and silently published a
+  // frozen 0.000 the entire time the pane wasn't visible -- caught because the meter itself read
+  // a healthy -35 dB at the same instant the CSS variable said zero. scheduleRepeat rides the
+  // AudioContext clock, which browsers deliberately exempt so audio doesn't glitch in the
+  // background, so it keeps running when the page is not being looked at.
+  //
+  // 1/30s rather than every frame: this drives a needle and two sub-percent visual effects, and
+  // 30Hz is well past the point where either reads as smooth. The follower is asymmetric -- fast
+  // attack so a chord lands immediately, slow release so the needle settles like real meter
+  // ballistics instead of strobing on every note.
+  Tone.Transport.scheduleRepeat(() => {
+    const db = audioMeter.getValue();
+    const lin = Number.isFinite(db) ? Math.max(0, Math.min(1, (db + 48) / 48)) : 0;
+    rms += (lin - rms) * (lin > rms ? 0.5 : 0.12);
+    document.documentElement.style.setProperty("--audio-rms", rms.toFixed(3));
+    vuNeedleTo(rms);
+  }, 1 / 30);
+}
+
+// Transport loops don't tick while paused, so the needle would otherwise freeze wherever it was
+// when playback stopped. Called from the pause branch to walk it back to rest instead.
+function restAudioMeter() {
+  document.documentElement.style.setProperty("--audio-rms", "0.000");
+  vuNeedleTo(0);
+}
+
+function vuNeedleTo(level) {
+  if (!vuNeedleEl) return;
+  const deg = -42 + Math.max(0, Math.min(1, level)) * 84;
+  vuNeedleEl.style.transform = `rotate(${deg.toFixed(2)}deg)`;
+  vuNeedleEl.style.stroke = level > 0.82 ? "#ff7a4a" : "var(--dial-glow)";
 }
 
 // Fill lookahead: how far ahead of playback Director generates+schedules content. Bigger =
@@ -421,6 +523,7 @@ function startEngine() {
     while (chordCursor < pendingChords.length && pendingChords[chordCursor].t <= t) {
       try {
         chordEl.textContent = pendingChords[chordCursor].symbol;
+        brassSweep();
         if (chordDialEl) chordDialEl.textContent = pendingChords[chordCursor].symbol;
       } catch (err) {
         console.error("[oteljazz] dropped unrenderable chord entry:", pendingChords[chordCursor], err);
@@ -442,13 +545,17 @@ function startEngine() {
         // service === "oversight-grammar" is _logAnomaly's own marker (director.js) -- matched
         // here, at reveal time, not when Director scheduled the underlying event, which is what
         // actually lines the recording up with the moment a listener hears it.
-        if (it.service === "oversight-grammar") startAnomalyRecording();
+        if (it.service === "oversight-grammar") { startAnomalyRecording(); crtGlitch(); }
+        // The relay marks status on live spans; the synthetic path puts class="err" in the line.
+        // Checking the rendered line covers both without either path needing a new field.
+        else if (it.status === "error" || it.line.includes('class="err"')) errorBleed();
       } catch (err) {
         console.error("[oteljazz] dropped unrenderable span line, terminal would otherwise be stuck here:", it, err);
       }
       spanCursor++;
     }
-    if (bumped) bumpVU(); else decayVU();
+    // VU is driven continuously by real output RMS now (see the meter pump), not by
+    // this loop -- `bumped` stays as the note-reveal cursor advance it always was.
 
     // Auto-bracket a stall: fires the instant one starts and the instant it ends, no reaction
     // time needed. See the comment above lastPushWallMs's declaration for why this exists.
@@ -495,6 +602,8 @@ powerBtn.onclick = async () => {
   } catch { /* non-fatal: worst case is the pre-existing silent-switch behavior */ }
 
   await Tone.start();
+  startAudioMeter();   // needs a running context -- see its own comment
+
   if (!playing) {
     if (!started) {
       // First press only: the terminal has been blank since page load (see the fetch chain
@@ -505,6 +614,9 @@ powerBtn.onclick = async () => {
       powerBtn.disabled = true;
       statusEl.textContent = "Powering on...";
       termEl.classList.add("booting");
+      // Valve heater coming up to temperature: the glass starts cold and dim and settles to
+      // its normal amber across the warm-up, rather than snapping to full brightness.
+      if (dialGlassEl) retrigger(dialGlassEl, "warming", BOOT_WARMUP_MS + 100);
       startBootTicker();
       await new Promise((resolve) => setTimeout(resolve, BOOT_WARMUP_MS));
       stopBootTicker();
@@ -521,13 +633,12 @@ powerBtn.onclick = async () => {
   } else {
     Tone.Transport.pause();
     playing = false;
+    restAudioMeter();
     powerBtn.textContent = "▶";
     statusEl.textContent = "Paused.";
-    decayVU();
   }
 };
 
-setInterval(() => { if (!playing) decayVU(); }, 200);
 
 // Keyboard shortcuts: space toggles play/pause (the physical radio has one button, this is its
 // keyboard equivalent, not a separate feature), left/right sweep the tuning dial the way turning

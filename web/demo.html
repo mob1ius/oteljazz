@@ -291,14 +291,31 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  /* Analog VU meter. The needle's motion is smoothed in app.js (asymmetric follower: fast
+     attack, slow release) rather than by a CSS transition, so it behaves like real meter
+     ballistics -- a transition would impose one symmetric time constant on both directions and
+     lose the characteristic slow fall-back. */
   .vu {
-    display: flex; gap: 2px; align-items: flex-end; height: 12px; flex-shrink: 0;
+    width: 74px;
+    flex-shrink: 0;
+    line-height: 0;
   }
-  .vu i {
-    width: 2.5px; background: #3a3428; border-radius: 1px;
-    height: 20%;
-    transition: height 0.08s linear, background 0.08s linear;
+  .vu svg { width: 100%; height: auto; overflow: visible; }
+  .vu-arc {
+    fill: none;
+    stroke: rgba(201,162,75,0.35);
+    stroke-width: 1.2;
   }
+  .vu-arc-hot { stroke: rgba(255,107,90,0.55); stroke-width: 1.6; }
+  .vu-ticks line { stroke: rgba(201,162,75,0.45); stroke-width: 1; }
+  .vu-needle {
+    stroke: var(--dial-glow);
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    transform-origin: 50px 40px;
+    filter: drop-shadow(0 0 2px var(--phosphor-glow, rgba(255,176,0,0.85)));
+  }
+  .vu-hub { fill: var(--brass-dark); stroke: var(--brass); stroke-width: 0.8; }
   /* Interactive knob overlays -- positioned over the two brass knobs baked into
      assets/radio_overlay.webp (found by cropping/eyeballing the actual image, same method as the
      dial-glass cutout). Deliberately near-invisible at rest (a knob-shaped hit target plus a
@@ -510,6 +527,115 @@
     0%   { box-shadow: 0 0 3px 1px #fff8e8, 0 0 7px 2px rgba(255,207,122,0.7), 0 0 14px 4px rgba(255,176,0,0.5); }
     100% { box-shadow: 0 0 2px 1px #fff8e8, 0 0 5px 1px var(--phosphor-glow, rgba(255,176,0,0.85)), 0 0 11px 3px rgba(255,176,0,0.4); }
   }
+
+  /* A voice's FIRST appearance in a session, distinct from its ordinary activity flicker: a
+     brighter, slower swell that reads as a filament coming up rather than a note landing. An
+     agent spawning and an agent merely being busy were previously indistinguishable at a glance
+     -- this separates them. Fired once per voice per session (app.js's seenVoices Set). */
+  @keyframes voiceBirth {
+    0%   { background: #241a10; box-shadow: inset 0 1px 1px rgba(0,0,0,0.7); }
+    35%  { background: #fff2d0; box-shadow: 0 0 5px 2px #fff8e8, 0 0 14px 5px rgba(255,207,122,0.85), 0 0 26px 9px rgba(255,176,0,0.5); }
+    100% { background: #241a10; box-shadow: inset 0 1px 1px rgba(0,0,0,0.7); }
+  }
+  .voice-led.birth { animation: voiceBirth 0.9s ease-out; }
+
+  /* ANOMALY: a CRT desync. The anomaly is the entire point of the grammar and until now it was
+     audio-only -- the screen stayed perfectly calm during the one moment the design exists for.
+     A horizontal tear band sweeping down plus a brief chromatic/skew wobble reads as the signal
+     losing lock, which is the same thing the ear is being told. Triggered at REVEAL time (see
+     app.js's oversight-grammar match), so it lands with what the listener hears, not with when
+     the event was scheduled. */
+  @keyframes crtTear {
+    0%   { transform: translate(0,0) skewX(0deg); filter: none; }
+    12%  { transform: translate(-4px,0) skewX(-1.4deg); filter: brightness(1.25) saturate(1.3); }
+    24%  { transform: translate(5px,0) skewX(1.1deg); }
+    38%  { transform: translate(-2px,0) skewX(-0.5deg); filter: brightness(0.85); }
+    55%  { transform: translate(3px,0) skewX(0.4deg); }
+    75%  { transform: translate(-1px,0) skewX(0deg); filter: brightness(1.08); }
+    100% { transform: translate(0,0) skewX(0deg); filter: none; }
+  }
+  .term.glitch { animation: crtTear 0.42s steps(24, end); }
+  /* The tear band itself: a bright displaced slice that travels down the glass once per glitch,
+     drawn on the dial-glass rather than .term so it crosses the whole screen area, not just the
+     text block. */
+  @keyframes tearBand {
+    0%   { top: -12%; opacity: 0; }
+    10%  { opacity: 0.75; }
+    90%  { opacity: 0.55; }
+    100% { top: 104%; opacity: 0; }
+  }
+  .dial-glass.glitch::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0;
+    height: 9%;
+    pointer-events: none;
+    background: linear-gradient(180deg, transparent, rgba(255,214,150,0.5), rgba(255,176,0,0.18), transparent);
+    mix-blend-mode: screen;
+    animation: tearBand 0.42s linear;
+    z-index: 3;
+  }
+
+  /* An ERROR-status span warms the whole glass toward the error red for a beat. The text was
+     already red (.term .err) but the GLASS never reacted, so a failure looked identical to a
+     success from any distance where individual characters aren't readable -- which is most of
+     the time, given this is meant to be watched peripherally. */
+  @keyframes errBleed {
+    0%   { box-shadow: inset 0 0 0 0 rgba(255,107,90,0); }
+    18%  { box-shadow: inset 0 0 34px 8px rgba(255,107,90,0.30); }
+    100% { box-shadow: inset 0 0 0 0 rgba(255,107,90,0); }
+  }
+  .dial-glass.err-bleed { animation: errBleed 0.85s ease-out; }
+
+  /* Chord change: a specular highlight travelling across the brass bezel, the way real polished
+     metal catches a moving light. Harmony is the one channel deliberately NOT telemetry-driven
+     (see CLAUDE.md), so it gets its own visual language -- slow and material, not reactive and
+     electrical like everything above. */
+  @keyframes brassSweep {
+    0%   { transform: translateX(-120%) skewX(-18deg); opacity: 0; }
+    18%  { opacity: 0.5; }
+    82%  { opacity: 0.4; }
+    100% { transform: translateX(120%) skewX(-18deg); opacity: 0; }
+  }
+  .radio-wrap .brass-sweep {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    border-radius: 28px 28px 0 0;
+    z-index: 2;
+  }
+  .radio-wrap .brass-sweep i {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 22%;
+    background: linear-gradient(90deg, transparent, rgba(255,236,190,0.16), rgba(255,255,255,0.10), transparent);
+    mix-blend-mode: screen;
+    opacity: 0;
+  }
+  .radio-wrap .brass-sweep i.run { animation: brassSweep 1.15s ease-in-out; }
+
+  /* Cold start: a valve heater coming up to temperature. The glass begins cold and dim and
+     settles to its normal amber over the boot warm-up, rather than snapping to full brightness
+     the instant audio starts. Uses the same duration as BOOT_WARMUP_MS in app.js. */
+  @keyframes filamentWarm {
+    0%   { filter: brightness(0.35) saturate(0.25) hue-rotate(-28deg); }
+    60%  { filter: brightness(0.85) saturate(0.9) hue-rotate(-6deg); }
+    100% { filter: none; }
+  }
+  .dial-glass.warming { animation: filamentWarm 2.1s ease-out; }
+
+  /* Filament breathing + speaker cone motion, both driven from real audio RMS (app.js sets
+     --audio-rms 0..1 from a Tone.Meter on the master output each frame). The glass swells with
+     the music and the grille moves air by well under a percent -- consciously invisible,
+     which is the point: a real cabinet is never perfectly static while it's playing. */
+  .dial-glass {
+    filter: brightness(calc(1 + var(--audio-rms, 0) * 0.16));
+  }
+  .radio {
+    transform: scale(calc(1 + var(--audio-rms, 0) * 0.0016));
+    transform-origin: 34% 52%; /* roughly the speaker cone's centre in the photo */
+  }
   /* Cleaner operation: hidden until something is actually soloed (nothing to clear otherwise),
      via :has() rather than app.js toggling a class -- one less thing for the click handler to
      remember to keep in sync with the Set's own state. */
@@ -650,8 +776,7 @@
       font-size: 17px;
     }
     .status-text { font-size: 12px; }
-    .vu { height: 20px; }
-    .vu i { width: 4px; }
+    .vu { width: 92px; }
     /* Previously hidden outright on the reasoning that volume has a hardware substitute (the
        device's own buttons) -- true for volume, but tuning has no substitute, so hiding both
        knobs left tuning (and everything the tuning knob drives: the squelch/detune character,
@@ -734,6 +859,10 @@
 <body>
 <div class="stage">
   <div class="radio-wrap">
+    <!-- Specular highlight that travels across the cabinet on each chord change. A sibling
+         overlay rather than a pseudo-element on .radio, because .radio carries the photo as a
+         background and an inset highlight there would be clipped by its own overflow. -->
+    <div class="brass-sweep" aria-hidden="true"><i id="brassSweep"></i></div>
     <div class="radio">
       <div class="knob-control" id="volKnob" style="left:59.07%; top:80.27%; width:6.86%;">
         <div class="knob-indicator"></div>
@@ -760,8 +889,26 @@
       <div class="controls-row">
         <button class="power-btn" id="powerBtn" disabled>&#9654;</button>
         <div class="status-text" id="statusText">Loading samples...</div>
-        <div class="vu" id="vu">
-          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        <!-- An analog VU meter with real ballistics, replacing eight digital bars. Bar meters are
+             a 1980s artifact on a 1940s cabinet; a swinging needle is both period-correct and a
+             better read of a continuous signal. Driven by actual master-output RMS (app.js's
+             Tone.Meter), not the random per-tick heights the bars used. -->
+        <div class="vu" id="vu" role="img" aria-label="Output level meter">
+          <svg viewBox="0 0 100 46" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+            <path class="vu-arc" d="M 12 40 A 38 38 0 0 1 88 40" />
+            <path class="vu-arc vu-arc-hot" d="M 68 21.5 A 38 38 0 0 1 88 40" />
+            <g class="vu-ticks">
+              <line x1="12" y1="40" x2="16.5" y2="40"/>
+              <line x1="19.2" y1="24.6" x2="22.6" y2="27.5"/>
+              <line x1="34.6" y1="14.6" x2="36.3" y2="18.6"/>
+              <line x1="50" y1="11" x2="50" y2="15.3"/>
+              <line x1="65.4" y1="14.6" x2="63.7" y2="18.6"/>
+              <line x1="80.8" y1="24.6" x2="77.4" y2="27.5"/>
+              <line x1="88" y1="40" x2="83.5" y2="40"/>
+            </g>
+            <line class="vu-needle" id="vuNeedle" x1="50" y1="40" x2="50" y2="14"/>
+            <circle class="vu-hub" cx="50" cy="40" r="3.1"/>
+          </svg>
         </div>
       </div>
     </div>
