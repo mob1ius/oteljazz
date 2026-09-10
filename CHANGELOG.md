@@ -1,5 +1,36 @@
 # Changelog
 
+## v1.4.1 — 2026-09-10
+
+### Removed
+
+- The chord-change light sweep across the bezel (v1.4.0). It read as a cheap screen effect laid
+  over a photograph rather than light on metal, and cost more than it added.
+- The "Copy link to this exact session" button under the radio. It copied the identical
+  `?seed=` URL the model plate already copies; two controls for one action.
+
+### Changed
+
+- The model plate moved off the photo and onto the lower control strip. As an overlay on the
+  image it sat on top of the bezel's baked-in brass and screws and clashed with it; the strip is
+  CSS the page controls, with room either side of the switches. Restyled as a mounted maker's
+  badge -- engraved serif caps matching the VOLUME/TUNING lettering in the photo, brushed-brass
+  face, a screw at each end -- instead of a translucent monospace tag. Takes its own centred row
+  under the switches below 960px. It is now the only share control, so it picked up the removed
+  button's clipboard fallback for non-secure contexts and an accessible name.
+
+### Fixed
+
+- A second click on the plate within its 1.4s "Copied" window left it stuck showing "Copied":
+  the restore captured the current text at click time. It now restores the fixed serial.
+- On tablets and phones (below 820px) the control strip was covering the play button and VU
+  meter. Its negative top margin exists to tuck it over the photo's empty bottom edge on desktop,
+  but at narrow widths the dial panel moves out below the photo, so the same margin dragged the
+  strip up over the panel's controls instead. Narrow layout now gives the strip a normal gap and
+  its own rounded corners, and restores the photo's bottom corners, which had been squared off on
+  the assumption the strip docked there. Pre-existing since the strip was attached; surfaced while
+  checking the new badge's narrow layout.
+
 ## v1.4.0 — 2026-09-09
 
 Cabinet effects, an analog VU meter, a typeable console, and a performance/security pass. The

@@ -592,34 +592,6 @@
   }
   .dial-glass.err-bleed { animation: errBleed 0.85s ease-out; }
 
-  /* Chord change: a specular highlight travelling across the brass bezel, the way real polished
-     metal catches a moving light. Harmony is the one channel deliberately NOT telemetry-driven
-     (see CLAUDE.md), so it gets its own visual language -- slow and material, not reactive and
-     electrical like everything above. */
-  @keyframes brassSweep {
-    0%   { transform: translateX(-120%) skewX(-18deg); opacity: 0; }
-    18%  { opacity: 0.5; }
-    82%  { opacity: 0.4; }
-    100% { transform: translateX(120%) skewX(-18deg); opacity: 0; }
-  }
-  .radio-wrap .brass-sweep {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    overflow: hidden;
-    border-radius: 28px 28px 0 0;
-    z-index: 2;
-  }
-  .radio-wrap .brass-sweep i {
-    position: absolute;
-    top: 0; bottom: 0;
-    width: 22%;
-    background: linear-gradient(90deg, transparent, rgba(255,236,190,0.16), rgba(255,255,255,0.10), transparent);
-    mix-blend-mode: screen;
-    opacity: 0;
-  }
-  .radio-wrap .brass-sweep i.run { animation: brassSweep 1.15s ease-in-out; }
-
   /* Cold start: a valve heater coming up to temperature. The glass begins cold and dim and
      settles to its normal amber over the boot warm-up, rather than snapping to full brightness
      the instant audio starts. Uses the same duration as BOOT_WARMUP_MS in app.js. */
@@ -690,30 +662,67 @@
     text-align: center;
   }
 
-  /* Etched brass model plate on the cabinet. Positioned as a percentage of the photo like every
-     other overlay here, so it tracks the image at any width. */
+  /* Maker's badge on the lower control strip: the session seed as an engraved serial, click to
+     copy a link that replays this exact session. Lives on the CSS strip, not over the photo -- an
+     overlay on the photo can't avoid sitting on baked-in brass and screws, and the first version
+     did exactly that and clashed with the bezel. Engraved serif caps to match the VOLUME/TUNING
+     lettering already in the photo, on a brushed-brass face like the knobs. */
   .model-plate {
     position: absolute;
-    left: 6.5%;
-    bottom: 11%;
-    z-index: 3;
+    left: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 0;
+    background: none;
+    border: 0;
+    cursor: pointer;
+  }
+  .model-plate[hidden] { display: none; }
+  .model-plate-face {
+    position: relative;
     display: flex;
     align-items: baseline;
-    gap: 4px;
-    padding: 2px 6px;
-    font-family: 'SF Mono', Menlo, Consolas, monospace;
-    font-size: clamp(5px, 0.72vw, 8px);
-    letter-spacing: 0.08em;
-    color: rgba(255, 226, 170, 0.5);
-    background: linear-gradient(180deg, rgba(140,110,50,0.35), rgba(70,52,22,0.35));
-    border: 1px solid rgba(201,162,75,0.3);
+    gap: 6px;
+    padding: 4px 14px 3px;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #3a2a10;
+    text-shadow: 0 1px 0 rgba(255,244,210,0.45); /* engraved: dark cut, light lower lip */
+    background: linear-gradient(180deg, #e2c77e 0%, #c9a24b 45%, #9c7c33 100%);
     border-radius: 2px;
-    cursor: pointer;
-    text-shadow: 0 1px 0 rgba(0,0,0,0.6);
-    transition: color 0.15s ease-out, border-color 0.15s ease-out;
+    box-shadow: inset 0 1px 0 rgba(255,250,225,0.6), inset 0 -1px 0 rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.55);
+    transition: filter 0.15s ease-out;
   }
-  .model-plate:hover { color: rgba(255,236,190,0.85); border-color: rgba(201,162,75,0.6); }
-  .model-plate-label { opacity: 0.55; }
+  /* Mounting screws at each end, so it reads as a fixed badge rather than a sticker. */
+  .model-plate-face::before, .model-plate-face::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 3px; height: 3px;
+    margin-top: -1.5px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #6b5220, #2a1d0a);
+  }
+  .model-plate-face::before { left: 4px; }
+  .model-plate-face::after { right: 4px; }
+  .model-plate-label { opacity: 0.7; }
+  .model-plate:hover .model-plate-face { filter: brightness(1.12); }
+  .model-plate:focus-visible { outline: none; }
+  .model-plate:focus-visible .model-plate-face { outline: 1px solid var(--dial-glow); outline-offset: 2px; }
+  /* Below this width the switches need the strip's full width, so the badge takes its own centred
+     row under them rather than floating at the left edge where it would collide. */
+  @media (max-width: 960px) {
+    .model-plate {
+      position: static;
+      transform: none;
+      order: 99;
+      flex-basis: 100%;
+      display: flex;
+      justify-content: center;
+    }
+  }
 
   .share-row {
     width: min(920px, 94vw);
@@ -737,14 +746,6 @@
   .share-btn:hover {
     color: var(--dial-glow);
     border-color: rgba(255,176,0,0.5);
-  }
-  .share-copied {
-    color: var(--dial-glow);
-    opacity: 0;
-    transition: opacity 0.15s ease-out;
-  }
-  .share-copied.visible {
-    opacity: 1;
   }
   /* Attribution is a LICENSE CONDITION here, not a courtesy, so it ships on the page rather
      than living only in the docs: the piano samples are CC BY 3.0 (attribution required on
@@ -792,8 +793,18 @@
       inset: auto;
       width: 100%;
       aspect-ratio: 1312 / 816;
-      border-radius: 14px 14px 0 0;
+      border-radius: 14px;
       box-shadow: 0 12px 28px rgba(0,0,0,0.55);
+    }
+    /* The desktop strip docks against the photo's dead bottom margin via a negative top margin
+       (see .voice-picker). Here the dial panel has moved out BELOW the photo, so that same margin
+       pulled the strip up over the panel's controls row instead -- covering the play button and
+       the VU meter on tablets and phones. Nothing to dock against at this width: a normal gap and
+       its own rounded top, and the photo keeps all four of its corners. */
+    .voice-picker {
+      margin: 14px auto 0;
+      border-top: 1px solid var(--brass-dark);
+      border-radius: 14px;
     }
     /* Out of the dial, into normal flow, restyled as its own panel. */
     .cutout {
@@ -912,13 +923,6 @@
 <body>
 <div class="stage">
   <div class="radio-wrap">
-    <!-- Specular highlight that travels across the cabinet on each chord change. A sibling
-         overlay rather than a pseudo-element on .radio, because .radio carries the photo as a
-         background and an inset highlight there would be clipped by its own overflow. -->
-    <div class="brass-sweep" aria-hidden="true"><i id="brassSweep"></i></div>
-    <button type="button" class="model-plate" id="modelPlate" title="Session serial -- click to copy">
-      <span class="model-plate-label">MODEL</span><span id="modelPlateSerial">----</span>
-    </button>
     <div class="radio">
       <div class="knob-control" id="volKnob" style="left:59.07%; top:80.27%; width:6.86%;">
         <div class="knob-indicator"></div>
@@ -978,6 +982,13 @@
      every switch off. Order matches CHORD_VOICE_ORDER (web/engine.js) plus bass/melody, the same
      order the engine itself schedules in. -->
 <div class="voice-picker" id="voicePicker" role="group" aria-label="Narrow the mix to specific voices">
+  <!-- Maker's badge: the session seed as a serial number; click copies a link that replays this
+       exact session. Revealed by app.js's setupShareLink once a seed exists -- synthetic sessions
+       only, since a live session has no reproducible seed to share. Absolutely positioned on
+       desktop (out of the switches' flow), its own centred row below them on narrow screens. -->
+  <button type="button" class="model-plate" id="modelPlate" title="Copy link to this exact session" hidden>
+    <span class="model-plate-face"><span class="model-plate-label">Model</span><span id="modelPlateSerial" aria-live="polite">----</span></span>
+  </button>
   <button type="button" class="voice-switch" data-voice="arch1" aria-pressed="false"><span class="voice-led"></span>Arch1</button>
   <button type="button" class="voice-switch" data-voice="planner" aria-pressed="false"><span class="voice-led"></span>Planner</button>
   <button type="button" class="voice-switch" data-voice="worker2" aria-pressed="false"><span class="voice-led"></span>W2</button>
@@ -996,9 +1007,7 @@
   <button type="button" class="voice-clear" id="voiceClear" title="Clear all">&times;</button>
 </div>
 
-<!-- Service panel (konami) and the cabinet's model plate. The plate shows the session seed as
-     a serial number -- the share feature's own value, surfaced inside the fiction instead of only
-     on a web button. Click to copy. -->
+<!-- Service panel: engine internals, hidden until the konami sequence (app.js). -->
 <div class="service-panel" id="servicePanel" hidden></div>
 
 <div class="caption">
@@ -1006,14 +1015,6 @@
   <a class="gh-link" href="https://github.com/mob1ius/oteljazz" target="_blank" rel="noopener noreferrer" aria-label="View source on GitHub">
     <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
   </a>
-</div>
-
-<!-- Hidden until a session (and therefore a seed) exists -- setupShareLink() in app.js reveals
-     it once Director has one. Copies rather than navigates: the point is handing someone else
-     the exact URL, not leaving the current page. -->
-<div class="share-row" id="shareRow" hidden>
-  <button type="button" class="share-btn" id="shareBtn">Copy link to this exact session</button>
-  <span class="share-copied" id="shareCopied" aria-live="polite"></span>
 </div>
 
 <!-- Hidden until the first anomaly of a session has actually been captured -- app.js records a

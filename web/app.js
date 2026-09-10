@@ -292,34 +292,24 @@ function pushTerm(line) {
 // deterministically on the other end (see Director's constructor comment), so the link itself is
 // tiny regardless of how long or eventful the session gets.
 function setupShareLink(seed) {
-  // The cabinet's model plate carries the same seed as an etched serial number -- the share
-  // feature's own value surfaced inside the fiction rather than only on a web button below it.
-  // Base36 so it reads like a plausible serial rather than a raw 32-bit integer.
+  // The cabinet's maker's badge IS the share control -- it replaced a separate "Copy link to this
+  // exact session" button below the radio, which copied the identical URL. Base36 so the seed
+  // reads like a plausible serial rather than a raw 32-bit integer.
   const plate = document.getElementById("modelPlate");
   const serial = document.getElementById("modelPlateSerial");
-  if (plate && serial) {
-    serial.textContent = "OJ-" + Number(seed).toString(36).toUpperCase().padStart(7, "0");
-    plate.addEventListener("click", async () => {
-      const url = `${location.origin}${location.pathname}?seed=${seed}`;
-      try { await navigator.clipboard.writeText(url); } catch { /* same non-secure-context case the share button handles */ }
-      const was = serial.textContent;
-      serial.textContent = "COPIED";
-      setTimeout(() => { serial.textContent = was; }, 1400);
-    });
-  }
-
-  const row = document.getElementById("shareRow");
-  const btn = document.getElementById("shareBtn");
-  const copied = document.getElementById("shareCopied");
-  row.hidden = false;
+  if (!plate || !serial) return;
+  const label = "OJ-" + Number(seed).toString(36).toUpperCase().padStart(7, "0");
   const url = `${location.origin}${location.pathname}?seed=${seed}`;
-  btn.onclick = async () => {
+  serial.textContent = label;
+  plate.setAttribute("aria-label", `Serial ${label}. Copy a link that replays this exact session`);
+  plate.hidden = false;
+  plate.onclick = async () => {
     try {
       await navigator.clipboard.writeText(url);
     } catch {
       // Clipboard API needs a secure context and permission that isn't guaranteed everywhere
-      // (older browsers, some embedded webviews) -- fall back to selecting the text so the
-      // visitor can still copy it manually with Ctrl/Cmd-C rather than the button doing nothing.
+      // (older browsers, some embedded webviews) -- fall back to a selected textarea so the copy
+      // still happens rather than the click doing nothing.
       const ta = document.createElement("textarea");
       ta.value = url;
       ta.style.position = "fixed";
@@ -329,9 +319,12 @@ function setupShareLink(seed) {
       try { document.execCommand("copy"); } catch { /* nothing more to fall back to */ }
       document.body.removeChild(ta);
     }
-    copied.textContent = "Copied!";
-    copied.classList.add("visible");
-    setTimeout(() => copied.classList.remove("visible"), 1800);
+    // Restores the fixed label, not whatever the text was at click time: an earlier version
+    // captured the current text, so a second click inside the window saved "Copied" as the
+    // thing to restore and the badge stayed stuck on it.
+    serial.textContent = "Copied";
+    clearTimeout(plate._restore);
+    plate._restore = setTimeout(() => { serial.textContent = label; }, 1400);
   };
 }
 
@@ -381,7 +374,6 @@ document.getElementById("anomalyReplayBtn").onclick = () => {
 // times a second, well inside the budget measured for flashVoiceActivity (0.79 ms/sec at 10/sec).
 // ---------------------------------------------------------------------------------------------
 const dialGlassEl = document.querySelector(".dial-glass");
-const brassSweepEl = document.getElementById("brassSweep");
 const seenVoices = new Set();
 
 function retrigger(el, cls, ms) {
@@ -403,9 +395,6 @@ function crtGlitch() {
 // where individual characters aren't legible, a failure previously looked exactly like a success.
 function errorBleed() { retrigger(dialGlassEl, "err-bleed", 900); }
 
-// Harmony is the one channel deliberately NOT telemetry-driven, so it gets a slower, material
-// cue (light moving over metal) rather than the electrical vocabulary everything else uses.
-function brassSweep() { retrigger(brassSweepEl, "run", 1200); }
 
 // A voice's first appearance in a session reads differently from it merely being busy again.
 function noteVoiceSeen(voice) {
@@ -539,7 +528,6 @@ function startEngine() {
     while (chordCursor < pendingChords.length && pendingChords[chordCursor].t <= t) {
       try {
         chordEl.textContent = pendingChords[chordCursor].symbol;
-        brassSweep();
         if (chordDialEl) chordDialEl.textContent = pendingChords[chordCursor].symbol;
       } catch (err) {
         console.error("[oteljazz] dropped unrenderable chord entry:", pendingChords[chordCursor], err);
