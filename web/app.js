@@ -5,6 +5,7 @@
 // Behavior is unchanged -- this is a move, not a rewrite.
 
 import { Director, BAR_S } from "./director.js";
+import { Rng } from "./engine.js";
 
 const PIZZ_BASS_BASE = "samples/pizz_bass/";
 const SALAMANDER_BASE = "samples/salamander_piano/";
@@ -515,8 +516,10 @@ function startEngine() {
     firstSpan: pendingSpanLines[0], lastSpan: pendingSpanLines[pendingSpanLines.length - 1],
     chordCursor, chordQueueLen: pendingChords.length,
     nextChord: pendingChords[chordCursor],
+    stationDrift: stationDriftLog,
   });
   window.__oteljazzDebug = debugSnapshot;
+  startStationDrift(director.seed);
 
   // Every manual capture so far has caught the RECOVERED state, not the stall itself -- by the
   // time a person notices, reacts, and types a command, it has usually already resolved (matches
@@ -866,31 +869,49 @@ function toggleServiceMode() {
 // settling back. A real superhet does this; a web page never does, which is exactly why it is
 // worth doing. Goes through the tuning knob's own programmatic handle, so the audible result is
 // identical to a listener having nudged it themselves -- no second audio path.
+//
+// Seeded and on the Transport clock, because it moves the AUDIO path (tuningFilter, staticGain),
+// not just the picture: with Math.random() and page timers, two sessions from the same `?seed=`
+// link could sound different. Two rules keep it reproducible:
+//   - Its own Rng, derived from the session seed, NEVER director.rng. Director's stream must
+//     depend only on the seed; if drift drew from it, the music would depend on how many drift
+//     checks had run by the time a bar was generated, and seeded replay would break.
+//   - Every check draws all three values whether or not it fires, so the stream's position
+//     depends only on how many checks have happened.
+// Transport, not setInterval: the check and all 28 steps are placed at transport times, so they
+// land at the same musical moment in every run and keep running in a hidden page (the same
+// reason as the fill and reveal loops). Pausing pauses a drift in progress with the music.
+// Assumes nobody touches the tuning knob mid-run; a listener's own nudges are not seeded.
 // =============================================================================================
 const DRIFT_CHANCE = 0.06;
-const DRIFT_CHECK_MS = 45000;
-function maybeStationDrift() {
-  if (!playing || !tuneKnobHandle || Math.random() > DRIFT_CHANCE) return;
-  const dir = Math.random() < 0.5 ? -1 : 1;
-  const depth = 0.10 + Math.random() * 0.10;
-  const steps = 14;
-  let i = 0;
-  pushTerm('<span class="dim">&gt; signal drifting...</span>');
-  const away = setInterval(() => {
-    tuneKnobHandle.nudge((dir * depth) / steps);
-    if (++i >= steps) {
-      clearInterval(away);
-      setTimeout(() => {
-        let j = 0;
-        const back = setInterval(() => {
-          tuneKnobHandle.nudge((-dir * depth) / steps);
-          if (++j >= steps) { clearInterval(back); pushTerm('<span class="dim">&gt; ...station recovered.</span>'); }
-        }, 90);
-      }, 1600);
+const DRIFT_CHECK_S = 45;
+const DRIFT_STEPS = 14;
+const DRIFT_STEP_S = 0.09;
+const DRIFT_HOLD_S = 1.6;
+const DRIFT_RNG_SALT = 0x5d7a1f3b;
+const stationDriftLog = []; // {t, dir, depth} per drift, for __oteljazzDebug() comparisons
+function startStationDrift(seed) {
+  const rng = new Rng(((seed ^ DRIFT_RNG_SALT) >>> 0) || 1);
+  Tone.Transport.scheduleRepeat((time) => {
+    const fire = rng.bool(DRIFT_CHANCE);
+    const dir = rng.bool(0.5) ? -1 : 1;
+    const depth = rng.uniform(0.10, 0.20);
+    if (!fire || !tuneKnobHandle) return;
+    const t0 = Tone.Transport.getSecondsAtTime(time);
+    stationDriftLog.push({ t: +t0.toFixed(3), dir, depth: +depth.toFixed(6) });
+    if (stationDriftLog.length > 20) stationDriftLog.shift();
+    pushTerm('<span class="dim">&gt; signal drifting...</span>');
+    const step = (dir * depth) / DRIFT_STEPS;
+    const backStart = t0 + DRIFT_STEPS * DRIFT_STEP_S + DRIFT_HOLD_S;
+    for (let i = 1; i <= DRIFT_STEPS; i++) {
+      Tone.Transport.scheduleOnce(() => tuneKnobHandle.nudge(step), t0 + i * DRIFT_STEP_S);
+      Tone.Transport.scheduleOnce(() => {
+        tuneKnobHandle.nudge(-step);
+        if (i === DRIFT_STEPS) pushTerm('<span class="dim">&gt; ...station recovered.</span>');
+      }, backStart + i * DRIFT_STEP_S);
     }
-  }, 90);
+  }, DRIFT_CHECK_S, DRIFT_CHECK_S);
 }
-setInterval(maybeStationDrift, DRIFT_CHECK_MS);
 
 // --- Knob interaction: vertical drag (mouse or touch), like turning a real knob by dragging up/
 // down rather than trying to trace a circular path -- the standard software-knob convention.

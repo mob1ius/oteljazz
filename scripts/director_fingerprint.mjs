@@ -11,7 +11,8 @@
 // one final fill to fillToS). Measured identical to a single fill at 0.5/7/13s steps, so the
 // trim path in fillUntil doesn't change the stream.
 //
-// Blind spot: app.js. Station drift moves the tuning filter from app.js, which this can't see.
+// Blind spot: app.js. Station drift moves the tuning filter from app.js, which this can't see; it
+// is seeded separately (see app.js's startStationDrift) and logged in __oteljazzDebug().stationDrift.
 //
 // Baselines at v1.4.1 (b1cc4f8):
 //   seed 12345, 300s  -> 2509 notes  06ee7cfba6d753cc
