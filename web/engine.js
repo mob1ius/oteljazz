@@ -23,11 +23,12 @@
  *   SIMPLIFIED, deliberately, to ship this rather than stall on full parity: no motif
  *   generation/development (the solo line uses guide-tone-weighted chord-tone choice + core-
  *   tone arpeggio runs, phrased/rested by activity level, which is faithful to the SOUND
- *   character but not to caidence.py's specific motif-recurrence mechanic); no comp push/
- *   anticipation; no per-section tempo arc (tempo is fixed, since retrofitting a tempo curve
+ *   character but not to caidence.py's specific motif-recurrence mechanic); no per-section
+ *   tempo arc (tempo is fixed, since retrofitting a tempo curve
  *   onto an open-ended stream is a different and harder problem than this pass is scoped for);
  *   swing is a single global constant rather than per-section. See BUILD_NOTES.md for the full
- *   list and why each cut was made.
+ *   list and why each cut was made. (Comp push/anticipation was on this list originally; it has
+ *   since been ported -- see director.js's COMP_PUSH_PROBABILITY and its pendingPush lookahead.)
  *
  * MODULATION / "never the same song twice": each CHORUS (16 bars) is a freshly-drawn form --
  * generate_jazz_form is called again every time the bar cursor wraps, not just once for the
@@ -36,14 +37,19 @@
  * selection; this just re-draws instead of drawing once), not a bolted-on gimmick. The session
  * seed itself comes from crypto.getRandomValues, so it's a different draw every page load --
  * intentionally NOT reproducible the way synthetic_trace()'s seed=0 is, because reproducibility
- * is exactly what this feature is asked not to have.
+ * is exactly what this feature is asked not to have. That is the DEFAULT, not the only mode: a
+ * `?seed=N` URL (the model plate's copy link) passes N to Director in place of cryptoSeed(), and
+ * the synthetic path then replays byte-for-byte (check with scripts/director_fingerprint.mjs).
+ * Live mode's spans still arrive when they arrive, so a seed there only fixes the rng side.
  */
 
 // ============================================================================================
 // Seeded RNG -- mulberry32, seeded from real entropy so every page load differs. This is NOT
 // the same determinism model as caidence.py's per-decision action_hash() seeding (which lets
 // any single decision be independently reproduced regardless of call order); here one advancing
-// stream is enough, since nothing about this needs to be reproducible run-to-run.
+// stream is enough, since a whole session is only ever replayed from its seed, never one decision
+// in isolation. The flip side: any new musical randomness must draw from this same stream (or
+// one derived from the seed), or `?seed=` replay silently stops matching.
 // ============================================================================================
 function cryptoSeed() {
   const a = new Uint32Array(1);
