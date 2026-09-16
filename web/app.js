@@ -32,6 +32,10 @@ let anomalyRecordingActive = false;
 let lastAnomalyReplayUrl = null;
 const ANOMALY_CAPTURE_MS = 8000; // covers a typical anomaly window (drift/conflict run several seconds) plus its resolution
 let vuNeedleEl = document.getElementById("vuNeedle");
+// prefers-reduced-motion, for the two moving things CSS can't reach (demo.html's reduced-motion
+// block covers the rest): the boot ticker and the VU needle. Read `.matches` at use time rather
+// than caching it, so changing the OS setting mid-session takes effect without a reload.
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 let audioMeter = null;
 let statusEl = document.getElementById("statusText");
 let termEl = document.getElementById("term");
@@ -77,7 +81,8 @@ function renderBoot() {
   const scroll = (BOOT_NOTES.repeat(6) + "  ").slice(bootTickerFrame % (BOOT_NOTES.length * 4));
   const ticker = scroll.slice(0, width);
   termEl.innerHTML = bootStatusLines.join("\n") + `\n<span class="dim">&gt; </span>${ticker}`;
-  bootTickerFrame++;
+  // Still re-rendered on every tick (bootStatusLines can change underneath it), just not scrolled.
+  if (!reducedMotion.matches) bootTickerFrame++;
 }
 function startBootTicker() {
   if (bootTickerTimer) return;
@@ -405,11 +410,8 @@ function noteVoiceSeen(voice) {
   return true;
 }
 
-// Points the needle. Takes an already-smoothed 0..1 level (the follower lives in the meter pump
-// in loadInstruments, so attack/release stay asymmetric like real meter ballistics). -42..+42
-// degrees matches the arc drawn in demo.html; the needle turns red past the hot arc's start.
-// Master-output RMS -> --audio-rms (0..1), read once per animation frame, driving the VU
-// needle, the glass's filament breathing, and the speaker cone's motion.
+// Master-output RMS -> --audio-rms (0..1), published at 30Hz, driving the VU needle, the glass's
+// filament breathing, and the speaker cone's motion.
 //
 // Started on the first play click, AFTER Tone.start(), not at page load with the other audio
 // nodes. Measured, not assumed: a Meter constructed and connected while the AudioContext is
@@ -418,16 +420,12 @@ function noteVoiceSeen(voice) {
 // material). The rest of loadInstruments() gets away with pre-start construction because
 // samplers and the recorder only need the context by the time they're USED; an analyser has to
 // have been live at connect time.
-//
-// rAF rather than a Transport loop: this is a display concern at screen refresh rate, and it
-// must keep running (decaying to rest) while paused. The follower is asymmetric -- fast attack
-// so a chord lands immediately, slow release so the needle settles like real meter ballistics
-// instead of strobing on every note.
 function startAudioMeter() {
   if (audioMeter) return;
   audioMeter = new Tone.Meter({ smoothing: 0.2 });
   Tone.Destination.connect(audioMeter);
   let rms = 0;
+  let tick = 0;
   // Transport.scheduleRepeat, NOT requestAnimationFrame -- and this is the same rule, for the
   // same reason, as the two loops further down. rAF does not fire at all in a hidden or occluded
   // page, and setInterval gets throttled there; an OBS Browser Source (how this demo is actually
@@ -445,10 +443,20 @@ function startAudioMeter() {
     const db = audioMeter.getValue();
     const lin = Number.isFinite(db) ? Math.max(0, Math.min(1, (db + 48) / 48)) : 0;
     rms += (lin - rms) * (lin > rms ? 0.5 : 0.12);
+    // --audio-rms is always published: the pump itself must never stop (that is the v1.4.0
+    // frozen-meter failure above), reduced motion only changes how the needle shows it.
     document.documentElement.style.setProperty("--audio-rms", rms.toFixed(3));
-    vuNeedleTo(rms);
+    if (!reducedMotion.matches) vuNeedleTo(rms);
+    // Reduced motion: a meter that never moves would lie, so it still reads the level, but in
+    // five fixed positions at ~4Hz instead of a continuously swinging needle.
+    else if (tick % 8 === 0) vuNeedleTo(Math.round(rms * 4) / 4);
+    tick++;
   }, 1 / 30);
 }
+
+// Points the needle. Takes an already-smoothed 0..1 level (the follower lives in the meter pump
+// above, so attack/release stay asymmetric like real meter ballistics). -42..+42 degrees matches
+// the arc drawn in demo.html; the needle turns red past the hot arc's start.
 
 // Transport loops don't tick while paused, so the needle would otherwise freeze wherever it was
 // when playback stopped. Called from the pause branch to walk it back to rest instead.

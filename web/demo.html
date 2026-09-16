@@ -646,6 +646,31 @@
   .term.console-live { cursor: text; }
   .dial-glass { cursor: text; }
 
+  /* A stated preference for less motion. Everything that moves on its own stops -- a blanket
+     rule rather than a per-effect list, so an effect added later is covered by default. Where the
+     motion was carrying a signal, the signal stays as a STATIC state for the same span the class
+     is already on (app.js's retrigger timeouts), so nothing the telemetry says is lost: an
+     anomaly still marks the glass, an ERROR still reddens it, a new voice still lights. The
+     per-note activity flicker has no static form -- on/off at note rate would itself be flashing
+     -- so it simply goes dark. The RMS-driven breathing and cone motion are removed outright; the
+     VU needle keeps reading the level but in coarse steps (see app.js's reducedMotion). Must stay
+     below every rule it overrides: the blanket rule wins on !important, the static states on
+     source order. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation: none !important;
+      transition: none !important;
+    }
+    .dial-glass, .radio { filter: none; transform: none; }
+    .dial-glass.glitch::after { display: none; } /* the tear band is positioned BY its animation */
+    .term.glitch { filter: brightness(1.2) saturate(1.3); }
+    .dial-glass.err-bleed { box-shadow: inset 0 0 34px 8px rgba(255,107,90,0.30); }
+    .voice-led.birth {
+      background: #fff2d0;
+      box-shadow: 0 0 5px 2px #fff8e8, 0 0 14px 5px rgba(255,207,122,0.85);
+    }
+  }
+
   /* Service panel: engineer's readout, hidden until the konami sequence. Monospace, dim, sits
      under the cabinet so it never covers the dial it is reporting on. */
   .service-panel {
