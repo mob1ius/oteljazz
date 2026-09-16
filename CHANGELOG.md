@@ -23,6 +23,18 @@
 
 ### Changed
 
+- **Station drift is now seeded and runs on the audio clock.** It moves the tuning filter and
+  static level, so it is part of what you hear, but it used `Math.random()` and page timers. Two
+  sessions opened from the same `?seed=` link could therefore sound different. It now draws from
+  its own random stream derived from the session seed (kept separate from the music's stream, so
+  the notes are unaffected), and the check and every knob step are scheduled at Transport times
+  rather than on `setInterval`. Same odds (6% per check) and same 45s spacing, now counted in
+  playback time: pausing pauses it, and it keeps running in a hidden page. Each drift is listed
+  in `__oteljazzDebug().stationDrift`. Checked in a scratch build with a 5s check at 50% odds:
+  two runs of seed 12345 drifted at the same transport times (20s, 25s, 35s) with the same
+  direction and depth, and gave identical knob-state sequences over 35s. The filter cutoff matched
+  to within 0.67%, since each glide starts from the moment the step runs. Seed 99 gave a different
+  sequence, matching an offline replay of the same stream.
 - The `web/engine.js` header no longer lists comp push as missing (director.js has had it for
   some time), and now describes the `?seed=` replay path instead of saying sessions cannot be
   reproduced.
