@@ -1,5 +1,35 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **Reduced motion.** With the operating system's reduce-motion setting on, the cabinet stops
+  moving on its own. That covers the CRT tear, error bleed, voice flicker and birth swell, the
+  warm-up and boot animations, CRT flicker and jitter, the caret blink, the boot ticker, and the
+  glass breathing and cone motion. Effects that carry a signal keep a static form for the same
+  duration: an anomaly briefly brightens the glass, an ERROR span tints it red, and a new voice's
+  LED lights steadily. The per-note activity flicker has no static form, because switching on and
+  off at note rate would still be flashing, so it goes dark. The VU needle keeps reading the
+  level in five fixed positions at about 4Hz. The meter itself still runs at 30Hz, so
+  `--audio-rms` never freezes. Previously only the narrow-layout dial wave honoured the setting.
+  Checked by inverting the media condition in a scratch build: no running animations anywhere
+  on the page, static states present, `--audio-rms` still updating, layout unchanged at 375px and
+  768px. With the setting off, the page behaves as in v1.4.1.
+- `scripts/director_fingerprint.mjs`: runs `Director` headless in Node and hashes everything it
+  schedules for a given seed. Two runs with the same seed must print the same hash, so any change
+  can be compared before and after. Baselines for v1.4.1 are in its header. It does not see
+  app.js, so station drift is outside what it checks.
+
+### Changed
+
+- The `web/engine.js` header no longer lists comp push as missing (director.js has had it for
+  some time), and now describes the `?seed=` replay path instead of saying sessions cannot be
+  reproduced.
+
+Site request pattern unchanged: no new files are served, so the crawler dataset is unaffected.
+Director output is byte-identical to v1.4.1 for seeds 12345 and 99 (300s) and 12345 (1800s).
+
 ## v1.4.1 — 2026-09-10
 
 ### Removed
