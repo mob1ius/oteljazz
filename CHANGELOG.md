@@ -1,5 +1,51 @@
 # Changelog
 
+## v1.7.0 — 2026-09-17
+
+The browser's solo line is now a port of the Python engine's, motif included. Measured with the
+new `scripts/melody_check.mjs` (seeds 1 to 40, 600s each); nothing here has been checked by
+listening tests.
+
+### Changed
+
+- **A solo line with a shape.** Before, each solo note was a chord tone placed in a random
+  octave, so consecutive notes jumped a median of 8 semitones (90th percentile 18) and the line
+  never stated an idea. It also didn't match its own description, which mentioned arpeggio runs
+  that were never played. Now, as in `engine/caidence.py`:
+  - each note steps from the previous one, using the interval habits of one Weimar Jazz Database
+    soloist at a time (rotating every 8 bars across 50 players), and stays within 18 semitones
+    of its home note;
+  - busier swarms bring faster notes, longer phrases, shorter rests and more 1-3-5-7 runs;
+  - a four-note motif is stated, inverted or played backwards as whole phrases, and always
+    stated as written when a phrase starts at the top of a chorus.
+- **Measured:** median step 3 semitones (90th percentile 9), every note inside the chord shown
+  at that moment and inside the register, 46.5% of notes on a 3rd or 7th (54.5% before).
+  264 of 264 phrases that began at a chorus top stated the motif as written.
+- **Sparser:** about 88 notes a minute, down from 181, because the Python rhythm leaves more
+  space. Note density and velocity still follow how many agents are active, and nothing else
+  about the telemetry reaches the solo.
+- **Where it differs from the Python engine, on purpose:**
+  - A new motif arrives whenever the key or mode changes, about every other chorus, because an
+    endless stream has no single piece to own one.
+  - Motif notes are chosen so each step moves in the motif's direction. The Python approach of
+    taking the nearest suitable note kept a statement's up-and-down shape only 51% of the time
+    here. This keeps it 86% of the time; the rest are probably mostly repeated tones where the
+    chord changes under the motif, though that hasn't been measured.
+  - A run that would leave the register moves by an octave as a whole.
+  - Every solo note sounds inside the bar whose chord it was chosen for. In a first draft of
+    this port, rounding and runs let 2% of notes land on the next chord.
+- **Isolation:** the solo line now has its own random stream derived from the session seed.
+  Moving the old solo onto that stream was done first. Its "everything except the solo"
+  fingerprint then stayed identical through the rewrite, so the new solo changed nothing else
+  in the music. That first step did change the rest of each seeded session once, so v1.6.x
+  seeded links no longer replay the same way.
+- `Director` takes the corpus's per-player interval tables (`performerIntervals`). Without them
+  the line falls back to small steps.
+- Drift figures from v1.6.0 re-checked on this build: 81.5% of injections become audible, and
+  95% of audible drifts correspond to a real injection. Anomalies average 3.8 per 5 minutes
+  (3.6 before), because the session's random stream shifted. Fill ticks are unchanged (median
+  0.15ms, p99 0.9ms).
+
 ## v1.6.1 — 2026-09-17
 
 ### Fixed
