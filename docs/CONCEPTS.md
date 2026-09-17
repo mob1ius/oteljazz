@@ -50,11 +50,15 @@ engine's architecture mirrors that split exactly:
 - **DERIVED tier**: patterns that only exist across multiple spans or a whole trace -- goal
   drift, a capture spike after external ingestion, conflict escalating into convergence,
   collusion between voices that shouldn't be coordinating. These require state or a detection
-  window; in the current engine they're SCRIPTED (explicit flags on hand-authored spans:
-  `drift_start`, `capture_spike`, `conflict_start`, `collusion_start`), not derived from real
-  telemetry. Building real-time derived-signal detection (the embedding-based or statistical
-  detectors that would replace the scripted flags) is future work, explicitly deferred as the
-  spec's own "ambitious tier" (Section 9).
+  window. In the hand-authored traces they're SCRIPTED (explicit flags on spans: `drift_start`,
+  `capture_spike`, `conflict_start`, `collusion_start`). Goal drift is the one exception with
+  first-pass statistical detectors: `drift_detect.detect_drift` (a voice's onset lag against the
+  chord grid, `--detect-drift`) and `drift_detect.detect_latency_drift` (a true agent's latency
+  trending up against its peers, `--detect-drift=latency`), the latter also running live in the
+  browser as the only source of its drift signature. Both are validated only on synthetic,
+  injected drift; recall against real drift is unverified. Conflict, capture spike and collusion
+  have no detector anywhere (the browser rolls them at random), and replacing them with real
+  detectors remains future work, the spec's own "ambitious tier" (Section 9).
 
 This split matters because it's honest about what's proven and what's aspirational:
 the DIRECT tier is a working, real-time-capable mapping today (see `live.py`); the DERIVED tier

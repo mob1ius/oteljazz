@@ -1,5 +1,65 @@
 # Changelog
 
+## v1.6.0 — 2026-09-17
+
+Goal-drift is now detected from the spans rather than triggered at random. Everything in this
+release was checked against synthetic, injected drift only; nothing here shows the detector
+finds drift in a real system.
+
+### Added
+
+- **Detected goal-drift, in the browser and in the Python engine.** A new detector looks back 40
+  seconds over spans that have finished. It compares each span's duration with other agents'
+  spans of the same kind (the same MCP server for tool calls, the same operation otherwise), and
+  flags an agent whose latency is trending upward and is still well above its peers. It is the
+  only way the drift signature starts in the browser, in both the synthetic demo and live mode,
+  and it reads the same span list either way. The terminal line names the agent and how many
+  times its peers' latency it is running at.
+- **Injected drift in the synthetic swarm.** In each fan-out round there is a 15% chance that one
+  subagent gets slower at its own work, reaching three times its normal latency over 10 seconds.
+  Nothing downstream is told; the detector has to notice.
+- **Why latency and not onset lag.** The existing Python detector, which compares each voice's
+  first span in a bar against the beat, found nothing when ported to the browser's spans: their
+  natural timing spread is about 0.59s, against the 30ms it was validated on. A live stream also
+  can't support it, because exporters send spans when they end, often in batches. Durations
+  survive both. The onset-lag detector in `engine/drift_detect.py` is unchanged.
+- **Measured** (`scripts/drift_validation.mjs`, seeds 1 to 40, 600s each):
+  - With nothing injected, it fires in 2.5% of 16-bar windows.
+  - At the demo's 3x slowdown it finds 84.8% of injections (85.5% of those long enough to test).
+    At 2x it finds 47.8%, at 4x 87.9%, at 6x 89.6%.
+  - When injections are running, 6% to 17% of its firings name an agent that is not the
+    drifting one.
+  - End to end, 79.6% of injections become audible, a median 15.5s after the slowdown begins.
+    91.8% of audible drifts correspond to a real injection.
+  - The original target was 95% recall. It was not reached, and further threshold tuning had
+    stopped improving it.
+- **Python engine.** `drift_detect.detect_latency_drift` is a line-for-line port with the same
+  constants. `engine/drift_parity_check.py` runs both on the same spans: 3,180 evaluations, no
+  disagreements, statistics equal to 1e-14. `caidence.py --detect-drift=latency` uses it, and a
+  bare `--detect-drift` still means onset lag. Injection in `swarm.py`, `caidence.py --swarm` and
+  `live_producer.py` is opt-in (`--inject-latency-drift`). With the flag off, their output is
+  byte-identical to before, so `seed_sweep.py` and the figures are unaffected.
+  `live_producer.py --batch-delay-ms` exports in batches, the way most real SDK setups do.
+
+### Changed
+
+- Conflict, capture spike and collusion are still triggered at random, and drift is no longer one
+  of the random choices. A random anomaly waits while the detector has a finding. A detected drift
+  may start as soon as a random anomaly has ended, without waiting out its 30s gap; two detected
+  drifts still keep that gap. If the drifting agent has lost its shared voice, the drift plays on
+  the voice it last held, provided that voice is still sounding. Together these raised the share
+  of injected drifts that become audible from 45% to about 80%. Anomalies now average 3.6 per
+  5 minutes, up from about 2.9.
+- Seeded replays of v1.5.x sessions no longer match: the synthetic swarm now makes extra random
+  draws. New baselines are in `scripts/director_fingerprint.mjs`.
+- README and `docs/CONCEPTS.md` now say exactly which anomalies are detected and how far that
+  has been checked. The README had described the live demo as including "anomaly detection",
+  which was true of none of the four signatures until this release and is now true of one.
+
+Detection runs on every generated bar. A 1.5s fill tick now takes a median of 0.15ms (p99 1.0ms,
+worst 4.3ms across 30 half-hour sessions), and the first fill at start-up takes up to 7.0ms. No new files are served, so the site's request pattern and the crawler dataset are
+unaffected.
+
 ## v1.5.1 — 2026-09-17
 
 Two live-mode bugs, both found while testing drift detection against a local relay. Neither

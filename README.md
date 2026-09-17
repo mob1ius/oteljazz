@@ -147,8 +147,16 @@ oteljazz.com plays for every visitor who just presses play. Real capture also ex
 Code hook writing real `gen_ai.*` spans, and an OTLP receiver that accepts live protobuf on :4318
 for the Python engine's MIDI output. Point your own OTLP exporter at
 `oteljazz.com/live/<session>/v1/traces` and open `oteljazz.com/?live=<session>` to hear the
-browser demo itself driven by that same real data, chorale voicing and anomaly detection included,
-not just the terminal echoing span text. No listener discovery, no auth beyond the session id
+browser demo itself driven by that same real data, chorale voicing included, not just the
+terminal echoing span text.
+
+Of the four anomaly signatures, only goal-drift is detected from the spans themselves: an agent
+whose latency keeps climbing against peers doing the same kind of work. The synthetic swarm
+slows one subagent now and then, and the demo has to notice it. That detector has only been
+checked against this injected drift, never against drift in a real system. At a 3x slowdown it
+finds about 85% of injections, and it fires on 2.5% of 16-bar windows when nothing is injected
+(`scripts/drift_validation.mjs` prints the full curve). The other three signatures (conflict,
+capture spike, collusion) are still triggered at random. No listener discovery, no auth beyond the session id
 itself being a shared secret (`src/live-relay.js`); only an agent literally named `orchestrator`
 gets the fixed lead voice, everything else pools onto the worker voices like a synthetic subagent
 would (`web/director.js`'s `feedSpan`).
