@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.9.1 — 2026-09-17
+
+### Fixed
+
+- **The live relay no longer logs an error for every rejected request.** A request refused before
+  its body was read (wrong content type, oversized, or rate limited) left the body unread, and
+  the runtime logged "Can't read from request stream after response has been sent" each time,
+  once per rejected export. A rate-limited exporter could fill the log with them. The relay now
+  reads and drops small declared bodies before answering, which covers the case that repeats.
+  Rejections are still cheap: neither the protobuf decode nor the database write happens for them.
+  Checked with a 200-request flood against a local relay: 112 rate-limited, no errors logged.
+- Two approaches were tried and rejected on measurements, and the reasons are in the code:
+  cancelling the body tore connections down mid-upload (8% of that flood failed with "Network
+  connection lost" and a 500), and draining every body let a client that declares a large body
+  and then sends little of it hang the request indefinitely. Only bodies that declare 64KB or
+  less are drained; anything else is answered without touching the body, which logs once.
+
 ## v1.9.0 — 2026-09-17
 
 Live mode gives the lead voice to a sensible agent instead of requiring one to be named
