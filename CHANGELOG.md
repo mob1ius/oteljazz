@@ -27,8 +27,8 @@ finds drift in a real system.
   - With nothing injected, it fires in 2.5% of 16-bar windows.
   - At the demo's 3x slowdown it finds 84.8% of injections (85.5% of those long enough to test).
     At 2x it finds 47.8%, at 4x 87.9%, at 6x 89.6%.
-  - When injections are running, 6% to 17% of its firings name an agent that is not the
-    drifting one.
+  - When injections are running, some firings name an agent that is not the drifting one: 11.6%
+    at the demo's settings, and between 6.0% and 16.8% across the other sizes and rates tested.
   - End to end, 79.6% of injections become audible, a median 15.5s after the slowdown begins.
     91.8% of audible drifts correspond to a real injection.
   - The original target was 95% recall. It was not reached, and further threshold tuning had

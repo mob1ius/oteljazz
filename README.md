@@ -153,8 +153,9 @@ terminal echoing span text.
 Of the four anomaly signatures, only goal-drift is detected from the spans themselves: an agent
 whose latency keeps climbing against peers doing the same kind of work. The synthetic swarm
 slows one subagent now and then, and the demo has to notice it. That detector has only been
-checked against this injected drift, never against drift in a real system. At a 3x slowdown it
-finds about 85% of injections, and it fires on 2.5% of 16-bar windows when nothing is injected
+checked against this injected drift, never against drift in a real system. At the demo's own
+settings (a 3x slowdown, injected in 15% of rounds) it finds about 85% of injections, and it
+fires on 2.5% of 16-bar windows when nothing is injected
 (`scripts/drift_validation.mjs` prints the full curve). The other three signatures (conflict,
 capture spike, collusion) are still triggered at random. No listener discovery, no auth beyond the session id
 itself being a shared secret (`src/live-relay.js`); only an agent literally named `orchestrator`
