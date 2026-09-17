@@ -521,6 +521,7 @@ function startEngine() {
     chordCursor, chordQueueLen: pendingChords.length,
     nextChord: pendingChords[chordCursor],
     stationDrift: stationDriftLog,
+    tempoBpm: playingTempo(),
   });
   window.__oteljazzDebug = debugSnapshot;
   startStationDrift(director.seed);
@@ -840,6 +841,16 @@ dialGlassTarget.addEventListener("keydown", (e) => {
 });
 
 // =============================================================================================
+// The tempo sounding NOW. Director.tempoBpm is the tempo of the bar being generated, which can
+// be up to a lookahead (24s) ahead of what is heard, so read its log back to the transport time.
+function playingTempo() {
+  if (!director) return null;
+  const t = Tone.Transport.seconds;
+  let bpm = 96;
+  for (const e of director.tempoLog) { if (e.t <= t) bpm = e.bpm; else break; }
+  return bpm;
+}
+
 // Konami -> service mode. Exposes the engine internals window.__oteljazzDebug() already returns,
 // which until now were console-only: transport time, queue depths, cursors. An engineer's panel
 // on an engineer's radio. The arrow keys in the sequence also nudge the knobs (they share the
@@ -860,7 +871,7 @@ function toggleServiceMode() {
     const tick = () => {
       const d = window.__oteljazzDebug ? window.__oteljazzDebug() : null;
       el.textContent = d
-        ? `transport ${d.transportS.toFixed(2)}s | spans ${d.spanCursor}/${d.spanQueueLen} | chords ${d.chordCursor}/${d.chordQueueLen} | seed ${director ? director.seed : "-"}`
+        ? `transport ${d.transportS.toFixed(2)}s | ${d.tempoBpm} bpm | spans ${d.spanCursor}/${d.spanQueueLen} | chords ${d.chordCursor}/${d.chordQueueLen} | seed ${director ? director.seed : "-"}`
         : "engine not started -- press play";
     };
     tick();

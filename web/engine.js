@@ -29,10 +29,11 @@
  *   are moved by octaves to stay in the register; and every note sounds inside the bar whose
  *   chord it was chosen for (onsets and runs used to spill onto the next chord). Velocity keeps
  *   the browser's activity-driven formula rather than Python's fixed one.
- *   SIMPLIFIED, deliberately, to ship this rather than stall on full parity: no per-section
- *   tempo arc (tempo is fixed, since retrofitting a tempo curve
- *   onto an open-ended stream is a different and harder problem than this pass is scoped for);
- *   swing is a single global constant rather than per-section. See BUILD_NOTES.md for the full
+ *   Tempo follows span throughput, as in caidence.py, but per chorus rather than per derived
+ *   section, and relative to the session's own recent normal rather than the finished trace's
+ *   min/max, which an endless stream doesn't have (director.js's TEMPO ARC block).
+ *   SIMPLIFIED, deliberately, to ship this rather than stall on full parity: swing is a single
+ *   global constant rather than per-section. See BUILD_NOTES.md for the full
  *   list and why each cut was made. (Comp push/anticipation was on this list originally; it has
  *   since been ported -- see director.js's COMP_PUSH_PROBABILITY and its pendingPush lookahead.)
  *   GOES FURTHER THAN caidence.py's DEFAULT, deliberately: goal-drift is not placed by hand or

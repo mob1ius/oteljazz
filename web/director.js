@@ -28,10 +28,27 @@ import {
   noteNearStep, arpeggioNotes, generateMotif, motifVariant, performerStepTables, motifNote,
 } from "./engine.js";
 
+// The NOMINAL tempo: where every session starts, and the centre of the tempo arc (M3). Bars are
+// no longer all this long -- see Director._setTempo -- so BAR_S is only a nominal length, for
+// callers that need a rough bar (validation scripts). Timing inside Director uses this.beatS /
+// this.barS / this.gridS, which belong to the bar being generated.
 const TEMPO_BPM = 96.0;
 const BEAT_S = 60.0 / TEMPO_BPM;
 const BAR_S = BEAT_S * 4;
-const GRID_S = BEAT_S / 4;               // 16th note
+// --- TEMPO ARC (M3) ---------------------------------------------------------------------------
+// Tempo is a telemetry (dynamics) channel: it follows span throughput, never harmony. It may
+// change only where a chorus begins -- the same boundary where the form is redrawn and the key
+// may move -- so no phrase ever changes speed halfway (the Python engine steps tempo at section
+// boundaries for the same reason). The rate is judged against the session's OWN slowly moving
+// normal, in log terms, so the rule works for a swarm doing one span a minute or a thousand a
+// second: busier than usual speeds up, quieter than usual slows down, steady sits at 96.
+// Only spans that had ENDED by the chorus start count, so live and synthetic read it the same way.
+const TEMPO_MIN = 76;
+const TEMPO_MAX = 120;
+const TEMPO_MAX_STEP = 12;                   // BPM, per chorus
+const TEMPO_RATE_WINDOW_S = 30;
+const TEMPO_PER_LOG_RATE = 14 / Math.LN2;    // twice the usual throughput -> 14 BPM faster
+const TEMPO_BASELINE_TAU_S = 300;            // how slowly "usual" moves
 const SWING_RATIO = 0.60;                // matches caidence.py's SWING_DEFAULT
 const COMP_PUSH_PROBABILITY = 0.38;
 const COMP_PUSH_ACCENT = 10;
@@ -82,15 +99,18 @@ const COLLUSION_COUNT = 3;
 const COLLUSION_GAP_S = 0.5;
 const COLLUSION_VELOCITY = 90;
 
-function quantize(t) { return Math.round(t / GRID_S) * GRID_S; }
-function applySwing(t) {
+// Grid and swing are measured from the bar's own start with the bar's own beat, since beats are
+// no longer the same length everywhere. At a constant tempo whose bars start on exact multiples
+// of the beat this is the same arithmetic as the old global grid.
+function quantize(t, origin, gridS) { return origin + Math.round((t - origin) / gridS) * gridS; }
+function applySwing(t, origin, beatS) {
   if (SWING_RATIO <= 0.5) return t;
-  const beatIdx = Math.floor(t / BEAT_S);
-  const frac = (t - beatIdx * BEAT_S) / BEAT_S;
+  const beatIdx = Math.floor((t - origin) / beatS);
+  const frac = (t - origin - beatIdx * beatS) / beatS;
   let newFrac;
   if (frac < 0.5) newFrac = (frac / 0.5) * SWING_RATIO;
   else newFrac = SWING_RATIO + ((frac - 0.5) / 0.5) * (1 - SWING_RATIO);
-  return beatIdx * BEAT_S + newFrac * BEAT_S;
+  return origin + beatIdx * beatS + newFrac * beatS;
 }
 function clampNote(n) { return Math.max(0, Math.min(127, Math.round(n))); }
 
@@ -151,6 +171,10 @@ export class Director {
     this.chorusIndex = -1;
     this.form = null;                                     // {majorForm, minorForm} for current chorus
     this.absoluteBar = 0;
+    this.chorusStartS = 0;          // when the current chorus began (bars start from here)
+    this._setTempo(TEMPO_BPM);
+    this.tempoBaseline = null;      // log spans/s considered "usual" for this session
+    this.tempoLog = [];             // {t, bpm, rate, usual}, for validation/debug
     this.prevVoicing = null;
     this.prevBassNote = null;
     this.pendingPush = 0;   // bar 0 never pushes -- see _generateBar's push comment
@@ -227,7 +251,7 @@ export class Director {
     if (!this.live) return;
     let start = nowS;
     if (start < this.generatedUntilS) {
-      start += BAR_S * Math.ceil((this.generatedUntilS - start) / BAR_S);
+      start += this.barS * Math.ceil((this.generatedUntilS - start) / this.barS);
     }
     this.swarm.feed({
       agent: span.service,
@@ -237,6 +261,40 @@ export class Director {
       tokens: Math.round(span.tokens || 50),
       status: span.status === "error" ? "error" : "ok",
       ...(span.tool ? { tool: span.tool } : {}),
+    });
+  }
+
+  _setTempo(bpm) {
+    this.tempoBpm = bpm;
+    this.beatS = 60.0 / bpm;
+    this.barS = this.beatS * 4;
+    this.gridS = this.beatS / 4;   // 16th note
+  }
+
+  // Decide the tempo for the chorus starting at `atS`. The first measurement only sets the
+  // baseline (there is nothing to compare it with yet), so the earliest change is at chorus 3.
+  _chooseTempo(atS, prevChorusS) {
+    const lo = atS - TEMPO_RATE_WINDOW_S;
+    let n = 0;
+    for (const s of this.swarm.spans) {
+      const end = s.start + s.duration;
+      if (end <= atS && end > lo) n++;
+    }
+    const x = Math.log((n + 0.5) / TEMPO_RATE_WINDOW_S);   // +0.5: a silent window still has a log
+    if (this.tempoBaseline === null) { this.tempoBaseline = x; return; }
+    const target = TEMPO_BPM + TEMPO_PER_LOG_RATE * (x - this.tempoBaseline);
+    const stepped = Math.max(this.tempoBpm - TEMPO_MAX_STEP, Math.min(this.tempoBpm + TEMPO_MAX_STEP, target));
+    const bpm = Math.round(Math.max(TEMPO_MIN, Math.min(TEMPO_MAX, stepped)));
+    const usual = Math.exp(this.tempoBaseline);
+    this.tempoBaseline += (1 - Math.exp(-prevChorusS / TEMPO_BASELINE_TAU_S)) * (x - this.tempoBaseline);
+    this.tempoLog.push({ t: atS, bpm, rate: Math.exp(x), usual });
+    if (this.tempoLog.length > 200) this.tempoLog.shift();
+    if (bpm === this.tempoBpm) return;
+    this._setTempo(bpm);
+    this.onSpanLine && this.onSpanLine({
+      t: atS, service: "tempo",
+      line: `<span class="dim">tempo</span> ${bpm} bpm  <span class="dim">throughput ` +
+        `${Math.exp(x).toFixed(1)}/s, usually ${usual.toFixed(1)}/s</span>`,
     });
   }
 
@@ -260,7 +318,7 @@ export class Director {
     // (user decision, docs/ROADMAP.md M2). Drawn from melodyRng, so it moves nothing else.
     if (this.keyPc !== keyBefore || this.mode !== modeBefore) {
       this.motif = generateMotif(this.melodyRng);
-      this.motifLog.push({ event: "renew", t: this.absoluteBar * BAR_S, chorus: chorusIdx });
+      this.motifLog.push({ event: "renew", t: this.chorusStartS, chorus: chorusIdx });
       if (this.motifLog.length > 400) this.motifLog.shift();
     }
   }
@@ -412,11 +470,19 @@ export class Director {
 
   // Generate and schedule exactly one bar's worth of everything, advancing all cursors.
   _generateBar() {
-    const barStart = this.absoluteBar * BAR_S;
-    const barEnd = barStart + BAR_S;
     const chorusIdx = Math.floor(this.absoluteBar / FORM_BARS);
     const barInChorus = this.absoluteBar % FORM_BARS;
+    if (barInChorus === 0 && this.absoluteBar > 0) {
+      // the previous chorus ends where its last bar did; tempo may change only here
+      const prevChorusS = this.generatedUntilS - this.chorusStartS;
+      this.chorusStartS = this.generatedUntilS;
+      this.swarm.advanceUntil(this.chorusStartS);
+      this._chooseTempo(this.chorusStartS, prevChorusS);
+    }
     this._ensureChorus(chorusIdx);
+    const barStart = this.chorusStartS + barInChorus * this.barS;
+    const barEnd = barStart + this.barS;
+    const { beatS, gridS } = this;
 
     const activeForm = this._activeForm();
     const { rootPc, quality } = activeForm[barInChorus];
@@ -494,7 +560,7 @@ export class Director {
     // and directly overlapped/clashed with the next bar's comp chord -- audible as harmonic
     // mush, not swing. This is the fix for that.)
     const thisPush = this.pendingPush || 0;
-    this.pendingPush = this.rng.bool(COMP_PUSH_PROBABILITY) ? BEAT_S * 0.5 : 0;
+    this.pendingPush = this.rng.bool(COMP_PUSH_PROBABILITY) ? beatS * 0.5 : 0;
 
     const nextBarInChorus = (barInChorus + 1) % FORM_BARS;
     // the next bar's chord, for the cadence-accent lookahead only; if it crosses into a new
@@ -531,10 +597,10 @@ export class Director {
     const nextTarget = bassTarget((nextRootPc + this.keyPc) % 12, activeForm[nextBarInChorus] ? activeForm[nextBarInChorus].quality : quality, 0);
     const bar = walkingBassBar(bassNote, nextTarget, soundRoot, quality, fourFeel);
     for (const [beatOff, note] of bar) {
-      const t0 = barStart + beatOff * BEAT_S;
+      const t0 = barStart + beatOff * beatS;
       if (t0 >= barEnd) continue;
       const vel = Math.max(1, Math.min(127, WALK_VELOCITY + ((barInChorus === 0 && beatOff === 0) ? Math.floor(COMP_ACCENT_FORM_TOP / 2) : 0)));
-      this._schedule("bass", clampNote(note), vel, BEAT_S * WALK_NOTE_FRAC, t0);
+      this._schedule("bass", clampNote(note), vel, beatS * WALK_NOTE_FRAC, t0);
     }
 
     // --- DIRECT tier: one note per span, on that span's own voice, at the current chord's tone
@@ -551,7 +617,7 @@ export class Director {
       const note = voicing[soundingVoice] !== undefined ? voicing[soundingVoice] : VOICE_RANGES[soundingVoice][0];
       const vel = tokensToVelocity(s.tokens);
       const dur2 = latencyToDuration(s.op, s.duration);
-      const onset = applySwing(quantize(s.start));
+      const onset = applySwing(quantize(s.start, barStart, gridS), barStart, beatS);
       this._schedule(soundingVoice, note, vel, dur2, onset, this._activeBendFor(soundingVoice, onset));
 
       if (s.status === "error") {
@@ -590,7 +656,8 @@ export class Director {
     const rng = this.melodyRng;
     const tones = JAZZ_CHORD_TONES[quality];
     const [lo, hi] = MELODY_REGISTER;
-    const gapS = (BAR_S * MELODY_NOTE_GAP_BARS) / (1 + MELODY_DENSITY_PER_AGENT * activityLevel);
+    const { barS, beatS, gridS } = this;
+    const gapS = (barS * MELODY_NOTE_GAP_BARS) / (1 + MELODY_DENSITY_PER_AGENT * activityLevel);
     const density = Math.min(4, activityLevel);
     const table = this.performerTables.length
       ? this.performerTables[(Math.floor(this.absoluteBar / MELODY_ROTATION_BARS) + this.performerOffset) % this.performerTables.length]
@@ -649,8 +716,8 @@ export class Director {
       // A note belongs to THIS bar's chord, so it must also sound inside this bar: rounding to
       // the 16th grid can land exactly on the next bar line, and a run can spill past it (both
       // measured: every out-of-chord solo note was the previous bar's chord sounding late).
-      let onset = applySwing(quantize(t));
-      if (onset >= barEnd - 1e-9) onset = applySwing(quantize(t) - GRID_S);
+      let onset = applySwing(quantize(t, barStart, gridS), barStart, beatS);
+      if (onset >= barEnd - 1e-9) onset = applySwing(quantize(t, barStart, gridS) - gridS, barStart, beatS);
       const vel = Math.min(110, 55 + rng.int(30) + density * 5 + (isMotif ? 8 : 0));
       const runProb = isMotif ? 0 : Math.min(0.6, 0.15 + 0.12 * activityLevel);
       if (runProb > 0 && rng.next() < runProb) {
@@ -674,7 +741,7 @@ export class Director {
         const busy = Math.min(1, activityLevel / MELODY_BUSY_ACTIVITY);
         const restBars = (MELODY_REST_BARS_IDLE + (MELODY_REST_BARS_BUSY - MELODY_REST_BARS_IDLE) * busy)
           * (0.7 + 0.6 * rng.next());
-        t += BAR_S * restBars;
+        t += barS * restBars;
       }
     }
     this.melodyNextT = t;
