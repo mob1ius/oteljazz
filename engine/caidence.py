@@ -1711,7 +1711,9 @@ def build_timeline(spans, tempo, speed, do_drift, corpus_model, regime_schedule=
     # Collusion candidate: two independent voices suddenly lock into an unexpected unison.
     collusion = next((s for s in spans if s.get("collusion_start")), None)
     if collusion:
-        a_role, b_role = COLLUSION_PAIR
+        # A detected collusion (collusion_detect.py, --detect-collusion) names the two voices it
+        # actually found; a hand-authored one falls back to the scripted pair.
+        a_role, b_role = collusion.get("collusion_voices", COLLUSION_PAIR)
         ch_a = VOICES[a_role][0]
         ch_b = VOICES[b_role][0]
         collusion_unison(ch_a, ch_b, collusion["collusion_start"], add)
@@ -2079,6 +2081,12 @@ def main():
     ap.add_argument("--inject-latency-drift", action="store_true",
                      help="--swarm only, opt-in: let one subagent per round slow down, as the "
                           "browser's mock swarm does (swarm.LATENCY_DRIFT_INJECT)")
+    ap.add_argument("--inject-collusion", action="store_true",
+                     help="--swarm only, opt-in: let one subagent per round shadow another, as the "
+                          "browser's mock swarm does (swarm.COLLUSION_INJECT)")
+    ap.add_argument("--detect-collusion", action="store_true",
+                     help="find collusion from the spans themselves (collusion_detect.py) instead "
+                          "of reading a hand-typed collusion_start out of the trace file")
     ap.add_argument("--demo", action="store_true",
                      help="use the extended ~110s demo trace (wide dynamic range, minor-mode "
                           "crisis arc) instead of the ~30s calibration-shaped synthetic trace")
@@ -2150,7 +2158,8 @@ def main():
         seed = args.seed if args.seed is not None else random.SystemRandom().randrange(2**31)
         spans, sections = swarm_mod.swarm_trace(
             seed=seed, fanout=args.fanout, rounds=args.rounds,
-            latency_drift={} if args.inject_latency_drift else None)
+            latency_drift={} if args.inject_latency_drift else None,
+            collusion={} if args.inject_collusion else None)
         print(f"Using mock swarm (seed {seed}, fanout {args.fanout}, {args.rounds} rounds)."
               f" Pass --seed {seed} to reproduce this run.\n")
         print(swarm_mod.describe(spans, sections))
@@ -2223,6 +2232,23 @@ def main():
             print(f"\n--detect-drift: {what} showed a growing, statistically "
                   "significant divergence from the group -- rendering without drift.")
             do_drift = False
+
+    if args.detect_collusion:
+        from collusion_detect import detect_collusion
+        resolved_col, _ = pool_spans(spans)
+        col = detect_collusion(spans, resolved=resolved_col)
+        if col:
+            print(f"\n--detect-collusion: flagged {col['true_agents'][0]!r} and "
+                  f"{col['true_agents'][1]!r} (on {col['voices'][0]!r}/{col['voices'][1]!r}) at "
+                  f"~{col['collusion_start']:.2f}s, {col['match_frac']*100:.0f}% of the quieter "
+                  f"agent's actions within a moment of the other's (z={col['z_score']:.2f}).")
+            spans = spans + [{"agent": col["voices"][0], "action": "chat",
+                               "start": col["collusion_start"], "duration": 0.1,
+                               "collusion_start": col["collusion_start"],
+                               "collusion_voices": list(col["voices"])}]
+        else:
+            print("\n--detect-collusion: no pair of agents moved together more than their own "
+                  "rates predict -- rendering without collusion.")
 
     timeline = build_timeline(spans, args.tempo, args.speed, do_drift=do_drift,
                                corpus_model=corpus_model, regime_schedule=regime_schedule, seed=seed,

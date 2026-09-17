@@ -131,6 +131,10 @@ def _latency(rng, profile):
 # when off, draws nothing from the rng -- default output (and so seed_sweep.py and every figure
 # built on it) stays byte-identical. The browser has it on; see drift_detect.detect_latency_drift.
 LATENCY_DRIFT_INJECT = {"prob": 0.15, "max_mult": 3.0, "ramp_s": 10.0}
+# Opt-in collusion injection, mirroring web/engine.js's COLLUSION_INJECT: one subagent shadows
+# another's actions moments later, for a window. Also OFF by default and drawing nothing from the
+# rng when off. See collusion_detect.detect_collusion for the detector that has to notice.
+COLLUSION_INJECT = {"prob": 0.15, "window_s": 18.0, "lag_s": (0.05, 0.2)}
 
 
 def _latency_drift_factor(drift, at):
@@ -147,11 +151,13 @@ class SwarmSim:
     pipeline. Any arc the music has comes from derive_sections reading this back, which is the
     entire point: if the shape were authored here the demonstration would be circular."""
 
-    def __init__(self, seed=0, fanout=4, rounds=2, latency_drift=None):
+    def __init__(self, seed=0, fanout=4, rounds=2, latency_drift=None, collusion=None):
         self.rng = random.Random(seed)
         # None = no injection (the default). A dict overrides LATENCY_DRIFT_INJECT's fields.
         self.latency_drift = None if latency_drift is None else {**LATENCY_DRIFT_INJECT, **latency_drift}
+        self.collusion = None if collusion is None else {**COLLUSION_INJECT, **collusion}
         self.injected_drifts = []   # ground truth when injecting: {"agent", "t0"}
+        self.injected_collusions = []   # {"leader", "follower", "t0", "end_s"}
         self.fanout = fanout
         self.rounds = rounds
         self.spans = []
@@ -237,6 +243,15 @@ class SwarmSim:
         if inj is not None and self.fanout >= 2 and self.rng.random() < inj["prob"]:
             drift_idx = self.rng.randrange(self.fanout)
 
+        # Collusion: the follower must come after its leader in this loop, since it copies spans
+        # the leader has already emitted.
+        col = self.collusion
+        lead_idx = follow_idx = -1
+        if col is not None and self.fanout >= 3 and self.rng.random() < col["prob"]:
+            lead_idx = self.rng.randrange(self.fanout - 1)
+            follow_idx = lead_idx + 1 + self.rng.randrange(self.fanout - lead_idx - 1)
+        leader_spans = None
+
         finish_times = []
         for i, (agent_id, start) in enumerate(agents):
             drift = None
@@ -244,6 +259,22 @@ class SwarmSim:
                 drift = {"t0": start, "max_mult": inj["max_mult"], "ramp_s": inj["ramp_s"]}
                 self.injected_drifts.append({"agent": agent_id, "t0": start})
             t = start
+            spans_before = len(self.spans)
+            if i == follow_idx and leader_spans:
+                col_start = leader_spans[0]["start"]
+                mirrored = [x for x in leader_spans
+                            if col_start <= x["start"] < col_start + col["window_s"]]
+                for x in mirrored:
+                    at = x["start"] + self.rng.uniform(*col["lag_s"])
+                    extra = ({"tool": x.get("tool"), "mcp_server": x.get("mcp_server"),
+                              "status": x.get("status"), "stop_reason": "tool_use"}
+                             if x.get("op") == "execute_tool" else {})
+                    self._add(agent_id, x["op"], at, x["duration"], x["tokens"], **extra)
+                    t = max(t, at + x["duration"])
+                if mirrored:
+                    self.injected_collusions.append(
+                        {"leader": agents[lead_idx][0], "follower": agent_id,
+                         "t0": mirrored[0]["start"], "end_s": t})
             for step in range(self.rng.randint(3, 6)):
                 t = self._reason(agent_id, t, self.rng.randint(160, 420), drift=drift)
                 for _ in range(self.rng.randint(1, 3)):
@@ -254,6 +285,8 @@ class SwarmSim:
             reason = self.rng.choices(
                 ["end_turn", "end_turn", "end_turn", "max_tokens", "stop_sequence"], k=1)[0]
             t = self._reason(agent_id, t, self.rng.randint(200, 500), stop_reason=reason, drift=drift)
+            if i == lead_idx:
+                leader_spans = self.spans[spans_before:]
             finish_times.append(t)
 
         self.t = max(finish_times) + 0.4
@@ -386,11 +419,12 @@ def derive_sections(spans, tail_s=6.0):
     return sections
 
 
-def swarm_trace(seed=0, fanout=4, rounds=2, latency_drift=None):
+def swarm_trace(seed=0, fanout=4, rounds=2, latency_drift=None, collusion=None):
     """The pipeline's spans plus the form derived from them. Returns (spans, sections) -- there is
     deliberately no regime_schedule: major/minor is a narrative device from the hand-authored
     demo, and nothing in real telemetry says 'go to minor here'."""
-    spans = SwarmSim(seed=seed, fanout=fanout, rounds=rounds, latency_drift=latency_drift).run()
+    spans = SwarmSim(seed=seed, fanout=fanout, rounds=rounds, latency_drift=latency_drift,
+                     collusion=collusion).run()
     return spans, derive_sections(spans)
 
 
@@ -424,6 +458,9 @@ def main():
     ap.add_argument("--fanout", type=int, default=4, help="subagents spawned per round")
     ap.add_argument("--rounds", type=int, default=2, help="fan-out/converge cycles")
     ap.add_argument("--show", action="store_true", help="print the pipeline and derived form")
+    ap.add_argument("--inject-collusion", action="store_true",
+                    help="opt-in: let one subagent per round shadow another (COLLUSION_INJECT), as "
+                         "the browser does -- for collusion_detect.detect_collusion. Off by default.")
     ap.add_argument("--inject-latency-drift", action="store_true",
                     help="opt-in: let a subagent per round slow down (LATENCY_DRIFT_INJECT), as the "
                          "browser does -- for drift_detect.detect_latency_drift. Off by default.")
@@ -431,7 +468,8 @@ def main():
     args = ap.parse_args()
 
     spans, sections = swarm_trace(seed=args.seed, fanout=args.fanout, rounds=args.rounds,
-                                  latency_drift={} if args.inject_latency_drift else None)
+                                  latency_drift={} if args.inject_latency_drift else None,
+                                  collusion={} if args.inject_collusion else None)
     if args.show or not args.json:
         print(describe(spans, sections))
     if args.json:
