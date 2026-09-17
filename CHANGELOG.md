@@ -1,5 +1,41 @@
 # Changelog
 
+## v1.10.0 — 2026-09-17
+
+Collusion joins goal-drift as a signature the demo detects rather than invents. Measured with the
+new `scripts/collusion_validation.mjs` (seeds 1 to 40, 600s each). Synthetic injection only;
+nothing here says the detector finds collusion in a real system.
+
+### Added
+
+- **Detected collusion.** For every pair of agents, the demo counts how often their spans land
+  within a quarter second of each other and compares that with what their own rates predict if
+  they were independent. A pair is flagged when the coincidences are far above chance, cover most
+  of the quieter agent's activity, and are mostly the same kind of work. Two agents in one
+  fan-out overlap constantly by chance, which is what the comparison and the same-work test are
+  for. As with drift, this is now the only way the signature sounds, in the synthetic demo and in
+  live mode, from the same span list.
+- **Injected collusion in the synthetic swarm.** In a fan-out of three or more there is a 15%
+  chance that one subagent shadows another for 18 seconds, repeating its actions a fraction of a
+  second later. Nothing downstream is told.
+- **Measured:** it flagged 2.3% of 16-bar windows with nothing injected, and found 96.9% of
+  injected shadowing (97.8% at the demo's own injection rate), a median 10 seconds after the
+  shadowing began. End to end, 67% of injections become audible and 90% of audible collusions
+  correspond to a real injection.
+- **Python engine:** `engine/collusion_detect.py` is a line-for-line port with the same constants,
+  `caidence.py --detect-collusion` renders what it finds (on the two voices actually flagged,
+  not the scripted pair), and `swarm.py --inject-collusion` is opt-in, leaving default output
+  byte-identical. `engine/drift_parity_check.py` is now `engine/detector_parity_check.py` and
+  checks both detectors: 3,180 evaluations, no disagreements, statistics equal to 1e-14.
+
+### Changed
+
+- The random anomaly roll is down to conflict and capture spike. Anomalies now average 4.5 per
+  5 minutes, up from 3.8, because detected collusion adds to detected drift rather than replacing
+  a share of the roll. If that reads as too busy, the roll probability is one constant.
+- Drift, tempo and the solo line were re-checked on this build and are unchanged in behaviour.
+- Seeded links from v1.9.x play differently: the synthetic swarm makes extra draws for injection.
+
 ## v1.9.1 — 2026-09-17
 
 ### Fixed

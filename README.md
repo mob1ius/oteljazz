@@ -150,14 +150,16 @@ for the Python engine's MIDI output. Point your own OTLP exporter at
 browser demo itself driven by that same real data, chorale voicing included, not just the
 terminal echoing span text.
 
-Of the four anomaly signatures, only goal-drift is detected from the spans themselves: an agent
-whose latency keeps climbing against peers doing the same kind of work. The synthetic swarm
-slows one subagent now and then, and the demo has to notice it. That detector has only been
-checked against this injected drift, never against drift in a real system. At the demo's own
-settings (a 3x slowdown, injected in 15% of rounds) it finds about 85% of injections, and it
-fires on 2.5% of 16-bar windows when nothing is injected
-(`scripts/drift_validation.mjs` prints the full curve). The other three signatures (conflict,
-capture spike, collusion) are still triggered at random. No listener discovery, no auth beyond the session id
+Two of the four anomaly signatures are detected from the spans themselves. Goal-drift is an
+agent whose latency keeps climbing against peers doing the same kind of work; collusion is two
+agents doing the same kind of work within a moment of each other far more often than their own
+rates predict. The synthetic swarm slows one subagent now and then, and makes another shadow its
+neighbour, and the demo has to notice. Both detectors have only been checked against these
+injected cases, never against a real system. At the demo's own settings drift finds about 85% of
+injections and fires on 2.5% of 16-bar windows when nothing is injected; collusion finds about
+97% and fires on 2.3% (`scripts/drift_validation.mjs` and `scripts/collusion_validation.mjs`
+print the full numbers). The other two signatures, conflict and capture spike, are still
+triggered at random. No listener discovery, no auth beyond the session id
 itself being a shared secret (`src/live-relay.js`); the lead voice goes to whichever agent appears
 first, or to one that declares itself with `gen_ai.agent.role`, and everything else pools onto the
 worker voices like a synthetic subagent would (`web/director.js`'s `feedSpan`).
