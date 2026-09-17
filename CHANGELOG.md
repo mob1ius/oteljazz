@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.6.1 — 2026-09-17
+
+### Fixed
+
+- **The demo now plays in the key it shows.** Each session picks a random key, and a new chorus
+  may modulate, but only the chord readout ever used the key; everything audible was generated
+  in C. So in 11 of 12 keys the dial named chords that weren't sounding, and key changes were
+  silent (major and minor switches were heard, nothing else). Measured over 20 sessions and 1,600
+  bars: the sustained chord matched the displayed chord in 257 bars. Chords, bass, solo line,
+  error grace notes and the capture-spike cluster now use the current key. The V to I cadence
+  accent still works on the key-relative chord, as before.
+- Checked: every note's voice, timing, length and velocity is identical to v1.6.0; only pitches
+  moved. Sustained chord notes now match the readout 99.8% of the time (6,363 of 6,377), the
+  solo line 99.4%, and the walking bass 77% (it uses passing tones on purpose). The few misses
+  left in that check look like per-span notes whose rounded start time falls in the next bar,
+  not wrong chords. Seeded links from v1.6.0 play the same rhythm in the correct
+  key.
+
 ## v1.6.0 — 2026-09-17
 
 Goal-drift is now detected from the spans rather than triggered at random. Everything in this
