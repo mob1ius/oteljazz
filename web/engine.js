@@ -36,12 +36,14 @@
  *   global constant rather than per-section. See BUILD_NOTES.md for the full
  *   list and why each cut was made. (Comp push/anticipation was on this list originally; it has
  *   since been ported -- see director.js's COMP_PUSH_PROBABILITY and its pendingPush lookahead.)
- *   GOES FURTHER THAN caidence.py's DEFAULT, deliberately: goal-drift and collusion are not
- *   placed by hand or rolled. SwarmEngine injects a latency trend into one subagent
- *   (LATENCY_DRIFT_INJECT) and makes another shadow its neighbour (COLLUSION_INJECT), and
- *   Director hears either signature only when detectLatencyDrift or detectCollusion finds it --
- *   the same detectors as drift_detect.detect_latency_drift and collusion_detect.detect_collusion,
- *   which caidence.py runs only under --detect-drift=latency / --detect-collusion.
+ *   GOES FURTHER THAN caidence.py's DEFAULT, deliberately: goal-drift, collusion and the
+ *   capture spike are not placed by hand or rolled. SwarmEngine injects a latency trend into one
+ *   subagent (LATENCY_DRIFT_INJECT), makes another shadow its neighbour (COLLUSION_INJECT) and
+ *   captures a third (CAPTURE_INJECT), and Director hears any of the three only when
+ *   detectLatencyDrift / detectCollusion / detectCaptureSpike finds it -- the same detectors as
+ *   drift_detect.detect_latency_drift, collusion_detect.detect_collusion and
+ *   capture_detect.detect_capture_spike, which caidence.py runs only under --detect-drift=latency
+ *   / --detect-collusion / --detect-capture. Only conflict is still rolled.
  *
  * MODULATION / "never the same song twice": each CHORUS (16 bars) is a freshly-drawn form --
  * generate_jazz_form is called again every time the bar cursor wraps, not just once for the
@@ -596,6 +598,25 @@ const COLLUSION_INJECT = {
   windowS: 18.0,   // how long the follower shadows
   lagS: [0.05, 0.2], // how far behind the follower's copy lands
 };
+// Capture spike: an agent ingests something external and its own output balloons straight after.
+// Injected as a token jump following one of the agent's tool calls; detected as exactly that.
+const CAPTURE_INJECT = {
+  prob: 0.15,      // chance a fan-out round picks a subagent to be captured
+  mult: 3.0,       // its chat spans produce this many times the tokens...
+  windowS: 18.0,   // ...for this long after the tool call that captured it
+};
+const CAPTURE_DETECT = {
+  windowS: 40,     // look-back over finished spans
+  afterS: 18,      // how long after the tool call counts as "straight after"
+  minBefore: 3,    // chat spans needed to know what the agent was producing before
+  minAfter: 2,     // ...and after (agents emit a chat only every few seconds)
+  minRatio: 2.4,   // median tokens after / before
+  zThresh: 3.0,    // ...and that jump in standard deviations of the agent's own log-token spread
+  // Measured (scripts/capture_validation.mjs): 1.4% of 16-bar windows flagged with nothing
+  // injected, 68.7% of injected captures found -- 87% of the ones whose agent keeps talking
+  // long enough to measure. A captured agent that then goes quiet leaves nothing to compare.
+};
+
 const COLLUSION_DETECT = {
   windowS: 40,     // look-back over finished spans
   tolS: 0.25,      // two spans this close count as coinciding
@@ -631,6 +652,49 @@ function latencyKey(s) {
 function median(a) {
   const s = [...a].sort((x, y) => x - y), m = s.length >> 1;
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+// An agent whose output jumps right after it ingests a tool result. For each of an agent's tool
+// calls, compare the tokens of its chat spans in the window before with the window after: a
+// capture shows up as a step, not as the ordinary spread of its own output (measured: an agent's
+// chat tokens normally vary by about 1.5x between quartiles). Returns
+// {agent, atS, before, after, ratio, z} or null; ties broken by larger ratio, then agent id.
+function detectCaptureSpike(spans, nowS, opts = CAPTURE_DETECT) {
+  const o = { ...CAPTURE_DETECT, ...opts };
+  const lo = nowS - o.windowS;
+  const win = spans.filter(s => s.start >= lo && s.start + (s.duration || 0) <= nowS);
+  const byAgent = {};
+  for (const s of win) (byAgent[s.agent] ||= []).push(s);
+
+  let best = null;
+  for (const agent of Object.keys(byAgent).sort()) {
+    const mine = byAgent[agent].sort((a, b) => a.start - b.start);
+    const chats = mine.filter(s => s.op === "chat" && s.tokens > 0);
+    if (chats.length < o.minBefore + o.minAfter) continue;
+    for (const tool of mine.filter(s => s.op === "execute_tool")) {
+      const at = tool.start + (tool.duration || 0);
+      // baseline: what this agent was producing before the tool call, over the whole look-back
+      // (not just the matching half-window, which is often too short to have enough spans)
+      const before = chats.filter(s => s.start < tool.start && s.start >= at - o.windowS);
+      const after = chats.filter(s => s.start >= at && s.start <= at + o.afterS);
+      if (before.length < o.minBefore || after.length < o.minAfter) continue;
+      const mb = median(before.map(s => s.tokens)), ma = median(after.map(s => s.tokens));
+      const ratio = ma / mb;
+      if (ratio < o.minRatio) continue;
+      // the agent's own spread, from the BEFORE spans only: measuring it over the whole window
+      // lets the captured spans inflate the very noise floor they are judged against (the same
+      // trap as detectLatencyDrift's pooled noise -- measured, it cost about a third of recall)
+      const logs = before.map(s => Math.log(s.tokens));
+      const mid = median(logs);
+      const sigma = 1.4826 * median(logs.map(x => Math.abs(x - mid)));
+      const z = sigma > 1e-6
+        ? Math.log(ratio) / (sigma * Math.sqrt(1 / before.length + 1 / after.length))
+        : Infinity;
+      if (z < o.zThresh) continue;
+      if (!best || ratio > best.ratio) best = { agent, atS: at, before: mb, after: ma, ratio, z };
+    }
+  }
+  return best;
 }
 
 // Two agents in lockstep. For each pair, count how many of the quieter agent's spans have one of
@@ -753,12 +817,14 @@ function detectLatencyDrift(spans, nowS, opts = LATENCY_DRIFT_DETECT) {
 class SwarmEngine {
   // `latencyDrift` overrides LATENCY_DRIFT_INJECT (scripts/drift_validation.mjs uses prob 0 for
   // clean streams and prob 1 for recall); the page always uses the defaults.
-  constructor(rng, { latencyDrift, collusion } = {}) {
+  constructor(rng, { latencyDrift, collusion, capture } = {}) {
     this.rng = rng;
     this.latencyDrift = { ...LATENCY_DRIFT_INJECT, ...latencyDrift };
     this.collusion = { ...COLLUSION_INJECT, ...collusion };
+    this.capture = { ...CAPTURE_INJECT, ...capture };
     this.injectedDrifts = [];      // ground truth for validation only: {agent, t0}
     this.injectedCollusions = [];  // {leader, follower, t0, endS}
+    this.injectedCaptures = [];    // {agent, t0, endS}
     this.t = 0.0;
     this.spans = [];          // display/debug buffer, trimmed periodically -- see trim()
     this._phaseQueue = [];    // generator-style queue of phase functions to run in order, forever
@@ -788,7 +854,8 @@ class SwarmEngine {
     return at + dur;
   }
 
-  _reason(agentId, at, tokens, stopReason, drift = null) {
+  _reason(agentId, at, tokens, stopReason, drift = null, capture = null) {
+    if (capture && at >= capture.t0 && at < capture.t0 + capture.windowS) tokens *= capture.mult;
     const dur = Math.max(0.25, this.rng.gauss(0.8, 0.3)) * latencyDriftFactor(drift, at);
     const extra = {};
     if (stopReason) extra.stop_reason = stopReason;
@@ -848,6 +915,9 @@ class SwarmEngine {
     const driftIdx = fanout >= 2 && this.rng.bool(inj.prob) ? this.rng.int(fanout) : -1;
     // Collusion: one subagent shadows another for a window. The follower must come later in this
     // loop than its leader, since it copies spans the leader has already emitted.
+    // Capture: one subagent's output balloons after one of its own tool calls.
+    const cap = this.capture;
+    const captureIdx = this.rng.bool(cap.prob) ? this.rng.int(fanout) : -1;
     const col = this.collusion;
     let leadIdx = -1, followIdx = -1;
     if (fanout >= 3 && this.rng.bool(col.prob)) {
@@ -864,6 +934,7 @@ class SwarmEngine {
         if (this.injectedDrifts.length > 200) this.injectedDrifts.shift();
       }
       let t = start;
+      let capture = null;   // set on this agent's first tool call, if it is the captured one
       const spansBefore = this.spans.length;
       if (i === followIdx && leaderSpans && leaderSpans.length) {
         // shadow the leader: same kind of work, moments later, for one window
@@ -885,16 +956,24 @@ class SwarmEngine {
       }
       const steps = 3 + this.rng.int(4);
       for (let step = 0; step < steps; step++) {
-        t = this._reason(agentId, t, 160 + this.rng.int(261), undefined, drift);
+        t = this._reason(agentId, t, 160 + this.rng.int(261), undefined, drift, capture);
         const nTools = 1 + this.rng.int(3);
         for (let k = 0; k < nTools; k++) {
           t = this._toolCall(agentId, t, drift);
+          // captured by what that tool call returned: from here its own output balloons
+          // not the agent's very first tool call: a capture is only visible against what that
+          // agent was producing beforehand, so it needs a little history first
+          if (i === captureIdx && !capture && step >= 2) {
+            capture = { t0: t, mult: cap.mult, windowS: cap.windowS };
+            this.injectedCaptures.push({ agent: agentId, t0: t, endS: t + cap.windowS });
+            if (this.injectedCaptures.length > 200) this.injectedCaptures.shift();
+          }
           t += this.rng.uniform(0.05, 0.3);
         }
         t += this.rng.uniform(0.1, 0.5);
       }
       const reason = this.rng.choice(["end_turn", "end_turn", "end_turn", "max_tokens", "stop_sequence"]);
-      t = this._reason(agentId, t, 200 + this.rng.int(301), reason, drift);
+      t = this._reason(agentId, t, 200 + this.rng.int(301), reason, drift, capture);
       if (i === leadIdx) leaderSpans = this.spans.slice(spansBefore);
       maxFinish = Math.max(maxFinish, t);
     }
@@ -957,6 +1036,7 @@ function round3(x) { return Math.round(x * 1000) / 1000; }
 export {
   LATENCY_DRIFT_INJECT, LATENCY_DRIFT_DETECT, detectLatencyDrift, latencyKey,
   COLLUSION_INJECT, COLLUSION_DETECT, detectCollusion,
+  CAPTURE_INJECT, CAPTURE_DETECT, detectCaptureSpike,
   Rng, cryptoSeed, SwarmEngine, FORM_BARS, JAZZ_CHORD_TONES, chordSymbol, generateJazzForm,
   VoicePool, resolveVoice, ORCHESTRATOR_AGENT_ID, POOL_SLOTS, LEAD_ROLE_VALUES,
   CHORD_VOICE_ORDER, CHORD_AGENT_VOICES, ARCH_VOICES, VOICE_RANGES,

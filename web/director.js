@@ -20,7 +20,7 @@ import {
   jazzChoraleVoicing, BASS_RANGE, WALK_FOUR_FEEL_ACTIVITY, WALK_VELOCITY, WALK_NOTE_FRAC,
   bassToneChoice, bassTarget, walkingBassBar,
   tokensToVelocity, latencyToDuration, nearestChromaticOffsets, melodyToneIndex,
-  detectLatencyDrift, detectCollusion,
+  detectLatencyDrift, detectCollusion, detectCaptureSpike,
   MELODY_HOME, MELODY_REGISTER, MELODY_NOTE_GAP_BARS, MELODY_DENSITY_PER_AGENT,
   MELODY_NOTE_DURATION_FRAC, MELODY_ROTATION_BARS, MELODY_PHRASE_NOTES_IDLE,
   MELODY_PHRASE_NOTES_PER_ACTIVITY, MELODY_REST_BARS_IDLE, MELODY_REST_BARS_BUSY,
@@ -71,8 +71,13 @@ const MELODY_RNG_SALT = 0x3c6ef372;
 //     synthetic swarm has some because SwarmEngine makes one subagent shadow another; live mode
 //     has it only if real agents do. Same detector, same spans array, no branch. Validated on
 //     synthetic injection only (scripts/collusion_validation.mjs).
-//   - CONFLICT and CAPTURE-SPIKE are still INJECTED on a timer/probability, the same way
-//     caidence.py's extended_demo_trace() hand-places them. Nothing derives them from the swarm.
+//   - CAPTURE-SPIKE is DETECTED too: detectCaptureSpike looks for an agent whose own output
+//     jumps straight after it ingests a tool result. Weaker than the other two -- it finds about
+//     two thirds of injected captures, because an agent that goes quiet after being captured
+//     leaves nothing to measure -- and validated on synthetic injection only
+//     (scripts/capture_validation.mjs).
+//   - CONFLICT alone is still INJECTED on a timer/probability, the way caidence.py's
+//     extended_demo_trace() hand-places it. Nothing derives it from the swarm.
 const ANOMALY_MIN_GAP_S = 30;            // cooldown floor between anomalies, any type
 const ANOMALY_ROLL_PROB = 0.05;          // per-bar roll once the cooldown has elapsed
 // The FIRST anomaly of a session is scheduled, not rolled for. Measured over 500 headless
@@ -100,6 +105,7 @@ const CAPTURE_SPIKE_COUNT = 4;
 const CAPTURE_SPIKE_GAP_S = 0.09;
 const CAPTURE_SPIKE_NOTE_S = 0.07;
 const CAPTURE_SPIKE_VELOCITY = 105;
+const CAPTURE_REFLAG_S = 60;            // one agent can't sound a capture again inside this
 const COLLUSION_REFLAG_S = 60;           // one pair can't sound again inside this
 const COLLUSION_COUNT = 3;
 const COLLUSION_GAP_S = 0.5;
@@ -225,6 +231,9 @@ export class Director {
     this.collusionLog = [];       // {t, agentA, agentB, voiceA, voiceB, z, matchFrac}
     this.collusionSkips = {};
     this.collusionFlaggedAt = {}; // "a|b" -> when that pair last sounded
+    this.captureLog = [];         // {t, agent, voice, ratio, z}
+    this.captureSkips = {};
+    this.captureFlaggedAt = {};   // agent -> when it last sounded a capture
 
     // callbacks the page wires up
     this.onScheduleNote = null;   // (voice, midiNote, velocity, durationS, atS)
@@ -454,6 +463,38 @@ export class Director {
     return true;
   }
 
+  // Capture spike from the telemetry: an agent whose output balloons right after a tool result.
+  // Same rendering as the rolled version it replaces (a chromatic cluster on that agent's voice)
+  // and the same gating as the other two detectors.
+  _maybeDetectCapture(barStart, liveVoices, rootPc, quality, voicing) {
+    const found = detectCaptureSpike(this.swarm.spans, barStart);
+    if (!found) return false;
+    const skip = (why) => { this.captureSkips[why] = (this.captureSkips[why] || 0) + 1; };
+    const last = this.captureFlaggedAt[found.agent];
+    if (last !== undefined && barStart - last < CAPTURE_REFLAG_S) { skip("alreadyRendered"); return false; }
+    if (this.activeDrift || this.activeConflict) { skip("busy"); return true; }
+    if (barStart < this.lastAnomalyEndS) { skip("busy"); return true; }
+    const voice = found.agent === this.voicePool.leadAgent ? "planner"
+      : (this.voicePool.slotOf[found.agent] || this.lastVoiceOf[found.agent]);
+    if (!voice || voice === "tools") { skip("noVoice"); return true; }
+    if (!liveVoices.has(voice)) { skip("voiceNotLive"); return true; }
+    const base = voicing[voice] !== undefined ? voicing[voice] : VOICE_RANGES[voice][0];
+    const chordPcs = new Set(JAZZ_CHORD_TONES[quality].map(t => (((rootPc + t) % 12) + 12) % 12));
+    const offsets = nearestChromaticOffsets(chordPcs, CAPTURE_SPIKE_COUNT);
+    offsets.forEach((off, i) => {
+      this._schedule(voice, clampNote(base + off), CAPTURE_SPIKE_VELOCITY, CAPTURE_SPIKE_NOTE_S,
+        barStart + i * CAPTURE_SPIKE_GAP_S);
+    });
+    this.lastAnomalyEndS = barStart + offsets.length * CAPTURE_SPIKE_GAP_S;
+    this.captureFlaggedAt[found.agent] = barStart;
+    this.anomalyCount++;
+    this.captureLog.push({ t: barStart, agent: found.agent, voice, ratio: found.ratio, z: found.z });
+    if (this.captureLog.length > 50) this.captureLog.shift();
+    this._logAnomaly(barStart, `capture-spike: ${voice} (${found.agent}) output jumped ` +
+      `x${found.ratio.toFixed(1)} right after a tool result`);
+    return true;
+  }
+
   // Roll for a new anomaly once the cooldown has elapsed, pick a signature and target voice(s)
   // from whichever chord-agent voices are actually live right now (an anomaly needs someone to
   // happen to), and either start a continuous-deviation window (drift/conflict, resolved per
@@ -478,26 +519,14 @@ export class Director {
     // voices are live -- which is common early on, exactly when the forced first is due. Every
     // firing branch advances lastAnomalyEndS; no non-firing path does.
     const anomalyEndBefore = this.lastAnomalyEndS;
-    // Neither "drift" nor "collusion" here any more: both come only from their detectors.
-    const kind = this.rng.choice(["conflict", "capture"]);
-    if (kind === "conflict" && candidates.length >= 2) {
+    // Only conflict is rolled now; drift, collusion and capture-spike all come from detectors.
+    if (candidates.length >= 2) {
       const voiceA = this.rng.choice(candidates);
       const voiceB = this.rng.choice(candidates.filter(v => v !== voiceA));
       const windowS = this.rng.uniform(...CONFLICT_WINDOW_S);
       this.activeConflict = { voiceA, voiceB, startS: barStart, windowS };
       this.lastAnomalyEndS = barStart + windowS;
       this._logAnomaly(barStart, `conflict: ${voiceA} vs ${voiceB}, held sour for ${windowS.toFixed(1)}s`);
-    } else if (kind === "capture") {
-      const voice = this.rng.choice(candidates);
-      const base = voicing[voice] !== undefined ? voicing[voice] : VOICE_RANGES[voice][0];
-      const chordPcs = new Set(JAZZ_CHORD_TONES[quality].map(t => (((rootPc + t) % 12) + 12) % 12));
-      const offsets = nearestChromaticOffsets(chordPcs, CAPTURE_SPIKE_COUNT);
-      offsets.forEach((off, i) => {
-        const t = barStart + i * CAPTURE_SPIKE_GAP_S;
-        this._schedule(voice, clampNote(base + off), CAPTURE_SPIKE_VELOCITY, CAPTURE_SPIKE_NOTE_S, t);
-      });
-      this.lastAnomalyEndS = barStart + offsets.length * CAPTURE_SPIKE_GAP_S;
-      this._logAnomaly(barStart, `capture-spike: ${voice} hit a chromatic wrong-note cluster`);
     }
 
     if (this.lastAnomalyEndS !== anomalyEndBefore) this.anomalyCount++;
@@ -589,7 +618,9 @@ export class Director {
     // still waiting for a voice), the decoy roll stands down for this bar.
     const driftPending = this._maybeDetectDrift(barStart, liveVoices);
     const collusionPending = driftPending ? false : this._maybeDetectCollusion(barStart, liveVoices, voicing);
-    if (!driftPending && !collusionPending) {
+    const capturePending = (driftPending || collusionPending)
+      ? false : this._maybeDetectCapture(barStart, liveVoices, soundRoot, quality, voicing);
+    if (!driftPending && !collusionPending && !capturePending) {
       this._maybeTriggerAnomaly(barStart, liveVoices, soundRoot, quality, voicing);
     }
 

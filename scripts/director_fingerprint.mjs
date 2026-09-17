@@ -48,6 +48,10 @@
 //   seed 12345, 300s  -> 1899 notes  0821be6a4f1ecf8d
 //   seed 99,    300s  -> 1780 notes  8cb725dc14f134bb
 //   seed 12345, 1800s -> 11445 notes f80100519e27ce8b
+// v1.11.0 (capture spike detected instead of rolled; injection moves the swarm's draws again):
+//   seed 12345, 300s  -> 1716 notes  3c39bfd62ca008c5
+//   seed 99,    300s  -> 1861 notes  8ce291b9d840d1a5
+//   seed 12345, 1800s -> 11265 notes 2f10f0449ef9591b
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { Director } from "../web/director.js";
