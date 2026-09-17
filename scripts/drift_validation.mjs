@@ -92,7 +92,9 @@ for (const mult of [2, 3, 4, 6]) {
 let audible = 0, matched = 0, lat = [], anomalies = 0, firstAnomaly = [], injected = 0, injHeard = 0;
 const skips = {};
 for (let seed = 1; seed <= SEEDS; seed++) {
-  const d = new Director(corpus.root_transition_matrix_major, { seed });
+  const d = new Director(corpus.root_transition_matrix_major, {
+    seed, performerIntervals: corpus.performer_interval_distributions,
+  });
   const lines = [];
   d.onSpanLine = (l) => { if (l.service === "oversight-grammar") lines.push(l.t); };
   d.fillUntil(T);

@@ -30,6 +30,12 @@
 //   seed 12345, 300s  -> 2393 notes  13d96707a6d0ba6b
 //   seed 99,    300s  -> 2090 notes  87394a0b1d2a6786
 //   seed 12345, 1800s -> 13661 notes be75aadc22e8f7f1
+// v1.7.0 (M2: the solo line has its own random stream and is a port of the Python solo). The
+// "everything else" hash was first taken with the OLD solo moved onto its own stream, then held
+// unchanged through the rewrite, so the new solo provably moved nothing else:
+//   seed 12345, 300s  -> 2047 notes  ba38d9a8582fab56  (everything else 8d4c5cbe)
+//   seed 99,    300s  -> 1821 notes  2ebf79942d7651ca  (everything else 193b8dee)
+//   seed 12345, 1800s -> 11324 notes 1ff809d161f18837  (everything else 09914836)
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { Director } from "../web/director.js";
@@ -40,13 +46,23 @@ const until = Number(process.argv[3] || 300);
 const step = Number(process.argv[4] || 0);
 
 const corpus = JSON.parse(readFileSync(new URL("../web/corpus_model_jazz.json", import.meta.url)));
-const d = new Director(corpus.root_transition_matrix_major, { seed });
+const d = new Director(corpus.root_transition_matrix_major, {
+    seed, performerIntervals: corpus.performer_interval_distributions,
+  });
 const h = createHash("sha256");
+// Per-part hashes as well, so a change meant for one part can prove it left the others alone.
+const melodyH = createHash("sha256"), restH = createHash("sha256");
 let notes = 0;
-d.onScheduleNote = (...a) => { h.update(JSON.stringify(a)); notes++; };
-d.onSpanLine = (s) => h.update("S" + JSON.stringify(s));
-d.onChordChange = (c) => h.update("C" + JSON.stringify(c));
+d.onScheduleNote = (...a) => {
+  const j = JSON.stringify(a);
+  h.update(j);
+  (a[0] === "melody" ? melodyH : restH).update(j);
+  notes++;
+};
+d.onSpanLine = (s) => { h.update("S" + JSON.stringify(s)); restH.update("S" + JSON.stringify(s)); };
+d.onChordChange = (c) => { h.update("C" + JSON.stringify(c)); restH.update("C" + JSON.stringify(c)); };
 
 if (step > 0) for (let t = 0; t + LOOKAHEAD_S < until; t += step) d.fillUntil(t + LOOKAHEAD_S);
 d.fillUntil(until);
-console.log(`seed ${seed}  ${until}s  ${notes} notes  ${h.digest("hex").slice(0, 16)}`);
+console.log(`seed ${seed}  ${until}s  ${notes} notes  ${h.digest("hex").slice(0, 16)}` +
+  `  (melody ${melodyH.digest("hex").slice(0, 8)}, everything else ${restH.digest("hex").slice(0, 8)})`);
