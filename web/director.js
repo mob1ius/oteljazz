@@ -182,12 +182,24 @@ export class Director {
   // later than any bar the fill loop had actually reached, so `s.start < barEnd` never matched
   // and nothing was ever consumed despite feed() genuinely being called. Caught via
   // window.__oteljazzDebug(): chordQueueLen was advancing normally while spanQueueLen sat at 0.
+  //
+  // Bars are generated whole and never revisited, so `nowS` usually falls inside a bar the fill
+  // loop has ALREADY generated (generatedUntilS runs up to a bar ahead of it). A span stamped
+  // there was never picked up by any bar -- measured: 50 of 286 simulated spans reached the
+  // music, and 40 of 143 in a real local relay run. So a stamp behind the frontier moves forward
+  // by whole bars: it keeps its position inside the bar (arrival spacing survives) and costs at
+  // most one extra bar of delay. This only changes WHERE the populator puts a span; _generateBar
+  // reads it exactly as before.
   feedSpan(span, nowS) {
     if (!this.live) return;
+    let start = nowS;
+    if (start < this.generatedUntilS) {
+      start += BAR_S * Math.ceil((this.generatedUntilS - start) / BAR_S);
+    }
     this.swarm.feed({
       agent: span.service,
       op: span.op || "chat",
-      start: nowS,
+      start,
       duration: Math.max(0.05, span.durS || 0.3),
       tokens: Math.round(span.tokens || 50),
       status: span.status === "error" ? "error" : "ok",
