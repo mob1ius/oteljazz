@@ -19,12 +19,17 @@
 //   seed 99,    300s  -> 2230 notes  18aa25a55556152e
 //   seed 12345, 1800s -> 14497 notes c716b5001eece049
 // v1.5.1 (live-only fixes): identical to the above.
-// After M1 (detected latency drift; SwarmEngine injection changes its draws, the anomaly roll lost
+// v1.6.0, after M1 (detected latency drift; SwarmEngine injection changes its draws, the anomaly roll lost
 // "drift" and stands down while a drift finding is pending, so every hash moved on purpose).
 // Incremental fills at 0.5s and 13s steps match:
 //   seed 12345, 300s  -> 2393 notes  c1bff30dbc4deab7
 //   seed 99,    300s  -> 2090 notes  0ab894fe218058c1
 //   seed 12345, 1800s -> 13661 notes 722f12338e98a7e9
+// v1.6.1 (audio follows the displayed key; note counts, timing and velocity unchanged, only
+// pitches moved):
+//   seed 12345, 300s  -> 2393 notes  13d96707a6d0ba6b
+//   seed 99,    300s  -> 2090 notes  87394a0b1d2a6786
+//   seed 12345, 1800s -> 13661 notes be75aadc22e8f7f1
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { Director } from "../web/director.js";
