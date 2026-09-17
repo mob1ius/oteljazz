@@ -20,7 +20,7 @@ import {
   jazzChoraleVoicing, BASS_RANGE, WALK_FOUR_FEEL_ACTIVITY, WALK_VELOCITY, WALK_NOTE_FRAC,
   bassToneChoice, bassTarget, walkingBassBar,
   tokensToVelocity, latencyToDuration, nearestChromaticOffsets, melodyToneIndex,
-  ARPEGGIO_CORE_TONES,
+  ARPEGGIO_CORE_TONES, ORCHESTRATOR_AGENT_ID, detectLatencyDrift,
 } from "./engine.js";
 
 const TEMPO_BPM = 96.0;
@@ -37,12 +37,14 @@ const MOD_INTERVALS = [2, 5, 7, -5, -7, 1, -2]; // common jazz modulation relati
 // --- ANOMALY SIGNATURES -----------------------------------------------------------------
 // Ported from caidence.py's demo-only anomaly mechanisms (DRIFT_TARGET/DRIFT_MAX_BEND,
 // CONFLICT_BEND, capture_spike_cluster, collusion_unison -- see that file for the originals).
-// Honest characterization: these are INJECTED on a
-// timer/probability, same as caidence.py's extended_demo_trace() hand-places them at fixed
-// timestamps -- neither version DERIVES an anomaly from something structurally wrong in the
-// swarm. This closes the gap where the browser demo had literally none of the five signatures
-// Section 4 calls "the point" of the grammar (verified before this fix: zero occurrences of
-// bend/detune/drift/collusion/capture in this file) -- it does not yet make them evidence-driven.
+// Honest characterization, per signature:
+//   - GOAL-DRIFT is DETECTED, not rolled: engine.js's detectLatencyDrift reads this.swarm.spans
+//     every bar, and only a finding starts one (_maybeDetectDrift). Synthetic mode has drift to
+//     find because SwarmEngine injects a real latency trend into one subagent's spans; live mode
+//     has it only if the real agents actually drift. Same detector, same spans array, no branch.
+//     Validated on synthetic injection only (scripts/drift_validation.mjs), not on real drift.
+//   - CONFLICT, CAPTURE-SPIKE and COLLUSION are still INJECTED on a timer/probability, the same
+//     way caidence.py's extended_demo_trace() hand-places them. Nothing derives them from the swarm.
 const ANOMALY_MIN_GAP_S = 30;            // cooldown floor between anomalies, any type
 const ANOMALY_ROLL_PROB = 0.05;          // per-bar roll once the cooldown has elapsed
 // The FIRST anomaly of a session is scheduled, not rolled for. Measured over 500 headless
@@ -52,7 +54,8 @@ const ANOMALY_ROLL_PROB = 0.05;          // per-bar roll once the cooldown has e
 // everything AFTER the first one, so the long-run density (~2.9 per 5min) is unchanged -- this
 // only removes the chance that a short first visit contains no signature at all.
 const FIRST_ANOMALY_S = [12, 18];        // [min,max) forced window for the session's first
-const DRIFT_WINDOW_S = [8, 16];          // [min,max) ramp duration
+const DRIFT_WINDOW_S = [8, 16];          // [min,max] audible ramp, clamped from the detected trend's span
+const DRIFT_REFLAG_S = 60;               // one agent can't start a second drift inside this
 // Goal-drift's PRIMARY signature is the ONSET LAG, not the bend -- the drifting voice's comp
 // attack ramps up to 45ms late while the other six stay locked to the shared grid. That is the
 // cue the chorale's fusion actually depends on (shared timbre + shared onset grid + voice-led
@@ -112,7 +115,7 @@ class LiveSwarmAdapter {
 }
 
 export class Director {
-  constructor(corpusMatrix, { live = false, seed } = {}) {
+  constructor(corpusMatrix, { live = false, seed, swarmOptions } = {}) {
     // `seed`, when given, replaces the normal fresh-per-visit cryptoSeed() -- everything
     // downstream (key, mode, form, and in synthetic mode the swarm activity itself, since
     // SwarmEngine takes this SAME rng instance rather than seeding its own) derives from this
@@ -127,7 +130,8 @@ export class Director {
     this.rng = new Rng(this.seed);
     this.matrix = corpusMatrix;
     this.live = live;
-    this.swarm = live ? new LiveSwarmAdapter() : new SwarmEngine(this.rng);
+    // swarmOptions is for scripts/drift_validation.mjs (injection on/off); the page never sets it.
+    this.swarm = live ? new LiveSwarmAdapter() : new SwarmEngine(this.rng, swarmOptions);
 
     this.keyPc = this.rng.int(12);                       // random starting key, not always Bb
     this.mode = this.rng.bool(0.7) ? "major" : "minor";   // mostly major, matches corpus skew
@@ -158,6 +162,11 @@ export class Director {
     this.lastAnomalyEndS = -ANOMALY_MIN_GAP_S;
     this.firstAnomalyDueS = this.rng.uniform(...FIRST_ANOMALY_S);  // see FIRST_ANOMALY_S
     this.anomalyCount = 0;
+    this.driftFlaggedAt = {};     // true agent id -> when it last started a drift (re-flag guard)
+    this.lastVoiceOf = {};        // true agent id -> physical voice its latest span resolved to
+    this.lastDetectedDriftEndS = -ANOMALY_MIN_GAP_S;
+    this.driftLog = [];           // {t, agent, voice, ratio, growth, r, z}, for validation/debug
+    this.driftSkips = {};         // reason -> bars where a finding was NOT rendered
 
     // callbacks the page wires up
     this.onScheduleNote = null;   // (voice, midiNote, velocity, durationS, atS)
@@ -262,6 +271,46 @@ export class Director {
     return DRIFT_MAX_ONSET_OFFSET_S * Math.min(1, (atS - d.startS) / d.windowS);
   }
 
+  // Goal-drift from the telemetry itself. Reads only spans that had ENDED by barStart, so the
+  // answer is the same whether this bar is being generated 24s ahead (synthetic) or 1.5s ahead
+  // (live). Returns whether there is a finding at all (rendered or not), so the roll can stand
+  // down. Rendering rules (user decisions, docs/ROADMAP.md M1):
+  //   - never overlaps an active drift or conflict;
+  //   - a ROLLED anomaly only has to have ended -- its 30s cooldown doesn't block evidence --
+  //     but two DETECTED drifts keep ANOMALY_MIN_GAP_S between them;
+  //   - it sounds on the voice the agent holds now, or, if it has lost its pooled slot, on the
+  //     voice it last held, as long as that voice is still live. Pooling already puts several
+  //     agents on one voice, so this is no new kind of ambiguity.
+  // The finding is per TRUE agent. Counts of why a finding wasn't rendered go in driftSkips.
+  _maybeDetectDrift(barStart, liveVoices) {
+    const found = detectLatencyDrift(this.swarm.spans, barStart);
+    if (!found) return false;
+    const skip = (why) => { this.driftSkips[why] = (this.driftSkips[why] || 0) + 1; };
+    const last = this.driftFlaggedAt[found.agent];
+    if (last !== undefined && barStart - last < DRIFT_REFLAG_S) { skip("alreadyRendered"); return false; }
+    if (this.activeDrift || this.activeConflict) { skip("busy"); return true; }
+    if (barStart < this.lastAnomalyEndS) { skip("busy"); return true; }
+    if (barStart - this.lastDetectedDriftEndS < ANOMALY_MIN_GAP_S) { skip("cooldown"); return true; }
+    const voice = found.agent === ORCHESTRATOR_AGENT_ID ? "planner"
+      : (this.voicePool.slotOf[found.agent] || this.lastVoiceOf[found.agent]);
+    if (!voice || voice === "tools") { skip("noVoice"); return true; }
+    if (!liveVoices.has(voice)) { skip("voiceNotLive"); return true; }
+    const windowS = Math.max(DRIFT_WINDOW_S[0], Math.min(DRIFT_WINDOW_S[1], found.endS - found.startS));
+    this.activeDrift = { voice, startS: barStart, windowS };
+    this.lastAnomalyEndS = barStart + windowS;
+    this.lastDetectedDriftEndS = barStart + windowS;
+    this.driftFlaggedAt[found.agent] = barStart;
+    this.anomalyCount++;
+    // exp(recent): how many times slower than its peers the agent is running NOW. Not
+    // exp(growth), which is a fitted trend extrapolated across the run and overstates it.
+    const ratio = Math.exp(found.recent);
+    this.driftLog.push({ t: barStart, agent: found.agent, voice, ratio, growth: found.growth, r: found.r, z: found.z });
+    if (this.driftLog.length > 50) this.driftLog.shift();
+    this._logAnomaly(barStart, `goal-drift: ${voice} (${found.agent}) at x${ratio.toFixed(1)} ` +
+      `its peers' latency, falling off the shared attack`);
+    return true;
+  }
+
   // Roll for a new anomaly once the cooldown has elapsed, pick a signature and target voice(s)
   // from whichever chord-agent voices are actually live right now (an anomaly needs someone to
   // happen to), and either start a continuous-deviation window (drift/conflict, resolved per
@@ -286,14 +335,9 @@ export class Director {
     // voices are live -- which is common early on, exactly when the forced first is due. Every
     // firing branch advances lastAnomalyEndS; no non-firing path does.
     const anomalyEndBefore = this.lastAnomalyEndS;
-    const kind = this.rng.choice(["drift", "conflict", "capture", "collusion"]);
-    if (kind === "drift") {
-      const voice = this.rng.choice(candidates);
-      const windowS = this.rng.uniform(...DRIFT_WINDOW_S);
-      this.activeDrift = { voice, startS: barStart, windowS };
-      this.lastAnomalyEndS = barStart + windowS;
-      this._logAnomaly(barStart, `goal-drift: ${voice} falling off the ensemble's shared attack over ${windowS.toFixed(1)}s`);
-    } else if (kind === "conflict" && candidates.length >= 2) {
+    // No "drift" here any more: it only ever comes from _maybeDetectDrift.
+    const kind = this.rng.choice(["conflict", "capture", "collusion"]);
+    if (kind === "conflict" && candidates.length >= 2) {
       const voiceA = this.rng.choice(candidates);
       const voiceB = this.rng.choice(candidates.filter(v => v !== voiceA));
       const windowS = this.rng.uniform(...CONFLICT_WINDOW_S);
@@ -365,6 +409,7 @@ export class Director {
       const terminal = TERMINAL_STOP_REASONS.has(s.stop_reason);
       s._resolvedVoice = resolveVoice(this.voicePool, s.agent, s.start, terminal);
       this.recentVoiceSeen[s._resolvedVoice] = s.start;
+      this.lastVoiceOf[s.agent] = s._resolvedVoice;
     }
 
     // activityLevel is the TRUE distinct-agent count (unbounded, NOT capped at the 5 physical
@@ -394,7 +439,10 @@ export class Director {
     const bassIdx = bassToneChoice(activityLevel, this.rng);
     const bassNote = bassTarget(rootPc, quality, bassIdx);
 
-    this._maybeTriggerAnomaly(barStart, liveVoices, rootPc, quality, voicing);
+    // Detection first. Evidence outranks decoration: while the detector has a finding (rendered
+    // or still waiting for a voice), the decoy roll stands down for this bar.
+    const driftPending = this._maybeDetectDrift(barStart, liveVoices);
+    if (!driftPending) this._maybeTriggerAnomaly(barStart, liveVoices, rootPc, quality, voicing);
 
     // --- push (anticipation): landing a chord an eighth early is THE characteristic jazz comp
     // gesture, but the comp note it replaces must be shortened to make room or the two clash --

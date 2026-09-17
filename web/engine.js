@@ -29,6 +29,10 @@
  *   swing is a single global constant rather than per-section. See BUILD_NOTES.md for the full
  *   list and why each cut was made. (Comp push/anticipation was on this list originally; it has
  *   since been ported -- see director.js's COMP_PUSH_PROBABILITY and its pendingPush lookahead.)
+ *   GOES FURTHER THAN caidence.py's DEFAULT, deliberately: goal-drift is not placed by hand or
+ *   rolled. SwarmEngine injects a latency trend into one subagent (LATENCY_DRIFT_INJECT) and
+ *   Director hears drift only when detectLatencyDrift finds it -- the same detector as
+ *   drift_detect.detect_latency_drift, which caidence.py only runs under --detect-drift=latency.
  *
  * MODULATION / "never the same song twice": each CHORUS (16 bars) is a freshly-drawn form --
  * generate_jazz_form is called again every time the bar cursor wraps, not just once for the
@@ -445,9 +449,130 @@ function latencyDraw(rng, [lo, typical, hi]) {
   return Math.max(lo, rng.gauss(typical, typical * 0.35));
 }
 
+// ============================================================================================
+// Goal-drift as a property of the telemetry: latency injection (synthetic) + latency detection
+// (both modes). Mirrors engine/drift_detect.py's detect_latency_drift and swarm.py's opt-in
+// injection -- change one, change the other.
+//
+// WHY LATENCY, NOT ONSET LAG: drift_detect.py's original detect_drift reads each voice's
+// earliest span onset against the chord grid. Ported as-is onto this stream it detected nothing
+// (noise floor 0.59s against the +-30ms it was validated at; see docs/ROADMAP.md, M1 findings),
+// and live mode can't feed it at all: feedSpan stamps arrival time, and OTel SDKs batch-export
+// spans when they END. Span DURATION survives both, and "one agent getting slower at the same
+// kind of work its peers are doing" is a grid-free reading of an agent going off course. The
+// onset-lag detector stays in Python untouched (the paper cites its curve); this is a second one.
+//
+// WHAT IT IS NOT: validated against real drift. It is validated only on injected synthetic
+// trends (scripts/drift_validation.mjs). Keep public wording to that.
+// ============================================================================================
+const LATENCY_DRIFT_INJECT = {
+  prob: 0.15,      // chance a fan-out round picks one of its subagents to drift
+  maxMult: 3.0,    // that subagent's latencies ramp up to this multiple...
+  rampS: 10.0,     // ...over this many seconds of its own run
+};
+const LATENCY_DRIFT_DETECT = {
+  windowS: 40,     // look-back, in seconds of finished spans
+  runGapS: 8,      // an agent's "current run" ends at a silence longer than this
+  minSpans: 6,     // scored points needed in the agent's current run (detect_drift: min_windows=6)
+  minPeers: 3,     // same-kind spans from OTHER agents needed to score a span
+  rThresh: 0.5,    // trend correlation floor (detect_drift uses 0.6; see validation)
+  zThresh: 3.5,    // later-half mean residual, in standard errors of the leave-one-out noise
+  minGrowth: Math.log(1.8), // fitted log-latency growth across the run
+};
+const LATENCY_DRIFT_EXCLUDED_OPS = new Set(["create_agent"]); // a spawn marker, not work
+
+function latencyDriftFactor(drift, at) {
+  if (!drift) return 1;
+  const frac = Math.max(0, Math.min(1, (at - drift.t0) / drift.rampS));
+  return Math.pow(drift.maxMult, frac);
+}
+
+// What "the same kind of work" means: the MCP server for a tool call (synthetic spans carry it;
+// live spans only have the tool name, which is the next best thing), otherwise the op itself.
+function latencyKey(s) {
+  if (s.op === "execute_tool") return "tool:" + (s.mcp_server || s.tool || "");
+  return "op:" + s.op;
+}
+
+function median(a) {
+  const s = [...a].sort((x, y) => x - y), m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+// Pure: spans in, at most one finding out. Only spans that have ENDED by nowS count, so the
+// result never depends on anything a live stream couldn't have told us yet. Returns
+// {agent, startS, endS, growth, r, z} or null; ties broken by larger growth, then agent id, so
+// the answer never depends on span order. Pass `explain: []` in opts to collect every
+// candidate's numbers, passing or not (validation/diagnostics only).
+function detectLatencyDrift(spans, nowS, opts = LATENCY_DRIFT_DETECT) {
+  const o = { ...LATENCY_DRIFT_DETECT, ...opts };
+  const lo = nowS - o.windowS;
+  const win = spans.filter(s => s.duration > 0 && !LATENCY_DRIFT_EXCLUDED_OPS.has(s.op)
+    && s.start >= lo && s.start + s.duration <= nowS);
+  const byKey = {};
+  for (const s of win) (byKey[latencyKey(s)] ||= []).push(s);
+
+  const byAgent = {};
+  const all = [];
+  for (const s of win) {
+    const peers = byKey[latencyKey(s)].filter(p => p.agent !== s.agent);
+    if (peers.length < o.minPeers) continue;
+    const y = Math.log(s.duration) - Math.log(median(peers.map(p => p.duration)));
+    (byAgent[s.agent] ||= []).push([s.start, y]);
+    all.push(y);
+  }
+  if (all.length < 2) return null;
+  // Noise floor per candidate, from the OTHER agents' residuals only, as a robust spread
+  // (1.4826 x MAD). drift_detect.py's onset detector pools everyone with pstdev; this one
+  // deliberately doesn't. Measured: pooling let the drifting agent inflate the very noise it is
+  // judged against (0.65 vs 0.42 on clean streams) and that alone rejected most injected drifts.
+  const noiseExcluding = (agent) => {
+    const ys = [];
+    for (const [a, pts] of Object.entries(byAgent)) if (a !== agent) for (const p of pts) ys.push(p[1]);
+    if (ys.length < 2) return 0;
+    const mid = median(ys);
+    return 1.4826 * median(ys.map(y => Math.abs(y - mid)));
+  };
+
+  let best = null;
+  for (const agent of Object.keys(byAgent).sort()) {
+    const pts = byAgent[agent].sort((a, b) => a[0] - b[0]);
+    let first = pts.length - 1;
+    while (first > 0 && pts[first][0] - pts[first - 1][0] <= o.runGapS) first--;
+    const run = pts.slice(first);
+    const row = { agent, n: run.length, startS: run[0][0], endS: run[run.length - 1][0] };
+    if (o.explain) o.explain.push(row);
+    if (run.length < o.minSpans) continue;
+    const xs = run.map(p => p[0]), ys = run.map(p => p[1]);
+    const n = run.length;
+    const mx = xs.reduce((a, b) => a + b, 0) / n, my = ys.reduce((a, b) => a + b, 0) / n;
+    let sxy = 0, sxx = 0, syy = 0;
+    for (let i = 0; i < n; i++) {
+      sxy += (xs[i] - mx) * (ys[i] - my); sxx += (xs[i] - mx) ** 2; syy += (ys[i] - my) ** 2;
+    }
+    if (sxx <= 0 || syy <= 0) continue;
+    const slope = sxy / sxx, r = sxy / Math.sqrt(sxx * syy);
+    const growth = slope * (xs[n - 1] - xs[0]);
+    // "Is it still off NOW": the later half of the run (at least 3 points), tested as a mean
+    // against its own standard error, not against a single point's spread.
+    const k = Math.max(3, Math.ceil(n / 2));
+    const noise = noiseExcluding(agent);
+    const recent = ys.slice(-k).reduce((a, b) => a + b, 0) / k;
+    const z = noise > 1e-6 ? recent / (noise / Math.sqrt(k)) : Infinity;
+    Object.assign(row, { r, growth, z, recent, noise });
+    if (!(slope > 0) || r < o.rThresh || growth < o.minGrowth || z < o.zThresh) continue;
+    if (!best || growth > best.growth) best = { ...row };
+  }
+  return best;
+}
+
 class SwarmEngine {
-  constructor(rng) {
+  // `latencyDrift` overrides LATENCY_DRIFT_INJECT (scripts/drift_validation.mjs uses prob 0 for
+  // clean streams and prob 1 for recall); the page always uses the defaults.
+  constructor(rng, { latencyDrift } = {}) {
     this.rng = rng;
+    this.latencyDrift = { ...LATENCY_DRIFT_INJECT, ...latencyDrift };
+    this.injectedDrifts = [];  // ground truth for validation only: {agent, t0}
     this.t = 0.0;
     this.spans = [];          // display/debug buffer, trimmed periodically -- see trim()
     this._phaseQueue = [];    // generator-style queue of phase functions to run in order, forever
@@ -465,11 +590,11 @@ class SwarmEngine {
   }
 
 
-  _toolCall(agentId, at) {
+  _toolCall(agentId, at, drift = null) {
     const server = this.rng.choice(MCP_SERVER_NAMES);
     const spec = MCP_SERVERS[server];
     const tool = this.rng.choice(spec.tools);
-    const dur = latencyDraw(this.rng, spec.latency);
+    const dur = latencyDraw(this.rng, spec.latency) * latencyDriftFactor(drift, at);
     const failed = this.rng.next() < spec.failureRate;
     this._add(agentId, "execute_tool", at, dur, this.rng.int(46) + 15,
       { tool: `${server}/${tool}`, mcp_server: server,
@@ -477,8 +602,8 @@ class SwarmEngine {
     return at + dur;
   }
 
-  _reason(agentId, at, tokens, stopReason) {
-    const dur = Math.max(0.25, this.rng.gauss(0.8, 0.3));
+  _reason(agentId, at, tokens, stopReason, drift = null) {
+    const dur = Math.max(0.25, this.rng.gauss(0.8, 0.3)) * latencyDriftFactor(drift, at);
     const extra = {};
     if (stopReason) extra.stop_reason = stopReason;
     this._add(agentId, "chat", at, dur, tokens, extra);
@@ -530,21 +655,32 @@ class SwarmEngine {
       this._add(agentId, "create_agent", spawnT + i * 0.18, 0.25, 40, {});
       agents.push([agentId, spawnT + i * 0.18 + 0.3]);
     }
+    // Goal-drift, injected as behaviour: one subagent of this round gets slower at its own work
+    // as it goes. Nothing downstream is told -- Director has to notice it from the durations.
+    // Needs a peer in the same round, or there is nothing to be slower than.
+    const inj = this.latencyDrift;
+    const driftIdx = fanout >= 2 && this.rng.bool(inj.prob) ? this.rng.int(fanout) : -1;
     let maxFinish = this.t;
-    for (const [agentId, start] of agents) {
+    for (let i = 0; i < agents.length; i++) {
+      const [agentId, start] = agents[i];
+      const drift = i === driftIdx ? { t0: start, maxMult: inj.maxMult, rampS: inj.rampS } : null;
+      if (drift) {
+        this.injectedDrifts.push({ agent: agentId, t0: start });
+        if (this.injectedDrifts.length > 200) this.injectedDrifts.shift();
+      }
       let t = start;
       const steps = 3 + this.rng.int(4);
       for (let step = 0; step < steps; step++) {
-        t = this._reason(agentId, t, 160 + this.rng.int(261));
+        t = this._reason(agentId, t, 160 + this.rng.int(261), undefined, drift);
         const nTools = 1 + this.rng.int(3);
         for (let k = 0; k < nTools; k++) {
-          t = this._toolCall(agentId, t);
+          t = this._toolCall(agentId, t, drift);
           t += this.rng.uniform(0.05, 0.3);
         }
         t += this.rng.uniform(0.1, 0.5);
       }
       const reason = this.rng.choice(["end_turn", "end_turn", "end_turn", "max_tokens", "stop_sequence"]);
-      t = this._reason(agentId, t, 200 + this.rng.int(301), reason);
+      t = this._reason(agentId, t, 200 + this.rng.int(301), reason, drift);
       maxFinish = Math.max(maxFinish, t);
     }
     this.t = maxFinish + 0.4;
@@ -604,6 +740,7 @@ class SwarmEngine {
 function round3(x) { return Math.round(x * 1000) / 1000; }
 
 export {
+  LATENCY_DRIFT_INJECT, LATENCY_DRIFT_DETECT, detectLatencyDrift, latencyKey,
   Rng, cryptoSeed, SwarmEngine, FORM_BARS, JAZZ_CHORD_TONES, chordSymbol, generateJazzForm,
   VoicePool, resolveVoice, ORCHESTRATOR_AGENT_ID, POOL_SLOTS,
   CHORD_VOICE_ORDER, CHORD_AGENT_VOICES, ARCH_VOICES, VOICE_RANGES,
