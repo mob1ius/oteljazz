@@ -20,7 +20,7 @@ import {
   jazzChoraleVoicing, BASS_RANGE, WALK_FOUR_FEEL_ACTIVITY, WALK_VELOCITY, WALK_NOTE_FRAC,
   bassToneChoice, bassTarget, walkingBassBar,
   tokensToVelocity, latencyToDuration, nearestChromaticOffsets, melodyToneIndex,
-  detectLatencyDrift,
+  detectLatencyDrift, detectCollusion,
   MELODY_HOME, MELODY_REGISTER, MELODY_NOTE_GAP_BARS, MELODY_DENSITY_PER_AGENT,
   MELODY_NOTE_DURATION_FRAC, MELODY_ROTATION_BARS, MELODY_PHRASE_NOTES_IDLE,
   MELODY_PHRASE_NOTES_PER_ACTIVITY, MELODY_REST_BARS_IDLE, MELODY_REST_BARS_BUSY,
@@ -66,8 +66,13 @@ const MELODY_RNG_SALT = 0x3c6ef372;
 //     find because SwarmEngine injects a real latency trend into one subagent's spans; live mode
 //     has it only if the real agents actually drift. Same detector, same spans array, no branch.
 //     Validated on synthetic injection only (scripts/drift_validation.mjs), not on real drift.
-//   - CONFLICT, CAPTURE-SPIKE and COLLUSION are still INJECTED on a timer/probability, the same
-//     way caidence.py's extended_demo_trace() hand-places them. Nothing derives them from the swarm.
+//   - COLLUSION is DETECTED too: engine.js's detectCollusion looks for a pair of agents whose
+//     spans coincide far more often than their rates predict, on the same kind of work. The
+//     synthetic swarm has some because SwarmEngine makes one subagent shadow another; live mode
+//     has it only if real agents do. Same detector, same spans array, no branch. Validated on
+//     synthetic injection only (scripts/collusion_validation.mjs).
+//   - CONFLICT and CAPTURE-SPIKE are still INJECTED on a timer/probability, the same way
+//     caidence.py's extended_demo_trace() hand-places them. Nothing derives them from the swarm.
 const ANOMALY_MIN_GAP_S = 30;            // cooldown floor between anomalies, any type
 const ANOMALY_ROLL_PROB = 0.05;          // per-bar roll once the cooldown has elapsed
 // The FIRST anomaly of a session is scheduled, not rolled for. Measured over 500 headless
@@ -95,6 +100,7 @@ const CAPTURE_SPIKE_COUNT = 4;
 const CAPTURE_SPIKE_GAP_S = 0.09;
 const CAPTURE_SPIKE_NOTE_S = 0.07;
 const CAPTURE_SPIKE_VELOCITY = 105;
+const COLLUSION_REFLAG_S = 60;           // one pair can't sound again inside this
 const COLLUSION_COUNT = 3;
 const COLLUSION_GAP_S = 0.5;
 const COLLUSION_VELOCITY = 90;
@@ -216,6 +222,9 @@ export class Director {
     this.lastDetectedDriftEndS = -ANOMALY_MIN_GAP_S;
     this.driftLog = [];           // {t, agent, voice, ratio, growth, r, z}, for validation/debug
     this.driftSkips = {};         // reason -> bars where a finding was NOT rendered
+    this.collusionLog = [];       // {t, agentA, agentB, voiceA, voiceB, z, matchFrac}
+    this.collusionSkips = {};
+    this.collusionFlaggedAt = {}; // "a|b" -> when that pair last sounded
 
     // callbacks the page wires up
     this.onScheduleNote = null;   // (voice, midiNote, velocity, durationS, atS)
@@ -410,6 +419,41 @@ export class Director {
     return true;
   }
 
+  // Collusion from the telemetry: a pair of agents whose spans coincide far more than chance,
+  // on the same kind of work. Same rendering as the rolled version it replaces (both voices hit
+  // one identical pitch in lockstep) and the same gating rules as detected drift, including
+  // rendering on the voice an agent last held if it has since lost its slot.
+  _maybeDetectCollusion(barStart, liveVoices, voicing) {
+    const found = detectCollusion(this.swarm.spans, barStart);
+    if (!found) return false;
+    const skip = (why) => { this.collusionSkips[why] = (this.collusionSkips[why] || 0) + 1; };
+    const key = `${found.agentA}|${found.agentB}`;
+    const last = this.collusionFlaggedAt[key];
+    if (last !== undefined && barStart - last < COLLUSION_REFLAG_S) { skip("alreadyRendered"); return false; }
+    if (this.activeDrift || this.activeConflict) { skip("busy"); return true; }
+    if (barStart < this.lastAnomalyEndS) { skip("busy"); return true; }
+    const voiceOf = (agent) => (agent === this.voicePool.leadAgent ? "planner"
+      : (this.voicePool.slotOf[agent] || this.lastVoiceOf[agent]));
+    const voiceA = voiceOf(found.agentA), voiceB = voiceOf(found.agentB);
+    if (!voiceA || !voiceB || voiceA === voiceB) { skip("noVoice"); return true; }
+    if (!liveVoices.has(voiceA) || !liveVoices.has(voiceB)) { skip("voiceNotLive"); return true; }
+    const note = 60;   // fixed unison pitch -- the signature IS two voices on the identical note
+    for (let i = 0; i < COLLUSION_COUNT; i++) {
+      const t = barStart + i * COLLUSION_GAP_S;
+      this._schedule(voiceA, note, COLLUSION_VELOCITY, 0.15, t);
+      this._schedule(voiceB, note, COLLUSION_VELOCITY, 0.15, t);
+    }
+    this.lastAnomalyEndS = barStart + COLLUSION_COUNT * COLLUSION_GAP_S;
+    this.collusionFlaggedAt[key] = barStart;
+    this.anomalyCount++;
+    this.collusionLog.push({ t: barStart, agentA: found.agentA, agentB: found.agentB,
+      voiceA, voiceB, z: found.z, matchFrac: found.matchFrac });
+    if (this.collusionLog.length > 50) this.collusionLog.shift();
+    this._logAnomaly(barStart, `collusion: ${voiceA} and ${voiceB} (${found.agentA}, ${found.agentB}) ` +
+      `moving in lockstep, ${Math.round(found.matchFrac * 100)}% of actions within a moment of each other`);
+    return true;
+  }
+
   // Roll for a new anomaly once the cooldown has elapsed, pick a signature and target voice(s)
   // from whichever chord-agent voices are actually live right now (an anomaly needs someone to
   // happen to), and either start a continuous-deviation window (drift/conflict, resolved per
@@ -434,8 +478,8 @@ export class Director {
     // voices are live -- which is common early on, exactly when the forced first is due. Every
     // firing branch advances lastAnomalyEndS; no non-firing path does.
     const anomalyEndBefore = this.lastAnomalyEndS;
-    // No "drift" here any more: it only ever comes from _maybeDetectDrift.
-    const kind = this.rng.choice(["conflict", "capture", "collusion"]);
+    // Neither "drift" nor "collusion" here any more: both come only from their detectors.
+    const kind = this.rng.choice(["conflict", "capture"]);
     if (kind === "conflict" && candidates.length >= 2) {
       const voiceA = this.rng.choice(candidates);
       const voiceB = this.rng.choice(candidates.filter(v => v !== voiceA));
@@ -454,19 +498,8 @@ export class Director {
       });
       this.lastAnomalyEndS = barStart + offsets.length * CAPTURE_SPIKE_GAP_S;
       this._logAnomaly(barStart, `capture-spike: ${voice} hit a chromatic wrong-note cluster`);
-    } else if (kind === "collusion" && candidates.length >= 2) {
-      const voiceA = this.rng.choice(candidates);
-      const voiceB = this.rng.choice(candidates.filter(v => v !== voiceA));
-      const note = 60;   // fixed unison pitch -- the signature IS two independent voices
-                          // suddenly playing the identical note in lockstep, not which note
-      for (let i = 0; i < COLLUSION_COUNT; i++) {
-        const t = barStart + i * COLLUSION_GAP_S;
-        this._schedule(voiceA, note, COLLUSION_VELOCITY, 0.15, t);
-        this._schedule(voiceB, note, COLLUSION_VELOCITY, 0.15, t);
-      }
-      this.lastAnomalyEndS = barStart + COLLUSION_COUNT * COLLUSION_GAP_S;
-      this._logAnomaly(barStart, `collusion: ${voiceA} and ${voiceB} synchronized on an identical pitch`);
     }
+
     if (this.lastAnomalyEndS !== anomalyEndBefore) this.anomalyCount++;
   }
 
@@ -552,10 +585,13 @@ export class Director {
     const bassIdx = bassToneChoice(activityLevel, this.rng);
     const bassNote = bassTarget(soundRoot, quality, bassIdx);
 
-    // Detection first. Evidence outranks decoration: while the detector has a finding (rendered
-    // or still waiting for a voice), the decoy roll stands down for this bar.
+    // Detection first. Evidence outranks decoration: while a detector has a finding (rendered or
+    // still waiting for a voice), the decoy roll stands down for this bar.
     const driftPending = this._maybeDetectDrift(barStart, liveVoices);
-    if (!driftPending) this._maybeTriggerAnomaly(barStart, liveVoices, soundRoot, quality, voicing);
+    const collusionPending = driftPending ? false : this._maybeDetectCollusion(barStart, liveVoices, voicing);
+    if (!driftPending && !collusionPending) {
+      this._maybeTriggerAnomaly(barStart, liveVoices, soundRoot, quality, voicing);
+    }
 
     // --- push (anticipation): landing a chord an eighth early is THE characteristic jazz comp
     // gesture, but the comp note it replaces must be shortened to make room or the two clash --

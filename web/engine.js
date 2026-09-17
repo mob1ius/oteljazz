@@ -36,10 +36,12 @@
  *   global constant rather than per-section. See BUILD_NOTES.md for the full
  *   list and why each cut was made. (Comp push/anticipation was on this list originally; it has
  *   since been ported -- see director.js's COMP_PUSH_PROBABILITY and its pendingPush lookahead.)
- *   GOES FURTHER THAN caidence.py's DEFAULT, deliberately: goal-drift is not placed by hand or
- *   rolled. SwarmEngine injects a latency trend into one subagent (LATENCY_DRIFT_INJECT) and
- *   Director hears drift only when detectLatencyDrift finds it -- the same detector as
- *   drift_detect.detect_latency_drift, which caidence.py only runs under --detect-drift=latency.
+ *   GOES FURTHER THAN caidence.py's DEFAULT, deliberately: goal-drift and collusion are not
+ *   placed by hand or rolled. SwarmEngine injects a latency trend into one subagent
+ *   (LATENCY_DRIFT_INJECT) and makes another shadow its neighbour (COLLUSION_INJECT), and
+ *   Director hears either signature only when detectLatencyDrift or detectCollusion finds it --
+ *   the same detectors as drift_detect.detect_latency_drift and collusion_detect.detect_collusion,
+ *   which caidence.py runs only under --detect-drift=latency / --detect-collusion.
  *
  * MODULATION / "never the same song twice": each CHORUS (16 bars) is a freshly-drawn form --
  * generate_jazz_form is called again every time the bar cursor wraps, not just once for the
@@ -586,6 +588,22 @@ const LATENCY_DRIFT_INJECT = {
   maxMult: 3.0,    // that subagent's latencies ramp up to this multiple...
   rampS: 10.0,     // ...over this many seconds of its own run
 };
+// Collusion, injected the same way: two subagents that should be working independently fall into
+// step, the follower repeating the leader's actions moments later. Like drift it is a property of
+// the SPANS -- nothing downstream is told -- so Director only hears it if detectCollusion finds it.
+const COLLUSION_INJECT = {
+  prob: 0.15,      // chance a fan-out round (of 3+) makes one subagent shadow another
+  windowS: 18.0,   // how long the follower shadows
+  lagS: [0.05, 0.2], // how far behind the follower's copy lands
+};
+const COLLUSION_DETECT = {
+  windowS: 40,     // look-back over finished spans
+  tolS: 0.25,      // two spans this close count as coinciding
+  minSpansEach: 8, // each agent needs this many scored spans in the window
+  zThresh: 5.0,    // coincidences, in standard deviations above what independence predicts
+  minMatchFrac: 0.45,   // ...and this share of the quieter agent's spans must coincide
+  minSameKindFrac: 0.6, // ...doing the same kind of work (same tool/op) when they do
+};
 const LATENCY_DRIFT_DETECT = {
   windowS: 40,     // look-back, in seconds of finished spans
   runGapS: 8,      // an agent's "current run" ends at a silence longer than this
@@ -613,6 +631,56 @@ function latencyKey(s) {
 function median(a) {
   const s = [...a].sort((x, y) => x - y), m = s.length >> 1;
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+// Two agents in lockstep. For each pair, count how many of the quieter agent's spans have one of
+// the other's within `tolS`, and compare with what independence predicts from the two rates
+// (expected = nA x nB x 2 x tol / window). A pair is flagged only if the coincidences are far
+// above that, cover much of the quieter agent's activity, and are mostly the SAME kind of work --
+// two busy agents in the same fan-out overlap by chance, but they don't shadow each other's tools.
+// Returns {agentA, agentB, matches, expected, z, matchFrac, sameKindFrac} or null.
+function detectCollusion(spans, nowS, opts = COLLUSION_DETECT) {
+  const o = { ...COLLUSION_DETECT, ...opts };
+  const lo = nowS - o.windowS;
+  const win = spans.filter(s => !LATENCY_DRIFT_EXCLUDED_OPS.has(s.op)
+    && s.start >= lo && s.start + (s.duration || 0) <= nowS);
+  const byAgent = {};
+  for (const s of win) (byAgent[s.agent] ||= []).push(s);
+  const agents = Object.keys(byAgent).sort().filter(a => byAgent[a].length >= o.minSpansEach);
+  for (const a of agents) byAgent[a].sort((x, y) => x.start - y.start);
+
+  let best = null;
+  for (let i = 0; i < agents.length; i++) {
+    for (let j = i + 1; j < agents.length; j++) {
+      const A = byAgent[agents[i]], B = byAgent[agents[j]];
+      const [small, large] = A.length <= B.length ? [A, B] : [B, A];
+      const used = new Set();
+      let matches = 0, sameKind = 0;
+      for (const s of small) {
+        let hit = -1;
+        for (let k = 0; k < large.length; k++) {
+          if (used.has(k)) continue;
+          const dt = Math.abs(large[k].start - s.start);
+          if (dt <= o.tolS) { hit = k; break; }
+          if (large[k].start - s.start > o.tolS) break;
+        }
+        if (hit < 0) continue;
+        used.add(hit);
+        matches++;
+        if (latencyKey(large[hit]) === latencyKey(s)) sameKind++;
+      }
+      if (!matches) continue;
+      const expected = (A.length * B.length * 2 * o.tolS) / o.windowS;
+      const z = (matches - expected) / Math.sqrt(Math.max(expected, 1));
+      const matchFrac = matches / small.length;
+      const sameKindFrac = sameKind / matches;
+      if (z < o.zThresh || matchFrac < o.minMatchFrac || sameKindFrac < o.minSameKindFrac) continue;
+      if (!best || z > best.z) {
+        best = { agentA: agents[i], agentB: agents[j], matches, expected, z, matchFrac, sameKindFrac };
+      }
+    }
+  }
+  return best;
 }
 
 // Pure: spans in, at most one finding out. Only spans that have ENDED by nowS count, so the
@@ -685,10 +753,12 @@ function detectLatencyDrift(spans, nowS, opts = LATENCY_DRIFT_DETECT) {
 class SwarmEngine {
   // `latencyDrift` overrides LATENCY_DRIFT_INJECT (scripts/drift_validation.mjs uses prob 0 for
   // clean streams and prob 1 for recall); the page always uses the defaults.
-  constructor(rng, { latencyDrift } = {}) {
+  constructor(rng, { latencyDrift, collusion } = {}) {
     this.rng = rng;
     this.latencyDrift = { ...LATENCY_DRIFT_INJECT, ...latencyDrift };
-    this.injectedDrifts = [];  // ground truth for validation only: {agent, t0}
+    this.collusion = { ...COLLUSION_INJECT, ...collusion };
+    this.injectedDrifts = [];      // ground truth for validation only: {agent, t0}
+    this.injectedCollusions = [];  // {leader, follower, t0, endS}
     this.t = 0.0;
     this.spans = [];          // display/debug buffer, trimmed periodically -- see trim()
     this._phaseQueue = [];    // generator-style queue of phase functions to run in order, forever
@@ -776,6 +846,15 @@ class SwarmEngine {
     // Needs a peer in the same round, or there is nothing to be slower than.
     const inj = this.latencyDrift;
     const driftIdx = fanout >= 2 && this.rng.bool(inj.prob) ? this.rng.int(fanout) : -1;
+    // Collusion: one subagent shadows another for a window. The follower must come later in this
+    // loop than its leader, since it copies spans the leader has already emitted.
+    const col = this.collusion;
+    let leadIdx = -1, followIdx = -1;
+    if (fanout >= 3 && this.rng.bool(col.prob)) {
+      leadIdx = this.rng.int(fanout - 1);
+      followIdx = leadIdx + 1 + this.rng.int(fanout - leadIdx - 1);
+    }
+    let leaderSpans = null;
     let maxFinish = this.t;
     for (let i = 0; i < agents.length; i++) {
       const [agentId, start] = agents[i];
@@ -785,6 +864,25 @@ class SwarmEngine {
         if (this.injectedDrifts.length > 200) this.injectedDrifts.shift();
       }
       let t = start;
+      const spansBefore = this.spans.length;
+      if (i === followIdx && leaderSpans && leaderSpans.length) {
+        // shadow the leader: same kind of work, moments later, for one window
+        const colStart = leaderSpans[0].start;
+        const mirrored = leaderSpans.filter(x => x.start >= colStart && x.start < colStart + col.windowS);
+        for (const x of mirrored) {
+          const at = x.start + this.rng.uniform(col.lagS[0], col.lagS[1]);
+          const extra = x.op === "execute_tool"
+            ? { tool: x.tool, mcp_server: x.mcp_server, status: x.status, stop_reason: "tool_use" }
+            : {};
+          this._add(agentId, x.op, at, x.duration, x.tokens, extra);
+          t = Math.max(t, at + x.duration);
+        }
+        if (mirrored.length) {
+          this.injectedCollusions.push({ leader: agents[leadIdx][0], follower: agentId,
+            t0: mirrored[0].start, endS: t });
+          if (this.injectedCollusions.length > 200) this.injectedCollusions.shift();
+        }
+      }
       const steps = 3 + this.rng.int(4);
       for (let step = 0; step < steps; step++) {
         t = this._reason(agentId, t, 160 + this.rng.int(261), undefined, drift);
@@ -797,6 +895,7 @@ class SwarmEngine {
       }
       const reason = this.rng.choice(["end_turn", "end_turn", "end_turn", "max_tokens", "stop_sequence"]);
       t = this._reason(agentId, t, 200 + this.rng.int(301), reason, drift);
+      if (i === leadIdx) leaderSpans = this.spans.slice(spansBefore);
       maxFinish = Math.max(maxFinish, t);
     }
     this.t = maxFinish + 0.4;
@@ -857,6 +956,7 @@ function round3(x) { return Math.round(x * 1000) / 1000; }
 
 export {
   LATENCY_DRIFT_INJECT, LATENCY_DRIFT_DETECT, detectLatencyDrift, latencyKey,
+  COLLUSION_INJECT, COLLUSION_DETECT, detectCollusion,
   Rng, cryptoSeed, SwarmEngine, FORM_BARS, JAZZ_CHORD_TONES, chordSymbol, generateJazzForm,
   VoicePool, resolveVoice, ORCHESTRATOR_AGENT_ID, POOL_SLOTS, LEAD_ROLE_VALUES,
   CHORD_VOICE_ORDER, CHORD_AGENT_VOICES, ARCH_VOICES, VOICE_RANGES,
