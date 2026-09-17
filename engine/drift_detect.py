@@ -120,3 +120,151 @@ def detect_drift(spans, chord_schedule, resolved=None, min_windows=6, r_thresh=0
         if best is None or net_growth > best["net_growth_s"]:
             best = candidate
     return best
+
+
+# ============================================================================================
+# A SECOND detector: goal-drift as a latency trend. Mirrors web/engine.js's detectLatencyDrift
+# line for line -- same constants, same statistics, same tie-breaking. Change one, change the
+# other, and rerun engine/drift_parity_check.py.
+#
+# detect_drift above is untouched (the paper cites its onset-lag sensitivity curve). This one
+# exists because onset lag against the chord grid detected nothing on the browser's span stream
+# (noise floor 0.59s vs. the +-30ms it was validated at), and a live OTLP stream can't feed it:
+# SDKs batch-export spans when they END, so arrival time is not start time. Duration survives.
+#
+# Four deliberate differences from detect_drift, each measured (docs/ROADMAP.md, M1):
+#   1. per-span log-latency residual against OTHER agents doing the same kind of work, not a
+#      per-window onset offset against the grid;
+#   2. noise = 1.4826 x MAD, not pstdev;
+#   3. noise is leave-one-out (excludes the candidate agent), not pooled -- pooling let the
+#      drifting agent inflate its own noise floor (0.65 vs 0.42 clean) and hid most drifts;
+#   4. "still off now" = the later half of the run's mean residual in standard errors, not the
+#      last point over a single point's spread; plus r >= 0.5 and min_spans = 6.
+# Validated on synthetic injection only (scripts/drift_validation.mjs). Recall against real drift
+# is unverified.
+# ============================================================================================
+import math
+
+LATENCY_DRIFT_DETECT = {
+    "window_s": 40.0,
+    "run_gap_s": 8.0,
+    "min_spans": 6,
+    "min_peers": 3,
+    "r_thresh": 0.5,
+    "z_thresh": 3.5,
+    "min_growth": math.log(1.8),
+}
+LATENCY_DRIFT_EXCLUDED_OPS = {"create_agent"}
+
+
+def _op(s):
+    return s.get("op") or s.get("action")
+
+
+def latency_key(s):
+    if _op(s) == "execute_tool":
+        return "tool:" + (s.get("mcp_server") or s.get("tool") or "")
+    return "op:" + str(_op(s))
+
+
+def _median(a):
+    s = sorted(a)
+    m = len(s) >> 1
+    return s[m] if len(s) % 2 else (s[m - 1] + s[m]) / 2
+
+
+def detect_latency_drift_at(spans, now_s, explain=None, **opts):
+    """Return None or {agent, startS, endS, n, r, growth, z, recent, noise} for the one TRUE agent
+    (unpooled id) whose latency is trending up against its peers, judged only on spans that had
+    ENDED by now_s. Pass explain=[] to collect every candidate's numbers."""
+    o = {**LATENCY_DRIFT_DETECT, **opts}
+    lo = now_s - o["window_s"]
+    win = [s for s in spans
+           if s.get("duration", 0) > 0 and _op(s) not in LATENCY_DRIFT_EXCLUDED_OPS
+           and s["start"] >= lo and s["start"] + s["duration"] <= now_s]
+    by_key = {}
+    for s in win:
+        by_key.setdefault(latency_key(s), []).append(s)
+
+    by_agent = {}
+    n_all = 0
+    for s in win:
+        peers = [p for p in by_key[latency_key(s)] if p["agent"] != s["agent"]]
+        if len(peers) < o["min_peers"]:
+            continue
+        y = math.log(s["duration"]) - math.log(_median([p["duration"] for p in peers]))
+        by_agent.setdefault(s["agent"], []).append((s["start"], y))
+        n_all += 1
+    if n_all < 2:
+        return None
+
+    def noise_excluding(agent):
+        ys = [p[1] for a, pts in by_agent.items() if a != agent for p in pts]
+        if len(ys) < 2:
+            return 0.0
+        mid = _median(ys)
+        return 1.4826 * _median([abs(y - mid) for y in ys])
+
+    best = None
+    for agent in sorted(by_agent):
+        pts = sorted(by_agent[agent], key=lambda p: p[0])
+        first = len(pts) - 1
+        while first > 0 and pts[first][0] - pts[first - 1][0] <= o["run_gap_s"]:
+            first -= 1
+        run = pts[first:]
+        row = {"agent": agent, "n": len(run), "startS": run[0][0], "endS": run[-1][0]}
+        if explain is not None:
+            explain.append(row)
+        if len(run) < o["min_spans"]:
+            continue
+        xs = [p[0] for p in run]
+        ys = [p[1] for p in run]
+        n = len(run)
+        mx = sum(xs) / n
+        my = sum(ys) / n
+        sxy = sxx = syy = 0.0
+        for i in range(n):
+            sxy += (xs[i] - mx) * (ys[i] - my)
+            sxx += (xs[i] - mx) ** 2
+            syy += (ys[i] - my) ** 2
+        if sxx <= 0 or syy <= 0:
+            continue
+        slope = sxy / sxx
+        r = sxy / math.sqrt(sxx * syy)
+        growth = slope * (xs[-1] - xs[0])
+        k = max(3, math.ceil(n / 2))
+        noise = noise_excluding(agent)
+        recent = sum(ys[-k:]) / k
+        z = recent / (noise / math.sqrt(k)) if noise > 1e-6 else float("inf")
+        row.update(r=r, growth=growth, z=z, recent=recent, noise=noise)
+        if not (slope > 0) or r < o["r_thresh"] or growth < o["min_growth"] or z < o["z_thresh"]:
+            continue
+        if best is None or growth > best["growth"]:
+            best = dict(row)
+    return best
+
+
+def detect_latency_drift(spans, resolved=None, step_s=2.5, window_range=(8.0, 16.0)):
+    """Batch form for caidence.py --detect-drift=latency: step through the trace every `step_s`
+    (a bar at 96bpm), return the FIRST finding shaped like detect_drift's result -- "agent" is the
+    physical voice the flagged true agent held at that moment (so build_timeline renders it), and
+    "true_agent" is who it actually was."""
+    if not spans:
+        return None
+    end = max(s["start"] + s.get("duration", 0) for s in spans)
+    t = step_s
+    while t <= end + step_s:
+        found = detect_latency_drift_at(spans, t)
+        if found:
+            voice = found["agent"]
+            if resolved is not None:
+                mine = [s for s in spans if s["agent"] == found["agent"] and s["start"] <= t]
+                if mine:
+                    last = max(mine, key=lambda s: s["start"])
+                    voice = resolved.get(id(last), found["agent"])
+            window = max(window_range[0], min(window_range[1], found["endS"] - found["startS"]))
+            return {"agent": voice, "true_agent": found["agent"], "drift_start": t,
+                    "drift_window": window, "z_score": found["z"],
+                    "latency_ratio": math.exp(found["recent"]), "r": found["r"]}
+        t += step_s
+    return None

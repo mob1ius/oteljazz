@@ -2068,10 +2068,17 @@ def main():
     ap.add_argument("--tempo", type=float, default=96.0)
     ap.add_argument("--speed", type=float, default=1.0)
     ap.add_argument("--no-drift", action="store_true")
-    ap.add_argument("--detect-drift", action="store_true",
-                     help="compute drift from actual span timing (drift_detect.py) instead of "
+    ap.add_argument("--detect-drift", nargs="?", const="onset", default=None,
+                     choices=["onset", "latency"],
+                     help="compute drift from the spans themselves (drift_detect.py) instead of "
                           "reading a hand-typed drift_start out of the trace file -- prints "
-                          "what it found (or that it found nothing) and renders accordingly")
+                          "what it found (or that it found nothing) and renders accordingly. "
+                          "Bare flag or 'onset': onset lag against the chord grid (detect_drift). "
+                          "'latency': an agent's latency trending up against its peers "
+                          "(detect_latency_drift, the browser's detector)")
+    ap.add_argument("--inject-latency-drift", action="store_true",
+                     help="--swarm only, opt-in: let one subagent per round slow down, as the "
+                          "browser's mock swarm does (swarm.LATENCY_DRIFT_INJECT)")
     ap.add_argument("--demo", action="store_true",
                      help="use the extended ~110s demo trace (wide dynamic range, minor-mode "
                           "crisis arc) instead of the ~30s calibration-shaped synthetic trace")
@@ -2141,7 +2148,9 @@ def main():
         # the hand-written demo, and nothing in real telemetry says "go to minor here."
         import swarm as swarm_mod
         seed = args.seed if args.seed is not None else random.SystemRandom().randrange(2**31)
-        spans, sections = swarm_mod.swarm_trace(seed=seed, fanout=args.fanout, rounds=args.rounds)
+        spans, sections = swarm_mod.swarm_trace(
+            seed=seed, fanout=args.fanout, rounds=args.rounds,
+            latency_drift={} if args.inject_latency_drift else None)
         print(f"Using mock swarm (seed {seed}, fanout {args.fanout}, {args.rounds} rounds)."
               f" Pass --seed {seed} to reproduce this run.\n")
         print(swarm_mod.describe(spans, sections))
@@ -2184,7 +2193,7 @@ def main():
         # Compute the shared onset grid the same way build_timeline will, so the detector sees
         # exactly the windows the render is about to use -- see drift_detect.py's docstring for
         # why the grid (not an assumed-zero baseline) is what a voice's onset gets compared to.
-        from drift_detect import detect_drift
+        from drift_detect import detect_drift, detect_latency_drift
         end_s = max((s["start"] + s.get("duration", 0.5) for s in spans), default=8.0) + 2.0
         if sections:
             end_s = max(end_s, sections[-1]["end"])
@@ -2192,8 +2201,15 @@ def main():
                                                            regime_schedule=regime_schedule,
                                                            sections=sections)
         resolved_preview, _ = pool_spans(spans)
-        result = detect_drift(spans, chord_schedule_preview, resolved=resolved_preview)
-        if result:
+        if args.detect_drift == "latency":
+            result = detect_latency_drift(spans, resolved=resolved_preview)
+        else:
+            result = detect_drift(spans, chord_schedule_preview, resolved=resolved_preview)
+        if result and args.detect_drift == "latency":
+            print(f"\n--detect-drift=latency: flagged {result['true_agent']!r} (on {result['agent']!r}) "
+                  f"at ~{result['drift_start']:.2f}s, now running x{result['latency_ratio']:.1f} its peers' "
+                  f"latency (r={result['r']:.2f}, z={result['z_score']:.2f}).")
+        elif result:
             print(f"\n--detect-drift: flagged {result['agent']!r} starting ~{result['drift_start']:.2f}s, "
                   f"net growth {result['net_growth_s']*1000:.1f}ms over {result['drift_window']:.2f}s "
                   f"(z={result['z_score']:.2f}).")
@@ -2203,7 +2219,8 @@ def main():
                                "drift_window": result["drift_window"]}]
             do_drift = do_drift and True
         else:
-            print("\n--detect-drift: no voice's onset lag showed a growing, statistically "
+            what = ("no agent's latency" if args.detect_drift == "latency" else "no voice's onset lag")
+            print(f"\n--detect-drift: {what} showed a growing, statistically "
                   "significant divergence from the group -- rendering without drift.")
             do_drift = False
 

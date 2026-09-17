@@ -126,6 +126,20 @@ def _latency(rng, profile):
     return max(lo, rng.gauss(typical, typical * 0.35))
 
 
+# Opt-in goal-drift injection, mirroring web/engine.js's LATENCY_DRIFT_INJECT: one subagent of a
+# fan-out round gets slower at its own work, ramping to max_mult over ramp_s. OFF by default and,
+# when off, draws nothing from the rng -- default output (and so seed_sweep.py and every figure
+# built on it) stays byte-identical. The browser has it on; see drift_detect.detect_latency_drift.
+LATENCY_DRIFT_INJECT = {"prob": 0.15, "max_mult": 3.0, "ramp_s": 10.0}
+
+
+def _latency_drift_factor(drift, at):
+    if not drift:
+        return 1.0
+    frac = max(0.0, min(1.0, (at - drift["t0"]) / drift["ramp_s"]))
+    return drift["max_mult"] ** frac
+
+
 class SwarmSim:
     """A pipeline that runs on its own logic and records what it did.
 
@@ -133,8 +147,11 @@ class SwarmSim:
     pipeline. Any arc the music has comes from derive_sections reading this back, which is the
     entire point: if the shape were authored here the demonstration would be circular."""
 
-    def __init__(self, seed=0, fanout=4, rounds=2):
+    def __init__(self, seed=0, fanout=4, rounds=2, latency_drift=None):
         self.rng = random.Random(seed)
+        # None = no injection (the default). A dict overrides LATENCY_DRIFT_INJECT's fields.
+        self.latency_drift = None if latency_drift is None else {**LATENCY_DRIFT_INJECT, **latency_drift}
+        self.injected_drifts = []   # ground truth when injecting: {"agent", "t0"}
         self.fanout = fanout
         self.rounds = rounds
         self.spans = []
@@ -149,12 +166,12 @@ class SwarmSim:
         self.spans.append(span)
         return span
 
-    def _tool_call(self, agent_id, at):
+    def _tool_call(self, agent_id, at, drift=None):
         """One MCP tool call. Returns when it finished."""
         server = self.rng.choice(list(MCP_SERVERS))
         spec = MCP_SERVERS[server]
         tool = self.rng.choice(spec["tools"])
-        dur = _latency(self.rng, spec["latency"])
+        dur = _latency(self.rng, spec["latency"]) * _latency_drift_factor(drift, at)
         failed = self.rng.random() < spec["failure_rate"]
         # stop_reason is "tool_use" whether or not the CALL failed: the agent stopped to use a
         # tool, which is what stop_reason describes. A tool failure is a status, not a reason the
@@ -165,8 +182,8 @@ class SwarmSim:
                   status="error" if failed else "ok", stop_reason="tool_use")
         return at + dur
 
-    def _reason(self, agent_id, at, tokens, stop_reason=None):
-        dur = max(0.25, self.rng.gauss(0.8, 0.3))
+    def _reason(self, agent_id, at, tokens, stop_reason=None, drift=None):
+        dur = max(0.25, self.rng.gauss(0.8, 0.3)) * _latency_drift_factor(drift, at)
         self._add(agent_id, "chat", at, dur, tokens,
                   **({"stop_reason": stop_reason} if stop_reason else {}))
         return at + dur
@@ -214,19 +231,29 @@ class SwarmSim:
             self._add(agent_id, "create_agent", spawn_t + i * 0.18, 0.25, 40)
             agents.append((agent_id, spawn_t + i * 0.18 + 0.3))
 
+        # Opt-in goal-drift (see LATENCY_DRIFT_INJECT). The guard keeps the rng untouched when off.
+        inj = self.latency_drift
+        drift_idx = -1
+        if inj is not None and self.fanout >= 2 and self.rng.random() < inj["prob"]:
+            drift_idx = self.rng.randrange(self.fanout)
+
         finish_times = []
-        for agent_id, start in agents:
+        for i, (agent_id, start) in enumerate(agents):
+            drift = None
+            if i == drift_idx:
+                drift = {"t0": start, "max_mult": inj["max_mult"], "ramp_s": inj["ramp_s"]}
+                self.injected_drifts.append({"agent": agent_id, "t0": start})
             t = start
             for step in range(self.rng.randint(3, 6)):
-                t = self._reason(agent_id, t, self.rng.randint(160, 420))
+                t = self._reason(agent_id, t, self.rng.randint(160, 420), drift=drift)
                 for _ in range(self.rng.randint(1, 3)):
-                    t = self._tool_call(agent_id, t)
+                    t = self._tool_call(agent_id, t, drift=drift)
                     t += self.rng.uniform(0.05, 0.3)
                 t += self.rng.uniform(0.1, 0.5)
             # each subagent ends with a real terminal reason
             reason = self.rng.choices(
                 ["end_turn", "end_turn", "end_turn", "max_tokens", "stop_sequence"], k=1)[0]
-            t = self._reason(agent_id, t, self.rng.randint(200, 500), stop_reason=reason)
+            t = self._reason(agent_id, t, self.rng.randint(200, 500), stop_reason=reason, drift=drift)
             finish_times.append(t)
 
         self.t = max(finish_times) + 0.4
@@ -359,11 +386,11 @@ def derive_sections(spans, tail_s=6.0):
     return sections
 
 
-def swarm_trace(seed=0, fanout=4, rounds=2):
+def swarm_trace(seed=0, fanout=4, rounds=2, latency_drift=None):
     """The pipeline's spans plus the form derived from them. Returns (spans, sections) -- there is
     deliberately no regime_schedule: major/minor is a narrative device from the hand-authored
     demo, and nothing in real telemetry says 'go to minor here'."""
-    spans = SwarmSim(seed=seed, fanout=fanout, rounds=rounds).run()
+    spans = SwarmSim(seed=seed, fanout=fanout, rounds=rounds, latency_drift=latency_drift).run()
     return spans, derive_sections(spans)
 
 
@@ -397,10 +424,14 @@ def main():
     ap.add_argument("--fanout", type=int, default=4, help="subagents spawned per round")
     ap.add_argument("--rounds", type=int, default=2, help="fan-out/converge cycles")
     ap.add_argument("--show", action="store_true", help="print the pipeline and derived form")
+    ap.add_argument("--inject-latency-drift", action="store_true",
+                    help="opt-in: let a subagent per round slow down (LATENCY_DRIFT_INJECT), as the "
+                         "browser does -- for drift_detect.detect_latency_drift. Off by default.")
     ap.add_argument("--json", default=None, help="write spans to this path (for --trace)")
     args = ap.parse_args()
 
-    spans, sections = swarm_trace(seed=args.seed, fanout=args.fanout, rounds=args.rounds)
+    spans, sections = swarm_trace(seed=args.seed, fanout=args.fanout, rounds=args.rounds,
+                                  latency_drift={} if args.inject_latency_drift else None)
     if args.show or not args.json:
         print(describe(spans, sections))
     if args.json:

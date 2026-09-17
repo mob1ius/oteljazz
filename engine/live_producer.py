@@ -27,7 +27,7 @@ import time
 
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, SimpleSpanProcessor
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.trace import Status, StatusCode
 
@@ -58,18 +58,32 @@ def main():
     ap.add_argument("--speed", type=float, default=1.0)
     ap.add_argument("--trace", choices=["synthetic", "demo", "swarm"], default="demo")
     ap.add_argument("--seed", type=int, default=0, help="--trace swarm: pipeline seed")
+    ap.add_argument("--inject-latency-drift", action="store_true",
+                    help="--trace swarm only, opt-in: one subagent per round slows down "
+                         "(swarm.LATENCY_DRIFT_INJECT), for testing drift detection end to end")
+    ap.add_argument("--batch-delay-ms", type=int, default=0,
+                    help="use BatchSpanProcessor with this schedule delay instead of Simple, to "
+                         "test against clumped arrivals the way most real SDK setups export")
     args = ap.parse_args()
 
     provider = TracerProvider()
     exporter = OTLPSpanExporter(endpoint=args.endpoint)
-    provider.add_span_processor(SimpleSpanProcessor(exporter))   # not Batch -- see docstring
+    if args.batch_delay_ms > 0:
+        provider.add_span_processor(BatchSpanProcessor(exporter, schedule_delay_millis=args.batch_delay_ms))
+    else:
+        provider.add_span_processor(SimpleSpanProcessor(exporter))   # not Batch -- see docstring
     trace.set_tracer_provider(provider)
     tracer = trace.get_tracer("oteljazz-live-producer")
 
     if args.trace == "swarm":
         import swarm as swarm_mod
-        spans, sections = swarm_mod.swarm_trace(seed=args.seed)
+        spans, sections = swarm_mod.swarm_trace(
+            seed=args.seed, latency_drift={} if args.inject_latency_drift else None)
         print(swarm_mod.describe(spans, sections))
+        if args.inject_latency_drift:
+            sim = swarm_mod.SwarmSim(seed=args.seed, latency_drift={})
+            sim.run()
+            print(f"injected latency drift: {sim.injected_drifts or 'none this seed'}")
         print("\n(live.py derives no sections of its own -- it plays the spans as they arrive;\n"
               " the derived form above is what the BATCH path would build from this same run.)\n")
     elif args.trace == "demo":
