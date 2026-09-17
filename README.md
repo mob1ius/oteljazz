@@ -150,16 +150,17 @@ for the Python engine's MIDI output. Point your own OTLP exporter at
 browser demo itself driven by that same real data, chorale voicing included, not just the
 terminal echoing span text.
 
-Two of the four anomaly signatures are detected from the spans themselves. Goal-drift is an
-agent whose latency keeps climbing against peers doing the same kind of work; collusion is two
-agents doing the same kind of work within a moment of each other far more often than their own
-rates predict. The synthetic swarm slows one subagent now and then, and makes another shadow its
-neighbour, and the demo has to notice. Both detectors have only been checked against these
-injected cases, never against a real system. At the demo's own settings drift finds about 85% of
-injections and fires on 2.5% of 16-bar windows when nothing is injected; collusion finds about
-97% and fires on 2.3% (`scripts/drift_validation.mjs` and `scripts/collusion_validation.mjs`
-print the full numbers). The other two signatures, conflict and capture spike, are still
-triggered at random. No listener discovery, no auth beyond the session id
+Three of the four anomaly signatures are detected from the spans themselves: goal-drift is an
+agent whose latency keeps climbing against peers doing the same kind of work, collusion is two
+agents working in lockstep far more often than their own rates predict, and a capture spike is an
+agent whose output balloons right after it ingests a tool result. The synthetic swarm slows one
+subagent, makes another shadow its neighbour, and captures a third, and the demo has to notice.
+All three detectors have only been checked against these injected cases, never against a real
+system. At the demo's own settings, on 16-bar windows with nothing injected, they fire on 2.5%,
+2.3% and 1.3% of windows; of the cases injected they find about 85%, 97% and 69%. Capture spike
+is the weak one on purpose: an agent that goes quiet after being captured leaves nothing to
+measure, and of the captures that do keep talking it finds 87%. The validation scripts in
+`scripts/` print the full numbers. Conflict alone is still triggered at random. No listener discovery, no auth beyond the session id
 itself being a shared secret (`src/live-relay.js`); the lead voice goes to whichever agent appears
 first, or to one that declares itself with `gen_ai.agent.role`, and everything else pools onto the
 worker voices like a synthetic subagent would (`web/director.js`'s `feedSpan`).

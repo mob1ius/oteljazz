@@ -1,5 +1,38 @@
 # Changelog
 
+## v1.11.0 — 2026-09-17
+
+The capture spike is detected rather than invented, leaving conflict as the only signature the
+demo still triggers at random. Measured with the new `scripts/capture_validation.mjs` (seeds 1 to
+40, 600s each). Synthetic injection only.
+
+### Added
+
+- **Detected capture spikes.** For each of an agent's tool calls, the demo compares the size of
+  its own output before and straight after. A capture reads as a step: output two and a half
+  times the agent's own normal, well beyond its usual spread. As with drift and collusion, this
+  is now the only way the signature sounds, in the synthetic demo and live mode alike.
+- **Injected captures in the synthetic swarm.** A 15% chance per fan-out round that one
+  subagent's output triples for 18 seconds after one of its tool calls.
+- **Measured, and weaker than the other two:** it fires on 1.3% of 16-bar windows with nothing
+  injected, but finds only 68.8% of injected captures. The reason is structural rather than a
+  threshold choice: a quarter of captured agents go quiet straight after, leaving nothing to
+  compare. Of the captures whose agent keeps talking it finds 87%. End to end, 52% of injections
+  become audible and 97% of audible capture spikes correspond to a real injection. Both
+  denominators are printed by the validation script, and the README states both.
+- **Python engine:** `engine/capture_detect.py` is a line-for-line port, `caidence.py
+  --detect-capture` renders what it finds on the voice actually flagged, and `swarm.py
+  --inject-capture` is opt-in with default output byte-identical.
+  `engine/detector_parity_check.py` now covers all three detectors: 2,385 evaluations, no
+  disagreements, statistics equal to 4e-12.
+
+### Changed
+
+- The random roll is down to conflict alone. Anomalies average 4.25 per 5 minutes.
+- Collusion and drift were re-checked on this build and are unchanged (collusion 97% recall at
+  2.1% false positives; 73% of drift injections audible).
+- Seeded links from v1.10.0 play differently again: injection changes the swarm's draws.
+
 ## v1.10.0 — 2026-09-17
 
 Collusion joins goal-drift as a signature the demo detects rather than invents. Measured with the

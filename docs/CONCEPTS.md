@@ -56,11 +56,14 @@ engine's architecture mirrors that split exactly:
   chord grid, `--detect-drift`) and `drift_detect.detect_latency_drift` (a true agent's latency
   trending up against its peers, `--detect-drift=latency`). Collusion:
   `collusion_detect.detect_collusion` (two agents whose spans coincide far more often than their
-  rates predict, on the same kind of work, `--detect-collusion`). The latency and collusion
-  detectors also run live in the browser, where they are the ONLY source of those two signatures.
-  All are validated only on synthetic, injected cases; recall against the real thing is
-  unverified. Conflict and capture spike have no detector anywhere (the browser rolls them at
-  random), and replacing them remains future work, the spec's own "ambitious tier" (Section 9).
+  rates predict, on the same kind of work, `--detect-collusion`). Capture spike:
+  `capture_detect.detect_capture_spike` (an agent's own output jumping straight after a tool
+  result, `--detect-capture`). The latency, collusion and capture detectors also run live in the
+  browser, where they are the ONLY source of those three signatures. All are validated only on
+  synthetic, injected cases; recall against the real thing is unverified, and capture spike finds
+  only about two thirds even of the injected cases. Conflict has no detector anywhere (the browser
+  rolls it at random), and replacing it remains future work, the spec's own "ambitious tier"
+  (Section 9).
 
 This split matters because it's honest about what's proven and what's aspirational:
 the DIRECT tier is a working, real-time-capable mapping today (see `live.py`); the DERIVED tier
