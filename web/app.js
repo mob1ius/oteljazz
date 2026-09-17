@@ -152,7 +152,9 @@ async function startLiveMode(session) {
 
   try {
     const corpus = await fetch(CORPUS_URL).then(r => r.json());
-    director = new Director(corpus.root_transition_matrix_major, { live: true });
+    director = new Director(corpus.root_transition_matrix_major, {
+      live: true, performerIntervals: corpus.performer_interval_distributions,
+    });
     wireDirectorCallbacks(director);
     await loadInstruments();
     currentLookaheadS = LIVE_LOOKAHEAD_S;
@@ -215,7 +217,9 @@ const requestedSeed = requestedSeedRaw ? Number(requestedSeedRaw) : undefined;
 
 fetch(CORPUS_URL).then(r => r.json()).then(corpus => {
   statusEl.textContent = "Loading instruments...";
-  director = new Director(corpus.root_transition_matrix_major, { seed: requestedSeed });
+  director = new Director(corpus.root_transition_matrix_major, {
+    seed: requestedSeed, performerIntervals: corpus.performer_interval_distributions,
+  });
   setupShareLink(director.seed);
 
   wireDirectorCallbacks(director);

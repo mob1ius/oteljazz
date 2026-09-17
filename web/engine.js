@@ -20,10 +20,16 @@
  *   walking_bass_bar, tone priority ordering (rootless comping), tokens->velocity and
  *   latency->duration mappings, and the swarm pipeline's phase structure (intake/decompose/
  *   fan-out/converge).
- *   SIMPLIFIED, deliberately, to ship this rather than stall on full parity: no motif
- *   generation/development (the solo line uses guide-tone-weighted chord-tone choice + core-
- *   tone arpeggio runs, phrased/rested by activity level, which is faithful to the SOUND
- *   character but not to caidence.py's specific motif-recurrence mechanic); no per-section
+ *   The solo line is a port of generate_solo_melody (contour walk on rotating Weimar performer
+ *   interval statistics, core-tone runs, motif stated/inverted/reversed, exact at chorus tops,
+ *   activity-scaled phrases and rests), with four deliberate differences, each measured with
+ *   scripts/melody_check.mjs: the motif is renewed whenever the key or mode changes (there is
+ *   no "piece" to own it); motif notes are chosen to move in the shape's direction (Python's
+ *   nearest-note snap kept the up/down shape only 51% of the time here, this keeps 86%); runs
+ *   are moved by octaves to stay in the register; and every note sounds inside the bar whose
+ *   chord it was chosen for (onsets and runs used to spill onto the next chord). Velocity keeps
+ *   the browser's activity-driven formula rather than Python's fixed one.
+ *   SIMPLIFIED, deliberately, to ship this rather than stall on full parity: no per-section
  *   tempo arc (tempo is fixed, since retrofitting a tempo curve
  *   onto an open-ended stream is a different and harder problem than this pass is scoped for);
  *   swing is a single global constant rather than per-section. See BUILD_NOTES.md for the full
@@ -355,6 +361,90 @@ function melodyToneIndex(tones, rng) {
     weights.push(i < MELODY_TONE_WEIGHTS.length ? MELODY_TONE_WEIGHTS[i] : MELODY_EXTENSION_WEIGHT / nExt);
   }
   return rng.weightedIndex(weights);
+}
+
+// ============================================================================================
+// Solo line: contour walk, core-tone runs, motif -- a port of caidence.py's
+// generate_solo_melody and its helpers (note_near_step, jazz_arpeggio_notes, generate_motif,
+// motif_variant). Pitch choices are corpus/contour-driven; only density and velocity follow the
+// telemetry (activity), same split as the Python engine.
+// ============================================================================================
+const MELODY_HOME = 76;                  // caidence.py VOICES["melody"] home register
+const MELODY_REGISTER_SPAN = 18;         // semitones the line may roam either side of home
+const MELODY_REGISTER = [MELODY_HOME - MELODY_REGISTER_SPAN, MELODY_HOME + MELODY_REGISTER_SPAN];
+const MELODY_NOTE_GAP_BARS = 0.5;        // a note every half bar at activity 0...
+const MELODY_DENSITY_PER_AGENT = 0.35;   // ...divided by (1 + this x activity)
+const MELODY_NOTE_DURATION_FRAC = 0.85;
+const MELODY_ROTATION_BARS = 8;          // switch performer style every N bars
+const MELODY_PHRASE_NOTES_IDLE = 2;
+const MELODY_PHRASE_NOTES_PER_ACTIVITY = 3;
+const MELODY_REST_BARS_IDLE = 1.5;
+const MELODY_REST_BARS_BUSY = 0.25;
+const MELODY_BUSY_ACTIVITY = 4.0;
+const MOTIF_LEN = 4;
+const MOTIF_CHORD_TONE_SEMITONES = 3.5;
+const MOTIF_PHRASE_WEIGHTS = [["exact", 0.34], ["inverted", 0.20], ["retrograde", 0.16], ["free", 0.30]];
+
+// The note nearest to (base + step) with the given pitch class; ties go upward, as in Python.
+function noteNearStep(base, step, pitchClass) {
+  const candidate = base + step;
+  for (let delta = 0; delta <= 12; delta++) {
+    for (const cand of [candidate + delta, candidate - delta]) {
+      if ((((cand % 12) + 12) % 12) === pitchClass) return Math.max(0, Math.min(127, cand));
+    }
+  }
+  return Math.max(0, Math.min(127, base));
+}
+
+// A 1-3-5-7 broken chord fanned out around `registerBase` (core tones only -- a run over the
+// extensions is a scale, not an arpeggio; see caidence.py's jazz_arpeggio_notes).
+function arpeggioNotes(rootPc, quality, registerBase, descending) {
+  const tones = JAZZ_CHORD_TONES[quality].slice(0, ARPEGGIO_CORE_TONES);
+  const nearest = (pc) => {
+    const base = registerBase - (((registerBase % 12) + 12) % 12) + pc;
+    return Math.max(0, Math.min(127, [base - 12, base, base + 12]
+      .reduce((a, b) => (Math.abs(a - registerBase) <= Math.abs(b - registerBase) ? a : b))));
+  };
+  const notes = tones.map(t => nearest((((rootPc + t) % 12) + 12) % 12)).sort((a, b) => a - b);
+  return descending ? notes.reverse() : notes;
+}
+
+// Realize one motif note: the in-register note of `pitchClass` nearest `aim` that moves in
+// direction `dir` (+1 up, -1 down, 0 either) from `prev`. Falls back to the nearest in-register
+// note if no candidate moves that way. caidence.py only snaps to the nearest note, and measured
+// in this port that kept a statement's up/down shape only 51% of the time; choosing by direction
+// is what makes a restatement recognisable.
+function motifNote(prev, aim, pitchClass, dir, lo, hi) {
+  const cands = [];
+  for (let n = lo; n <= hi; n++) if ((((n % 12) + 12) % 12) === pitchClass) cands.push(n);
+  const ok = prev === null || dir === 0 ? cands
+    : cands.filter(n => (dir > 0 ? n > prev : n < prev));
+  const pool = ok.length ? ok : cands;
+  return pool.reduce((a, b) => (Math.abs(a - aim) <= Math.abs(b - aim) ? a : b));
+}
+
+// The line's melodic cell: MOTIF_LEN [cumulative chord-tone offset, duration multiplier] pairs.
+function generateMotif(rng) {
+  const offsets = [0];
+  for (let i = 1; i < MOTIF_LEN; i++) offsets.push(offsets[i - 1] + rng.choice([-2, -1, -1, 1, 1, 2]));
+  return offsets.map(off => [off, rng.choice([1.0, 1.0, 1.0, 0.5, 1.5])]);
+}
+
+// exact / inverted / retrograde; "free" -> null (the caller walks instead).
+function motifVariant(motif, kind) {
+  if (kind === "exact") return motif;
+  if (kind === "inverted") return motif.map(([off, dur]) => [-off, dur]);
+  if (kind === "retrograde") return [...motif].reverse();
+  return null;
+}
+
+// corpus_model_jazz.json's performer_interval_distributions -> sorted [{name, steps, weights}],
+// ready for rng.weightedIndex. Sorted by name so the rotation order doesn't depend on JSON order.
+function performerStepTables(dists) {
+  return Object.keys(dists || {}).sort().map(name => {
+    const entries = Object.entries(dists[name]);
+    return { name, steps: entries.map(([k]) => Number(k)), weights: entries.map(([, w]) => w) };
+  });
 }
 
 // ============================================================================================
@@ -751,4 +841,9 @@ export {
   bassToneChoice, bassTarget, walkingBassBar,
   tokensToVelocity, latencyToDuration, nearestChromaticOffsets,
   ARPEGGIO_CORE_TONES, melodyToneIndex,
+  MELODY_HOME, MELODY_REGISTER, MELODY_NOTE_GAP_BARS, MELODY_DENSITY_PER_AGENT,
+  MELODY_NOTE_DURATION_FRAC, MELODY_ROTATION_BARS, MELODY_PHRASE_NOTES_IDLE,
+  MELODY_PHRASE_NOTES_PER_ACTIVITY, MELODY_REST_BARS_IDLE, MELODY_REST_BARS_BUSY,
+  MELODY_BUSY_ACTIVITY, MOTIF_CHORD_TONE_SEMITONES, MOTIF_PHRASE_WEIGHTS,
+  noteNearStep, arpeggioNotes, generateMotif, motifVariant, performerStepTables, motifNote,
 };

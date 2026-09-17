@@ -20,7 +20,12 @@ import {
   jazzChoraleVoicing, BASS_RANGE, WALK_FOUR_FEEL_ACTIVITY, WALK_VELOCITY, WALK_NOTE_FRAC,
   bassToneChoice, bassTarget, walkingBassBar,
   tokensToVelocity, latencyToDuration, nearestChromaticOffsets, melodyToneIndex,
-  ARPEGGIO_CORE_TONES, ORCHESTRATOR_AGENT_ID, detectLatencyDrift,
+  ORCHESTRATOR_AGENT_ID, detectLatencyDrift,
+  MELODY_HOME, MELODY_REGISTER, MELODY_NOTE_GAP_BARS, MELODY_DENSITY_PER_AGENT,
+  MELODY_NOTE_DURATION_FRAC, MELODY_ROTATION_BARS, MELODY_PHRASE_NOTES_IDLE,
+  MELODY_PHRASE_NOTES_PER_ACTIVITY, MELODY_REST_BARS_IDLE, MELODY_REST_BARS_BUSY,
+  MELODY_BUSY_ACTIVITY, MOTIF_CHORD_TONE_SEMITONES, MOTIF_PHRASE_WEIGHTS,
+  noteNearStep, arpeggioNotes, generateMotif, motifVariant, performerStepTables, motifNote,
 } from "./engine.js";
 
 const TEMPO_BPM = 96.0;
@@ -33,6 +38,7 @@ const COMP_PUSH_ACCENT = 10;
 const MODULATE_PROB = 0.40;              // chance a new chorus also shifts key
 const MODE_FLIP_PROB = 0.25;             // chance a new chorus flips major/minor
 const MOD_INTERVALS = [2, 5, 7, -5, -7, 1, -2]; // common jazz modulation relations (semitones)
+const MELODY_RNG_SALT = 0x3c6ef372;
 
 // --- ANOMALY SIGNATURES -----------------------------------------------------------------
 // Ported from caidence.py's demo-only anomaly mechanisms (DRIFT_TARGET/DRIFT_MAX_BEND,
@@ -115,7 +121,9 @@ class LiveSwarmAdapter {
 }
 
 export class Director {
-  constructor(corpusMatrix, { live = false, seed, swarmOptions } = {}) {
+  // performerIntervals: corpus_model_jazz.json's performer_interval_distributions, for the solo
+  // line's contour walk. Without it the walk falls back to small stepwise motion.
+  constructor(corpusMatrix, { live = false, seed, swarmOptions, performerIntervals } = {}) {
     // `seed`, when given, replaces the normal fresh-per-visit cryptoSeed() -- everything
     // downstream (key, mode, form, and in synthetic mode the swarm activity itself, since
     // SwarmEngine takes this SAME rng instance rather than seeding its own) derives from this
@@ -128,6 +136,11 @@ export class Director {
     // with a built-in Math.random().
     this.seed = seed || cryptoSeed();
     this.rng = new Rng(this.seed);
+    // The solo line draws from its OWN stream, derived from the same seed, so melody changes can
+    // never move anything else (and vice versa): a before/after comparison of the solo can hold
+    // the comp, bass, spans and anomalies byte-identical. It reads shared state (key, mode, the
+    // current chord) but never draws from this.rng.
+    this.melodyRng = new Rng(((this.seed ^ MELODY_RNG_SALT) >>> 0) || 1);
     this.matrix = corpusMatrix;
     this.live = live;
     // swarmOptions is for scripts/drift_validation.mjs (injection on/off); the page never sets it.
@@ -152,9 +165,20 @@ export class Director {
     this.voicePool = new VoicePool();
     this.recentVoiceSeen = {};   // physical voice -> last-seen bar-relative time
 
-    // melody phrase state
-    this.melodyRestUntil = 0;
-    this.melodyNotesLeftInPhrase = 0;
+    // solo line state -- see _generateMelodyForBar. Draw order on melodyRng is part of the seed
+    // contract: performer offset, then the first motif.
+    this.performerTables = performerStepTables(performerIntervals);
+    this.performerOffset = this.performerTables.length ? this.melodyRng.int(this.performerTables.length) : 0;
+    this.motif = generateMotif(this.melodyRng);
+    this.motifLog = [];               // phrase starts and motif renewals, for scripts/melody_check.mjs
+    this.melodyNote = MELODY_HOME;    // the line's contour carries on from here
+    this.melodyNextT = 0;             // when the next melody event is due (may lie in a later bar)
+    this.phraseLeft = 0;
+    this.phraseMotif = null;
+    this.phrasePos = 0;
+    this.phraseAnchor = MELODY_HOME;
+    this.phraseBaseTone = 0;
+    this.phraseIdx = 0;
 
     // anomaly signature state -- see the ANOMALY SIGNATURES block above
     this.activeDrift = null;      // {voice, startS, windowS}
@@ -218,6 +242,7 @@ export class Director {
 
   _ensureChorus(chorusIdx) {
     if (this.chorusIndex === chorusIdx) return;
+    const keyBefore = this.keyPc, modeBefore = this.mode;
     if (this.chorusIndex >= 0) {
       // a NEW chorus starting: re-draw the form (always) and maybe modulate key/mode --
       // this is what keeps "always opens doors to move to different options of chords" true
@@ -231,6 +256,13 @@ export class Director {
     }
     this.form = generateJazzForm(this.matrix, this.rng);
     this.chorusIndex = chorusIdx;
+    // A new tonal region gets a new tune: the motif lives as long as the key and mode hold
+    // (user decision, docs/ROADMAP.md M2). Drawn from melodyRng, so it moves nothing else.
+    if (this.keyPc !== keyBefore || this.mode !== modeBefore) {
+      this.motif = generateMotif(this.melodyRng);
+      this.motifLog.push({ event: "renew", t: this.absoluteBar * BAR_S, chorus: chorusIdx });
+      if (this.motifLog.length > 400) this.motifLog.shift();
+    }
   }
 
   _activeForm() { return this.mode === "major" ? this.form.majorForm : this.form.minorForm; }
@@ -533,9 +565,8 @@ export class Director {
       });
     }
 
-    // --- melody: simplified phrase-gated, guide-tone-weighted line over this bar (see
-    // engine.js's header for what this deliberately does NOT reproduce -- motif development)
-    this._generateMelodyForBar(barStart, barEnd, soundRoot, quality, activityLevel);
+    // --- melody: the solo line over this bar (see _generateMelodyForBar)
+    this._generateMelodyForBar(barStart, barEnd, soundRoot, quality, activityLevel, barInChorus);
 
     this.onChordChange && this.onChordChange({ t: barStart, symbol: chordSymbol(rootPc, quality, this.keyPc) });
 
@@ -545,36 +576,108 @@ export class Director {
     this.generatedUntilS = barEnd;
   }
 
-  _generateMelodyForBar(barStart, barEnd, rootPc, quality, activityLevel) {
+  // The solo line, ported from caidence.py's generate_solo_melody:
+  //   - a contour walk: each note is a step from the PREVIOUS note, drawn from one Weimar
+  //     performer's interval distribution (rotating every MELODY_ROTATION_BARS), snapped to a
+  //     tone of the current chord (guide tones favoured), reflected off the register edges;
+  //   - core-tone (1-3-5-7) runs, more likely the busier the swarm;
+  //   - a motif (see generateMotif) stated, inverted or played backwards as whole phrases, and
+  //     always stated exactly when a phrase starts at the top of a chorus;
+  //   - phrases that lengthen with activity, each followed by a rest that shortens with it.
+  // Pitch is corpus- and contour-driven only. Activity (the telemetry) sets note gap, phrase
+  // length, rest length, run probability and velocity -- nothing else. All draws are melodyRng.
+  _generateMelodyForBar(barStart, barEnd, rootPc, quality, activityLevel, barInChorus) {
+    const rng = this.melodyRng;
     const tones = JAZZ_CHORD_TONES[quality];
-    let t = Math.max(barStart, this.melodyRestUntil);
-    const density = Math.min(4, activityLevel);            // 0..4
-    const gapS = Math.max(0.18, 0.55 - density * 0.09);
+    const [lo, hi] = MELODY_REGISTER;
+    const gapS = (BAR_S * MELODY_NOTE_GAP_BARS) / (1 + MELODY_DENSITY_PER_AGENT * activityLevel);
+    const density = Math.min(4, activityLevel);
+    const table = this.performerTables.length
+      ? this.performerTables[(Math.floor(this.absoluteBar / MELODY_ROTATION_BARS) + this.performerOffset) % this.performerTables.length]
+      : null;
+    let t = Math.max(barStart, this.melodyNextT);
     while (t < barEnd) {
-      if (this.melodyNotesLeftInPhrase <= 0) {
-        // decide a new phrase or a rest
-        const phraseLen = 2 + density * 2 + this.rng.int(3);
-        const restBars = Math.max(0.15, 1.4 - density * 0.3);
-        if (this.rng.bool(0.15 + 0.05 * (4 - density))) {
-          this.melodyRestUntil = t + restBars * BEAT_S;
-          t = this.melodyRestUntil;
-          this.melodyNotesLeftInPhrase = 0;
-          continue;
+      if (this.phraseLeft <= 0) {
+        const chorusTop = barInChorus === 0;
+        const kind = chorusTop ? "exact"
+          : MOTIF_PHRASE_WEIGHTS[rng.weightedIndex(MOTIF_PHRASE_WEIGHTS.map(([, w]) => w))][0];
+        this.phraseMotif = motifVariant(this.motif, kind);
+        const target = MELODY_PHRASE_NOTES_IDLE + MELODY_PHRASE_NOTES_PER_ACTIVITY * activityLevel;
+        this.phraseLeft = this.phraseMotif
+          ? this.phraseMotif.length   // a statement is its own length
+          : Math.max(1, Math.round(target * (0.6 + 0.8 * rng.next())));
+        this.phrasePos = 0;
+        this.phraseAnchor = this.melodyNote;
+        // Move the anchor by octaves until the whole shape's aim points fit the register, so the
+        // statement doesn't have to fold (and so reverse) partway through.
+        if (this.phraseMotif) {
+          const offs = this.phraseMotif.map(([off]) => off * MOTIF_CHORD_TONE_SEMITONES);
+          while (this.phraseAnchor + Math.max(...offs) > hi && this.phraseAnchor - 12 + Math.min(...offs) >= lo) this.phraseAnchor -= 12;
+          while (this.phraseAnchor + Math.min(...offs) < lo && this.phraseAnchor + 12 + Math.max(...offs) <= hi) this.phraseAnchor += 12;
         }
-        this.melodyNotesLeftInPhrase = phraseLen;
+        // One chord-tone slot per phrase, not per note -- re-rolling it scrambled the contour
+        // in the Python engine (see its comment), so statements stopped sharing a shape.
+        this.phraseBaseTone = melodyToneIndex(tones, rng);
+        this.motifLog.push({ event: "phrase", t, kind, chorusTop, idx: this.phraseIdx++,
+          shape: this.phraseMotif ? this.phraseMotif.map(([off]) => off) : null });
+        if (this.motifLog.length > 400) this.motifLog.shift();
       }
-      if (t >= barEnd) break;
-      const idx = melodyToneIndex(tones, this.rng);
-      const registerBase = 60 + this.rng.int(24) - 12;
-      const base = registerBase - (registerBase % 12) + (((rootPc + tones[idx]) % 12) + 12) % 12;
-      let note = clampNote([base - 12, base, base + 12].reduce((a, b) =>
-        Math.abs(a - registerBase) <= Math.abs(b - registerBase) ? a : b));
-      const vel = 55 + this.rng.int(30) + density * 5;
-      const dur = gapS * 0.85;
-      this._schedule("melody", note, Math.min(110, vel), dur, applySwing(quantize(t)));
-      this.melodyNotesLeftInPhrase--;
-      t += gapS;
+
+      let note, noteGap = gapS;
+      const isMotif = !!this.phraseMotif;
+      if (isMotif) {
+        const pos = Math.min(this.phrasePos, this.phraseMotif.length - 1);
+        const [off, durMult] = this.phraseMotif[pos];
+        const toneIdx = (((this.phraseBaseTone + off) % tones.length) + tones.length) % tones.length;
+        const pc = (((rootPc + tones[toneIdx]) % 12) + 12) % 12;
+        const dir = pos === 0 ? 0 : Math.sign(off - this.phraseMotif[pos - 1][0]);
+        note = motifNote(pos === 0 ? null : this.melodyNote,
+          Math.round(this.phraseAnchor + off * MOTIF_CHORD_TONE_SEMITONES), pc, dir, lo, hi);
+        noteGap = gapS * durMult;
+      } else {
+        const pc = (((rootPc + tones[melodyToneIndex(tones, rng)]) % 12) + 12) % 12;
+        let step = table ? table.steps[rng.weightedIndex(table.weights)] : rng.choice([-2, -1, 1, 2]);
+        if (this.melodyNote + step > hi) step = -Math.abs(step);
+        else if (this.melodyNote + step < lo) step = Math.abs(step);
+        note = noteNearStep(this.melodyNote, step, pc);
+      }
+      // noteNearStep can overshoot the window by up to 12; fold by octaves (keeps pitch class).
+      while (note > hi) note -= 12;
+      while (note < lo) note += 12;
+      this.phrasePos++;
+
+      // A note belongs to THIS bar's chord, so it must also sound inside this bar: rounding to
+      // the 16th grid can land exactly on the next bar line, and a run can spill past it (both
+      // measured: every out-of-chord solo note was the previous bar's chord sounding late).
+      let onset = applySwing(quantize(t));
+      if (onset >= barEnd - 1e-9) onset = applySwing(quantize(t) - GRID_S);
+      const vel = Math.min(110, 55 + rng.int(30) + density * 5 + (isMotif ? 8 : 0));
+      const runProb = isMotif ? 0 : Math.min(0.6, 0.15 + 0.12 * activityLevel);
+      if (runProb > 0 && rng.next() < runProb) {
+        const run = arpeggioNotes(rootPc, quality, note, rng.bool(0.5));
+        // Keep the whole run inside the register by moving it in octaves, which keeps its shape.
+        // (caidence.py doesn't fold runs; its runs can leave the window by up to a sixth.)
+        while (Math.max(...run) > hi) for (let j = 0; j < run.length; j++) run[j] -= 12;
+        while (Math.min(...run) < lo) for (let j = 0; j < run.length; j++) run[j] += 12;
+        const stepDur = (noteGap * MELODY_NOTE_DURATION_FRAC) / run.length;
+        const fits = run.filter((_, j) => onset + j * stepDur < barEnd - 1e-9);
+        fits.forEach((n, j) => this._schedule("melody", clampNote(n), vel, stepDur * 0.9, onset + j * stepDur));
+        note = fits[fits.length - 1];
+      } else {
+        this._schedule("melody", clampNote(note), vel, noteGap * MELODY_NOTE_DURATION_FRAC, onset);
+      }
+      this.melodyNote = note;
+      t += noteGap;
+
+      this.phraseLeft--;
+      if (this.phraseLeft <= 0) {
+        const busy = Math.min(1, activityLevel / MELODY_BUSY_ACTIVITY);
+        const restBars = (MELODY_REST_BARS_IDLE + (MELODY_REST_BARS_BUSY - MELODY_REST_BARS_IDLE) * busy)
+          * (0.7 + 0.6 * rng.next());
+        t += BAR_S * restBars;
+      }
     }
+    this.melodyNextT = t;
   }
 
   _spanLineHtml(s) {
