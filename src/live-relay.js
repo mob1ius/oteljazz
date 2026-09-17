@@ -55,6 +55,32 @@ function escapeHtml(s) {
   }[c]));
 }
 
+// A rejection that answers without touching the body makes the runtime log "Can't read from
+// request stream after response has been sent" for every rejected request (once per 429 while
+// testing an exporter against a local relay). Cancelling the body instead is worse: it tears the
+// connection down mid-upload, which showed up as "Network connection lost" and a 500 for 8% of a
+// 200-request flood. So the body is read and dropped. What makes a rejection cheap is skipping
+// the protobuf decode and the D1 write, both of which still happen only for accepted requests.
+// Draining is only safe when the sender has declared a small body: a client that declares 3MB
+// and then sends 60KB leaves the drain waiting forever (measured -- it hung the request), and
+// cancelling instead tears the connection down mid-upload (measured: "Network connection lost"
+// and a 500 for 8% of a 200-request flood). So a small declared body is read and dropped, which
+// is what removes the log line in the case that actually repeats -- an exporter being rate
+// limited -- and anything else is answered without touching the body, leaving the runtime to log
+// once that the stream was never read. Rejections stay cheap either way: neither the protobuf
+// decode nor the D1 write happens for them.
+const DRAINABLE_BYTES = 64 * 1024;
+
+async function reject(request, body, init) {
+  const declared = Number(request.headers.get('content-length') || 0);
+  const reader = declared > 0 && declared <= DRAINABLE_BYTES && request.body && request.body.getReader
+    ? request.body.getReader() : null;
+  if (reader) {
+    try { while (!(await reader.read()).done) { /* discard */ } } catch { /* client hung up */ }
+  }
+  return new Response(body, init);
+}
+
 function spanToLine(span) {
   const attrs = span.attributes || {};
   const service = attrs['gen_ai.agent.name'] || attrs['gen_ai.agent.id'] || 'unknown';
@@ -189,7 +215,7 @@ export class LiveRelay {
         const contentType = request.headers.get('content-type') || '';
         if (!contentType.includes('application/x-protobuf') && !contentType.includes('application/octet-stream')) {
           this._log('ingest_rejected', { reason: 'bad content-type', contentType });
-          return new Response('expected application/x-protobuf', { status: 415 });
+          return await reject(request, 'expected application/x-protobuf', { status: 415 });
         }
 
         // Rejected upfront, before reading the body: a real OTLP export batch from any of this
@@ -201,7 +227,7 @@ export class LiveRelay {
         const declaredLen = Number(request.headers.get('content-length') || 0);
         if (declaredLen > MAX_BODY_BYTES) {
           this._log('ingest_rejected', { reason: 'payload too large', declaredLen });
-          return new Response('payload too large', { status: 413 });
+          return await reject(request, 'payload too large', { status: 413 });
         }
 
         // Rate limit, checked before decode/D1 so a flood costs as little CPU as possible per
@@ -219,7 +245,7 @@ export class LiveRelay {
         this.rateWindowCount = (this.rateWindowCount || 0) + 1;
         if (this.rateWindowCount > 50) {
           this._log('ingest_rate_limited', { windowCount: this.rateWindowCount });
-          return new Response('rate limited', { status: 429 });
+          return await reject(request, 'rate limited', { status: 429 });
         }
 
         const bytes = new Uint8Array(await request.arrayBuffer());
