@@ -88,10 +88,12 @@ for (const mult of [2, 3, 4, 6]) {
     `misattributed firings ${pct(wrong, fired)}${mark}`);
 }
 
-// 3. End to end, page defaults
+// 3. End to end, page defaults. More seeds than above: with 40, the audible share swung by
+// several points between otherwise equivalent builds (81.5% vs 73.6% at 150 seeds).
+const E2E_SEEDS = Math.max(SEEDS, 150);
 let audible = 0, matched = 0, lat = [], anomalies = 0, firstAnomaly = [], injected = 0, injHeard = 0;
 const skips = {};
-for (let seed = 1; seed <= SEEDS; seed++) {
+for (let seed = 1; seed <= E2E_SEEDS; seed++) {
   const d = new Director(corpus.root_transition_matrix_major, {
     seed, performerIntervals: corpus.performer_interval_distributions,
   });
@@ -110,11 +112,11 @@ for (let seed = 1; seed <= SEEDS; seed++) {
     if (src.length) { matched++; lat.push(e.t - src[src.length - 1].t0); }
   }
 }
-const per5 = (x) => (x / SEEDS / (T / 300)).toFixed(2);
+const per5 = (x) => (x / E2E_SEEDS / (T / 300)).toFixed(2);
 lat.sort((a, b) => a - b);
 const q = (p) => lat.length ? lat[Math.floor(p * (lat.length - 1))].toFixed(1) : "-";
 firstAnomaly.sort((a, b) => a - b);
-console.log(`end to end (page defaults, ${SEEDS} seeds x ${T}s):`);
+console.log(`end to end (page defaults, ${E2E_SEEDS} seeds x ${T}s):`);
 console.log(`  injected drifts per 5min ${per5(injected)}, audible drifts per 5min ${per5(audible)}, ` +
   `audible drifts matching an injection ${pct(matched, audible || 1)}`);
 console.log(`  injections that became audible within ${RECALL_HORIZON_S}s: ${pct(injHeard, injected)}`);

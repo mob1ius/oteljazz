@@ -36,6 +36,11 @@
 //   seed 12345, 300s  -> 2047 notes  ba38d9a8582fab56  (everything else 8d4c5cbe)
 //   seed 99,    300s  -> 1821 notes  2ebf79942d7651ca  (everything else 193b8dee)
 //   seed 12345, 1800s -> 11324 notes 1ff809d161f18837  (everything else 09914836)
+// v1.8.0 (M3 tempo arc). Variable bar lengths were first added with the tempo held at 96 and
+// reproduced the v1.7.0 hashes above exactly; then the tempo rule moved everything on purpose:
+//   seed 12345, 300s  -> 1632 notes  0f74400d5b6fd92d
+//   seed 99,    300s  -> 1871 notes  17219ffa5b336f2e
+//   seed 12345, 1800s -> 10225 notes d8ea1f66642d9b49
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { Director } from "../web/director.js";

@@ -37,7 +37,7 @@ for (let seed = 1; seed <= SEEDS; seed++) {
   d.onChordChange = (c) => chords.push({ t: c.t, ...parse(c.symbol) });
   d.onScheduleNote = (v, n, vel, dur, at) => { if (v === "melody") mel.push([at, n]); };
   d.onSpanLine = (l) => {
-    if (l.service === "oversight-grammar") return;
+    if (l.service === "oversight-grammar" || l.service === "tempo") return;
     const b = Math.floor(l.t / BAR_S);
     (agentsByBar[b] ||= new Set()).add(l.service);
   };
