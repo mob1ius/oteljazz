@@ -96,6 +96,11 @@ export class LiveRelay {
     // own name. Cached after the first request since every request to one instance carries the
     // same session id by construction (see index.js's routing regex).
     this.session = null;
+    // Ingest rate-limit window (see fetch). Must start numeric: left undefined, `now - undefined`
+    // is NaN, the "window elapsed" test is never true, and the counter never resets -- which
+    // capped every instance at 50 ingest requests for its whole lifetime, not 50 per second.
+    this.rateWindowStartMs = 0;
+    this.rateWindowCount = 0;
   }
 
   // Every log line carries the session id explicitly rather than relying on log-stream context
