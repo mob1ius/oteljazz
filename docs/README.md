@@ -140,7 +140,9 @@ python3 live_producer.py --trace synthetic --speed 4 \
 
 Then open `https://oteljazz.com/?live=<your-session-id>` in a browser before or during that run.
 The corpus/instrument load takes a moment as normal; press play once the button enables. Real
-spans stream into the terminal and drive real chords/notes within about a second of arriving.
+spans appear in the terminal as they arrive and drive real chords and notes a few seconds later
+(between about 1.5 and 4 seconds: playback is generated a bar at a time, and a span lands in the
+next bar that hasn't been written yet).
 
 What maps: `gen_ai.agent.name` (falling back to `gen_ai.agent.id`) becomes the voice identity, an
 agent literally named `orchestrator` gets the fixed lead voice, everything else pools onto the

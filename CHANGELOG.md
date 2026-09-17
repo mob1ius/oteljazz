@@ -1,5 +1,31 @@
 # Changelog
 
+## v1.5.1 — 2026-09-17
+
+Two live-mode bugs, both found while testing drift detection against a local relay. Neither
+affects the default synthetic demo; its output is byte-identical to v1.5.0.
+
+### Fixed
+
+- **Live relay stopped accepting spans after 50 requests.** The ingest rate limiter's window
+  start was never initialised, so the "one second has passed" check compared against `NaN`,
+  never passed, and the counter never reset. Each session's relay instance therefore accepted
+  50 ingest POSTs in total and answered every later one with 429 for as long as the instance
+  stayed alive, which an open browser tab keeps it doing. A real exporter hits that within
+  minutes. Earlier live checks sent fewer than 50 requests, which is why it went unnoticed.
+  The limit is now 50 per second, as intended. Checked locally with 132 single-span POSTs: all
+  returned 200.
+- **Most live spans were never played.** An arriving span was stamped at the playback frontier,
+  but the generator had usually already written the bar containing that moment, and bars are
+  never revisited, so the span sat unread. In simulation 50 of 286 spans reached the music; in
+  a real local run through the relay, 40 of 143. A span stamped behind the frontier now moves
+  forward by whole bars, keeping its position inside the bar. All 300 simulated spans and all
+  132 relayed spans now play. The cost is up to one bar (2.5s) of extra delay, so live spans
+  are heard roughly 1.5 to 4 seconds after they arrive. The per-span mapping itself is unchanged.
+
+Site request pattern unchanged. Live ingest now succeeds where it used to 429, so
+`live_sessions` counters and relay logs will show more accepted ingests per session.
+
 ## v1.5.0 — 2026-09-16
 
 ### Added
