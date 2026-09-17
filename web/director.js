@@ -388,6 +388,12 @@ export class Director {
 
     const activeForm = this._activeForm();
     const { rootPc, quality } = activeForm[barInChorus];
+    // The form is written relative to the tonic; `soundRoot` is the same chord in the current
+    // key. Everything that produces PITCH uses soundRoot. Only harmonic-function checks (the
+    // V->I cadence accent) stay tonic-relative. Before this, nothing added keyPc except the
+    // chord readout: every session sounded in C while the dial showed another key, and key
+    // changes were silent (measured: the comp fitted the displayed chord in 257 of 1600 bars).
+    const soundRoot = (rootPc + this.keyPc) % 12;
 
     this.swarm.advanceUntil(barEnd);
 
@@ -435,14 +441,14 @@ export class Director {
       if (recentEnough && occupied) liveVoices.add(voice);
     }
 
-    const voicing = jazzChoraleVoicing(this.prevVoicing, rootPc, quality, liveVoices);
+    const voicing = jazzChoraleVoicing(this.prevVoicing, soundRoot, quality, liveVoices);
     const bassIdx = bassToneChoice(activityLevel, this.rng);
-    const bassNote = bassTarget(rootPc, quality, bassIdx);
+    const bassNote = bassTarget(soundRoot, quality, bassIdx);
 
     // Detection first. Evidence outranks decoration: while the detector has a finding (rendered
     // or still waiting for a voice), the decoy roll stands down for this bar.
     const driftPending = this._maybeDetectDrift(barStart, liveVoices);
-    if (!driftPending) this._maybeTriggerAnomaly(barStart, liveVoices, rootPc, quality, voicing);
+    if (!driftPending) this._maybeTriggerAnomaly(barStart, liveVoices, soundRoot, quality, voicing);
 
     // --- push (anticipation): landing a chord an eighth early is THE characteristic jazz comp
     // gesture, but the comp note it replaces must be shortened to make room or the two clash --
@@ -488,8 +494,10 @@ export class Director {
 
     // --- walking bass
     const fourFeel = activityLevel >= WALK_FOUR_FEEL_ACTIVITY;
-    const nextTarget = bassTarget(nextRootPc, activeForm[nextBarInChorus] ? activeForm[nextBarInChorus].quality : quality, 0);
-    const bar = walkingBassBar(bassNote, nextTarget, rootPc, quality, fourFeel);
+    // (a new chorus may still modulate; the approach note assumes the key holds, as the
+    // nextRootPc approximation above already assumes the tonic)
+    const nextTarget = bassTarget((nextRootPc + this.keyPc) % 12, activeForm[nextBarInChorus] ? activeForm[nextBarInChorus].quality : quality, 0);
+    const bar = walkingBassBar(bassNote, nextTarget, soundRoot, quality, fourFeel);
     for (const [beatOff, note] of bar) {
       const t0 = barStart + beatOff * BEAT_S;
       if (t0 >= barEnd) continue;
@@ -498,7 +506,7 @@ export class Director {
     }
 
     // --- DIRECT tier: one note per span, on that span's own voice, at the current chord's tone
-    const chordPcs = new Set(JAZZ_CHORD_TONES[quality].map(t => (((rootPc + t) % 12) + 12) % 12));
+    const chordPcs = new Set(JAZZ_CHORD_TONES[quality].map(t => (((soundRoot + t) % 12) + 12) % 12));
     for (const s of windowSpans) {
       // DIRECT-tier notes are NEVER gated by comp liveness in the Python engine either -- a
       // span always plays its own voice's note; liveness/live_voices only controls whether the
@@ -527,7 +535,7 @@ export class Director {
 
     // --- melody: simplified phrase-gated, guide-tone-weighted line over this bar (see
     // engine.js's header for what this deliberately does NOT reproduce -- motif development)
-    this._generateMelodyForBar(barStart, barEnd, rootPc, quality, activityLevel);
+    this._generateMelodyForBar(barStart, barEnd, soundRoot, quality, activityLevel);
 
     this.onChordChange && this.onChordChange({ t: barStart, symbol: chordSymbol(rootPc, quality, this.keyPc) });
 
