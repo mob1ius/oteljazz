@@ -41,6 +41,8 @@
 //   seed 12345, 300s  -> 1632 notes  0f74400d5b6fd92d
 //   seed 99,    300s  -> 1871 notes  17219ffa5b336f2e
 //   seed 12345, 1800s -> 10225 notes d8ea1f66642d9b49
+// v1.9.0 (M4 live lead-voice assignment): identical to v1.8.0 -- the synthetic swarm's first
+// agent is its orchestrator, which is exactly who the old name check picked.
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { Director } from "../web/director.js";

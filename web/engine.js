@@ -486,6 +486,15 @@ class VoicePool {
     this._rr = 0;
     this.overflowEvents = 0;
     this.overflowLog = [];  // [[t, stolenFromAgentOrNull, givenToAgent], ...]
+    this.leadAgent = null;  // holds "planner"; see resolveVoice's LEAD ASSIGNMENT comment
+  }
+
+  // Hand back a worker slot (used when an agent becomes the lead and no longer needs one).
+  releaseSlot(agentId) {
+    const slot = this.slotOf[agentId];
+    if (slot === undefined) return;
+    delete this.slotOf[agentId];
+    this.occupant[slot] = null;
   }
 
   voiceFor(agentId, t, terminal = false) {
@@ -519,10 +528,26 @@ class VoicePool {
   }
 }
 
-// agentId -> physical chord voice, handling the one identity that's never pooled before
-// delegating everything else to the VoicePool.
-function resolveVoice(pool, agentId, t, terminal = false) {
-  if (agentId === ORCHESTRATOR_AGENT_ID) return "planner";
+// Role values that claim the lead ("planner") voice when a span declares one. Real systems don't
+// agree on a word for the agent in charge, and OTel's GenAI conventions have no attribute for it,
+// so this accepts the common ones (see LEAD ASSIGNMENT below).
+const LEAD_ROLE_VALUES = new Set(["orchestrator", "planner", "supervisor", "coordinator", "lead", "root", "main"]);
+
+// LEAD ASSIGNMENT: one agent holds the "planner" voice for the session and is never pooled;
+// everyone else shares the three worker slots through the VoicePool.
+//   1. A span whose `role` says so takes the lead, whenever it arrives.
+//   2. Otherwise the FIRST agent seen in the session holds it -- in a real pipeline the thing
+//      that speaks first is the thing that started the work, and in the synthetic swarm it is
+//      "orchestrator", which is why this replaced a hardcoded check for that exact name without
+//      changing a note of synthetic output.
+// A former lead simply rejoins the pool; it gets a worker slot on its next span.
+function resolveVoice(pool, agentId, t, terminal = false, role = null) {
+  if (role && LEAD_ROLE_VALUES.has(String(role).toLowerCase())) pool.leadAgent = agentId;
+  else if (pool.leadAgent === null) pool.leadAgent = agentId;
+  if (agentId === pool.leadAgent) {
+    pool.releaseSlot(agentId);
+    return "planner";
+  }
   return pool.voiceFor(agentId, t, terminal);
 }
 
@@ -833,7 +858,7 @@ function round3(x) { return Math.round(x * 1000) / 1000; }
 export {
   LATENCY_DRIFT_INJECT, LATENCY_DRIFT_DETECT, detectLatencyDrift, latencyKey,
   Rng, cryptoSeed, SwarmEngine, FORM_BARS, JAZZ_CHORD_TONES, chordSymbol, generateJazzForm,
-  VoicePool, resolveVoice, ORCHESTRATOR_AGENT_ID, POOL_SLOTS,
+  VoicePool, resolveVoice, ORCHESTRATOR_AGENT_ID, POOL_SLOTS, LEAD_ROLE_VALUES,
   CHORD_VOICE_ORDER, CHORD_AGENT_VOICES, ARCH_VOICES, VOICE_RANGES,
   COMP_VELOCITY, COMP_SUSTAIN_FRAC, COMP_LIVE_WINDOW_S, COMP_ACCENT_FORM_TOP,
   COMP_ACCENT_CADENCE, COMP_ACCENT_BASS_EXTRA, TERMINAL_STOP_REASONS,

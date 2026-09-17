@@ -522,6 +522,7 @@ function startEngine() {
     nextChord: pendingChords[chordCursor],
     stationDrift: stationDriftLog,
     tempoBpm: playingTempo(),
+    leadAgent: director && director.voicePool ? director.voicePool.leadAgent : null,
   });
   window.__oteljazzDebug = debugSnapshot;
   startStationDrift(director.seed);

@@ -20,7 +20,7 @@ import {
   jazzChoraleVoicing, BASS_RANGE, WALK_FOUR_FEEL_ACTIVITY, WALK_VELOCITY, WALK_NOTE_FRAC,
   bassToneChoice, bassTarget, walkingBassBar,
   tokensToVelocity, latencyToDuration, nearestChromaticOffsets, melodyToneIndex,
-  ORCHESTRATOR_AGENT_ID, detectLatencyDrift,
+  detectLatencyDrift,
   MELODY_HOME, MELODY_REGISTER, MELODY_NOTE_GAP_BARS, MELODY_DENSITY_PER_AGENT,
   MELODY_NOTE_DURATION_FRAC, MELODY_ROTATION_BARS, MELODY_PHRASE_NOTES_IDLE,
   MELODY_PHRASE_NOTES_PER_ACTIVITY, MELODY_REST_BARS_IDLE, MELODY_REST_BARS_BUSY,
@@ -197,6 +197,7 @@ export class Director {
     this.motifLog = [];               // phrase starts and motif renewals, for scripts/melody_check.mjs
     this.melodyNote = MELODY_HOME;    // the line's contour carries on from here
     this.melodyNextT = 0;             // when the next melody event is due (may lie in a later bar)
+    this.lastFedStartS = 0;           // live mode: keeps fed spans in arrival order (see feedSpan)
     this.phraseLeft = 0;
     this.phraseMotif = null;
     this.phrasePos = 0;
@@ -253,6 +254,13 @@ export class Director {
     if (start < this.generatedUntilS) {
       start += this.barS * Math.ceil((this.generatedUntilS - start) / this.barS);
     }
+    // Never place a span before one that arrived earlier: the shift above moves spans by whole
+    // bars, so without this a span fed later could land in an EARLIER bar than its predecessor
+    // (measured: the first four agents of a session were resolved in the order 3, 4, 1, 2). Voice
+    // assignment is causal -- who leads, who holds which pooled slot -- so arrival order has to
+    // survive the shift.
+    start = Math.max(start, this.lastFedStartS);
+    this.lastFedStartS = start;
     this.swarm.feed({
       agent: span.service,
       op: span.op || "chat",
@@ -261,6 +269,7 @@ export class Director {
       tokens: Math.round(span.tokens || 50),
       status: span.status === "error" ? "error" : "ok",
       ...(span.tool ? { tool: span.tool } : {}),
+      ...(span.role ? { role: span.role } : {}),
     });
   }
 
@@ -381,7 +390,7 @@ export class Director {
     if (this.activeDrift || this.activeConflict) { skip("busy"); return true; }
     if (barStart < this.lastAnomalyEndS) { skip("busy"); return true; }
     if (barStart - this.lastDetectedDriftEndS < ANOMALY_MIN_GAP_S) { skip("cooldown"); return true; }
-    const voice = found.agent === ORCHESTRATOR_AGENT_ID ? "planner"
+    const voice = found.agent === this.voicePool.leadAgent ? "planner"
       : (this.voicePool.slotOf[found.agent] || this.lastVoiceOf[found.agent]);
     if (!voice || voice === "tools") { skip("noVoice"); return true; }
     if (!liveVoices.has(voice)) { skip("voiceNotLive"); return true; }
@@ -511,7 +520,7 @@ export class Director {
     // window semantics (a bar's live_voices includes spans starting inside that same window).
     for (const s of windowSpans) {
       const terminal = TERMINAL_STOP_REASONS.has(s.stop_reason);
-      s._resolvedVoice = resolveVoice(this.voicePool, s.agent, s.start, terminal);
+      s._resolvedVoice = resolveVoice(this.voicePool, s.agent, s.start, terminal, s.role);
       this.recentVoiceSeen[s._resolvedVoice] = s.start;
       this.lastVoiceOf[s.agent] = s._resolvedVoice;
     }
