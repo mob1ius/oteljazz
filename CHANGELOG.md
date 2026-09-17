@@ -1,5 +1,37 @@
 # Changelog
 
+## v1.9.0 — 2026-09-17
+
+Live mode gives the lead voice to a sensible agent instead of requiring one to be named
+`orchestrator`. The synthetic demo sounds exactly as it did in v1.8.0.
+
+### Changed
+
+- **Who gets the lead voice.** One agent holds the unpooled lead ("planner") voice for a session;
+  everyone else shares the three worker voices. It used to go only to an agent whose name was
+  exactly `orchestrator`, so in most real systems nobody held it. Now it goes to the first agent
+  that appears, and any span may claim it by setting `gen_ai.agent.role` (or `gen_ai.agent.type`)
+  to `orchestrator`, `planner`, `supervisor`, `coordinator`, `lead`, `root` or `main`. A
+  declaration wins whenever it arrives, so the lead can move if the system says so, and the
+  previous holder simply rejoins the worker pool. The relay passes the attribute through, capped
+  at 64 characters and escaped like every other span field.
+- **The synthetic demo is unaffected**, byte for byte: its orchestrator is always the first agent
+  to speak, so "first agent seen" picks exactly what the old name check did.
+- Checked against a local relay with real OTel SDK spans: a stream whose first agent was
+  `ingest-worker` and where `planner-service` declared the role gave the lead to
+  `planner-service`; a stream with no role attribute gave it to whoever spoke first, with all
+  132 spans played. `window.__oteljazzDebug()` now reports the current lead agent.
+
+### Fixed
+
+- **Live spans could be played out of order.** Since v1.5.1 an arriving span is moved forward to
+  the next bar that hasn't been written yet, and that could place a span in an earlier bar than
+  one that arrived before it (measured: four agents starting a session were heard in the order
+  3, 4, 1, 2). Voice assignment is decided in the order spans are read, so this could hand the
+  lead voice, or a worker voice, to the wrong agent. Arriving spans now keep their order.
+- `engine/live_producer.py --declare-role` sets the role attribute on the orchestrator's spans,
+  for testing this path.
+
 ## v1.8.0 — 2026-09-17
 
 The browser demo's tempo now follows the swarm. Measured from Director's output with the new

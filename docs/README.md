@@ -144,9 +144,11 @@ spans appear in the terminal as they arrive and drive real chords and notes a fe
 (between about 1.5 and 4 seconds: playback is generated a bar at a time, and a span lands in the
 next bar that hasn't been written yet).
 
-What maps: `gen_ai.agent.name` (falling back to `gen_ai.agent.id`) becomes the voice identity, an
-agent literally named `orchestrator` gets the fixed lead voice, everything else pools onto the
-worker voices the same way a synthetic subagent id does. `gen_ai.operation.name`,
+What maps: `gen_ai.agent.name` (falling back to `gen_ai.agent.id`) becomes the voice identity.
+The lead voice goes to the first agent that appears in the session, unless a span sets
+`gen_ai.agent.role` (or `gen_ai.agent.type`) to one of `orchestrator`, `planner`, `supervisor`,
+`coordinator`, `lead`, `root` or `main`, which claims it at any point and can move it later.
+Everything else pools onto the worker voices the same way a synthetic subagent id does. `gen_ai.operation.name`,
 `gen_ai.tool.name`, `gen_ai.usage.output_tokens`, and the span's OTel status code (`ERROR` maps to
 the same dissonant/anomaly-eligible treatment a scripted error status gets) all carry through.
 

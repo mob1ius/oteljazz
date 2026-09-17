@@ -158,9 +158,9 @@ settings (a 3x slowdown, injected in 15% of rounds) it finds about 85% of inject
 fires on 2.5% of 16-bar windows when nothing is injected
 (`scripts/drift_validation.mjs` prints the full curve). The other three signatures (conflict,
 capture spike, collusion) are still triggered at random. No listener discovery, no auth beyond the session id
-itself being a shared secret (`src/live-relay.js`); only an agent literally named `orchestrator`
-gets the fixed lead voice, everything else pools onto the worker voices like a synthetic subagent
-would (`web/director.js`'s `feedSpan`).
+itself being a shared secret (`src/live-relay.js`); the lead voice goes to whichever agent appears
+first, or to one that declares itself with `gen_ai.agent.role`, and everything else pools onto the
+worker voices like a synthetic subagent would (`web/director.js`'s `feedSpan`).
 
 ---
 
