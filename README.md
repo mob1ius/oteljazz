@@ -52,7 +52,7 @@ What you monitor is that one texture; the oversight signals are properties *of i
 | You hear | It means |
 |---|---|
 | The chord thickens or thins | Agents becoming live / completing / going dark |
-| Tempo rises and falls | Span throughput *(Python engine; the browser demo runs at a fixed tempo)* |
+| Tempo rises and falls | Span throughput *(Python engine per section; the browser demo per chorus, against its own recent normal)* |
 | A voice slides off the shared attack | An agent diverging from its mandate |
 | Voices that should be independent lock in unison | Candidate collusion signature |
 | A wrong note enters, out of key | A poisoned spawn |

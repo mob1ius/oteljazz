@@ -1,5 +1,54 @@
 # Changelog
 
+## v1.8.0 — 2026-09-17
+
+The browser demo's tempo now follows the swarm. Measured from Director's output with the new
+`scripts/tempo_check.mjs` (seeds 1 to 40, 900s each). Nobody has listened to it for long yet.
+
+### Added
+
+- **A tempo that follows span throughput.** At the start of each chorus, the demo counts the
+  spans that finished in the last 30 seconds and compares that rate with what is usual for this
+  session. "Usual" is a slow average that takes about five minutes to catch up. Twice the usual
+  rate means 14 BPM faster, half means 14 slower. The tempo stays between 76 and 120 and moves
+  at most 12 BPM per chorus. The Python engine already had a tempo arc, stepped per section and
+  scaled to the finished trace's own range. An endless stream has no finished trace, so the
+  browser compares with its own recent normal instead, which also works for a system doing one
+  span a minute or thousands a second. Live mode uses the same rule. Tempo changes only at
+  chorus boundaries, never mid-phrase, and each change prints a `tempo` line in the terminal.
+  Service mode shows the tempo that is currently playing.
+- **Measured:**
+  - Chorus tempos ranged from 76 to 113 BPM, with a median of 95 and 80% between 86 and 103.
+  - The tempo changed about 6.6 times per 5 minutes, with a median step of 6 BPM. It sat at a
+    limit in 0.1% of choruses.
+  - The first change usually comes about 80 seconds in, because the first measurement only sets
+    what "usual" means.
+  - Tempo tracks its input, log(rate / usual), with a correlation of 0.91. It isn't 1 because
+    of the limits and the step cap.
+- **Timing checked across 14,158 bars and 223,656 notes:**
+  - every bar starts where the previous one ended, and every bar in a chorus has that chorus's
+    length;
+  - no bass or solo note falls outside its own bar;
+  - every sustained chord (53,859 checked) starts on its bar, or an eighth note early (the push),
+    allowing for the drift lag.
+- **Refactor first:** variable bar lengths were built with the tempo held at 96, and that build
+  reproduced v1.7.0's output byte for byte before the tempo rule was switched on.
+
+### Changed
+
+- The solo line, drift detection and live mode were re-checked on this build. The solo is still
+  100% in the chord and the register. Every simulated live span still plays. In a 10-minute live
+  simulation with alternating busy and quiet two-minute stretches, the tempo went 96, 84, 76,
+  88, 100, 105, 97 and back down, following them.
+- **Correction to v1.6.0 and v1.7.0.** Those entries gave the share of injected drifts that
+  become audible as 79.6% and 81.5%, from 40 sessions. Rerun over 150 sessions, the figure is
+  about 72% (71.0% with the tempo arc, 73.6% with the tempo held at 96, so the tempo arc makes
+  no meaningful difference). About 87% of audible drifts correspond to a real injection, not
+  92% to 95%. The 40-session figures were sampling noise. `scripts/drift_validation.mjs` now uses
+  150 sessions for this part. The detector's own recall (about 85% at the demo's settings) is
+  measured separately and was not affected.
+- Seeded links from v1.7.0 play at different tempos now, so they no longer replay identically.
+
 ## v1.7.0 — 2026-09-17
 
 The browser's solo line is now a port of the Python engine's, motif included. Measured with the
