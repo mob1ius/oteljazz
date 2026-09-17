@@ -60,6 +60,12 @@ function spanToLine(span) {
   const service = attrs['gen_ai.agent.name'] || attrs['gen_ai.agent.id'] || 'unknown';
   const op = attrs['gen_ai.operation.name'] || span.name || 'span';
   const tool = attrs['gen_ai.tool.name'];
+  // Which agent leads (takes the unpooled "planner" voice) is otherwise just "whoever spoke
+  // first" -- see web/engine.js's LEAD ASSIGNMENT. There is no GenAI convention for an agent's
+  // role, so this reads the two spellings a producer is likeliest to use. Like every other
+  // attribute here it is attacker-controlled; it only ever selects a voice, and it reaches the
+  // page as data (see the escaping note above), never as markup.
+  const role = attrs['gen_ai.agent.role'] || attrs['gen_ai.agent.type'] || null;
   const tokens = attrs['gen_ai.usage.output_tokens'];
   const tS = span.startTimeUnixNano ? span.startTimeUnixNano / 1e9 : 0;
   const durS = span.endTimeUnixNano && span.startTimeUnixNano
@@ -82,7 +88,8 @@ function spanToLine(span) {
   // `line` is pre-built HTML for the terminal (app.js's default consumer, always used).
   // op/tool/tokens are the same values in raw form, for feedSpan()'s audio mapping (app.js,
   // live-mode only) -- added rather than making that path re-derive them from `line`'s HTML.
-  return { t: tS, durS, service, line, status: span.status, op, tool: tool || null, tokens: tokens ?? null };
+  return { t: tS, durS, service, line, status: span.status, op, tool: tool || null,
+           tokens: tokens ?? null, role: role ? String(role).slice(0, 64) : null };
 }
 
 export class LiveRelay {
