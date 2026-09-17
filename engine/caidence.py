@@ -2084,6 +2084,12 @@ def main():
     ap.add_argument("--inject-collusion", action="store_true",
                      help="--swarm only, opt-in: let one subagent per round shadow another, as the "
                           "browser's mock swarm does (swarm.COLLUSION_INJECT)")
+    ap.add_argument("--inject-capture", action="store_true",
+                     help="--swarm only, opt-in: let one subagent per round have its output "
+                          "balloon after a tool result (swarm.CAPTURE_INJECT)")
+    ap.add_argument("--detect-capture", action="store_true",
+                     help="find capture spikes from the spans themselves (capture_detect.py) "
+                          "instead of reading a hand-typed capture_spike out of the trace file")
     ap.add_argument("--detect-collusion", action="store_true",
                      help="find collusion from the spans themselves (collusion_detect.py) instead "
                           "of reading a hand-typed collusion_start out of the trace file")
@@ -2159,7 +2165,8 @@ def main():
         spans, sections = swarm_mod.swarm_trace(
             seed=seed, fanout=args.fanout, rounds=args.rounds,
             latency_drift={} if args.inject_latency_drift else None,
-            collusion={} if args.inject_collusion else None)
+            collusion={} if args.inject_collusion else None,
+            capture={} if args.inject_capture else None)
         print(f"Using mock swarm (seed {seed}, fanout {args.fanout}, {args.rounds} rounds)."
               f" Pass --seed {seed} to reproduce this run.\n")
         print(swarm_mod.describe(spans, sections))
@@ -2249,6 +2256,21 @@ def main():
         else:
             print("\n--detect-collusion: no pair of agents moved together more than their own "
                   "rates predict -- rendering without collusion.")
+
+    if args.detect_capture:
+        from capture_detect import detect_capture_spike
+        resolved_cap, _ = pool_spans(spans)
+        cap = detect_capture_spike(spans, resolved=resolved_cap)
+        if cap:
+            print(f"\n--detect-capture: flagged {cap['true_agent']!r} (on {cap['voice']!r}) at "
+                  f"~{cap['capture_spike']:.2f}s, output x{cap['ratio']:.1f} straight after a tool "
+                  f"result (z={cap['z_score']:.2f}).")
+            spans = spans + [{"agent": cap["voice"], "action": "chat",
+                               "start": cap["capture_spike"], "duration": 0.1,
+                               "capture_spike": True}]
+        else:
+            print("\n--detect-capture: no agent's output jumped after a tool result by more than "
+                  "its own spread -- rendering without a capture spike.")
 
     timeline = build_timeline(spans, args.tempo, args.speed, do_drift=do_drift,
                                corpus_model=corpus_model, regime_schedule=regime_schedule, seed=seed,

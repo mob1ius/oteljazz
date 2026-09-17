@@ -135,6 +135,9 @@ LATENCY_DRIFT_INJECT = {"prob": 0.15, "max_mult": 3.0, "ramp_s": 10.0}
 # another's actions moments later, for a window. Also OFF by default and drawing nothing from the
 # rng when off. See collusion_detect.detect_collusion for the detector that has to notice.
 COLLUSION_INJECT = {"prob": 0.15, "window_s": 18.0, "lag_s": (0.05, 0.2)}
+# Capture spike, same opt-in shape: after one of its own tool calls, a subagent's output balloons.
+# See capture_detect.detect_capture_spike for the detector that has to notice.
+CAPTURE_INJECT = {"prob": 0.15, "mult": 3.0, "window_s": 18.0}
 
 
 def _latency_drift_factor(drift, at):
@@ -151,13 +154,16 @@ class SwarmSim:
     pipeline. Any arc the music has comes from derive_sections reading this back, which is the
     entire point: if the shape were authored here the demonstration would be circular."""
 
-    def __init__(self, seed=0, fanout=4, rounds=2, latency_drift=None, collusion=None):
+    def __init__(self, seed=0, fanout=4, rounds=2, latency_drift=None, collusion=None,
+                 capture=None):
         self.rng = random.Random(seed)
         # None = no injection (the default). A dict overrides LATENCY_DRIFT_INJECT's fields.
         self.latency_drift = None if latency_drift is None else {**LATENCY_DRIFT_INJECT, **latency_drift}
         self.collusion = None if collusion is None else {**COLLUSION_INJECT, **collusion}
+        self.capture = None if capture is None else {**CAPTURE_INJECT, **capture}
         self.injected_drifts = []   # ground truth when injecting: {"agent", "t0"}
         self.injected_collusions = []   # {"leader", "follower", "t0", "end_s"}
+        self.injected_captures = []     # {"agent", "t0", "end_s"}
         self.fanout = fanout
         self.rounds = rounds
         self.spans = []
@@ -188,7 +194,9 @@ class SwarmSim:
                   status="error" if failed else "ok", stop_reason="tool_use")
         return at + dur
 
-    def _reason(self, agent_id, at, tokens, stop_reason=None, drift=None):
+    def _reason(self, agent_id, at, tokens, stop_reason=None, drift=None, capture=None):
+        if capture and capture["t0"] <= at < capture["t0"] + capture["window_s"]:
+            tokens *= capture["mult"]
         dur = max(0.25, self.rng.gauss(0.8, 0.3)) * _latency_drift_factor(drift, at)
         self._add(agent_id, "chat", at, dur, tokens,
                   **({"stop_reason": stop_reason} if stop_reason else {}))
@@ -245,6 +253,10 @@ class SwarmSim:
 
         # Collusion: the follower must come after its leader in this loop, since it copies spans
         # the leader has already emitted.
+        cap = self.capture
+        capture_idx = -1
+        if cap is not None and self.rng.random() < cap["prob"]:
+            capture_idx = self.rng.randrange(self.fanout)
         col = self.collusion
         lead_idx = follow_idx = -1
         if col is not None and self.fanout >= 3 and self.rng.random() < col["prob"]:
@@ -259,6 +271,7 @@ class SwarmSim:
                 drift = {"t0": start, "max_mult": inj["max_mult"], "ramp_s": inj["ramp_s"]}
                 self.injected_drifts.append({"agent": agent_id, "t0": start})
             t = start
+            capture = None
             spans_before = len(self.spans)
             if i == follow_idx and leader_spans:
                 col_start = leader_spans[0]["start"]
@@ -276,15 +289,22 @@ class SwarmSim:
                         {"leader": agents[lead_idx][0], "follower": agent_id,
                          "t0": mirrored[0]["start"], "end_s": t})
             for step in range(self.rng.randint(3, 6)):
-                t = self._reason(agent_id, t, self.rng.randint(160, 420), drift=drift)
+                t = self._reason(agent_id, t, self.rng.randint(160, 420), drift=drift, capture=capture)
                 for _ in range(self.rng.randint(1, 3)):
                     t = self._tool_call(agent_id, t, drift=drift)
+                    # captured by what that tool call returned -- not its very first one, since a
+                    # capture is only visible against what the agent was producing beforehand
+                    if i == capture_idx and capture is None and step >= 2:
+                        capture = {"t0": t, "mult": cap["mult"], "window_s": cap["window_s"]}
+                        self.injected_captures.append(
+                            {"agent": agent_id, "t0": t, "end_s": t + cap["window_s"]})
                     t += self.rng.uniform(0.05, 0.3)
                 t += self.rng.uniform(0.1, 0.5)
             # each subagent ends with a real terminal reason
             reason = self.rng.choices(
                 ["end_turn", "end_turn", "end_turn", "max_tokens", "stop_sequence"], k=1)[0]
-            t = self._reason(agent_id, t, self.rng.randint(200, 500), stop_reason=reason, drift=drift)
+            t = self._reason(agent_id, t, self.rng.randint(200, 500), stop_reason=reason,
+                             drift=drift, capture=capture)
             if i == lead_idx:
                 leader_spans = self.spans[spans_before:]
             finish_times.append(t)
@@ -419,12 +439,12 @@ def derive_sections(spans, tail_s=6.0):
     return sections
 
 
-def swarm_trace(seed=0, fanout=4, rounds=2, latency_drift=None, collusion=None):
+def swarm_trace(seed=0, fanout=4, rounds=2, latency_drift=None, collusion=None, capture=None):
     """The pipeline's spans plus the form derived from them. Returns (spans, sections) -- there is
     deliberately no regime_schedule: major/minor is a narrative device from the hand-authored
     demo, and nothing in real telemetry says 'go to minor here'."""
     spans = SwarmSim(seed=seed, fanout=fanout, rounds=rounds, latency_drift=latency_drift,
-                     collusion=collusion).run()
+                     collusion=collusion, capture=capture).run()
     return spans, derive_sections(spans)
 
 
@@ -458,6 +478,9 @@ def main():
     ap.add_argument("--fanout", type=int, default=4, help="subagents spawned per round")
     ap.add_argument("--rounds", type=int, default=2, help="fan-out/converge cycles")
     ap.add_argument("--show", action="store_true", help="print the pipeline and derived form")
+    ap.add_argument("--inject-capture", action="store_true",
+                    help="opt-in: let one subagent per round have its output balloon after a tool "
+                         "result (CAPTURE_INJECT) -- for capture_detect.detect_capture_spike.")
     ap.add_argument("--inject-collusion", action="store_true",
                     help="opt-in: let one subagent per round shadow another (COLLUSION_INJECT), as "
                          "the browser does -- for collusion_detect.detect_collusion. Off by default.")
@@ -469,7 +492,8 @@ def main():
 
     spans, sections = swarm_trace(seed=args.seed, fanout=args.fanout, rounds=args.rounds,
                                   latency_drift={} if args.inject_latency_drift else None,
-                                  collusion={} if args.inject_collusion else None)
+                                  collusion={} if args.inject_collusion else None,
+                                  capture={} if args.inject_capture else None)
     if args.show or not args.json:
         print(describe(spans, sections))
     if args.json:
