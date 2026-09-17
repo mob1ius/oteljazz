@@ -34,7 +34,7 @@ from opentelemetry.trace import Status, StatusCode
 import caidence as c
 
 
-def emit_one(tracer, span_dict, speed):
+def emit_one(tracer, span_dict, speed, declare_role=False):
     time.sleep(span_dict["start"] / speed)
     with tracer.start_as_current_span(span_dict.get("op", "chat")) as span:
         span.set_attribute("gen_ai.operation.name", span_dict.get("op", "chat"))
@@ -44,6 +44,8 @@ def emit_one(tracer, span_dict, speed):
         # anything that only knows the older .name-only convention too.
         span.set_attribute("gen_ai.agent.id", span_dict["agent"])
         span.set_attribute("gen_ai.agent.name", span_dict["agent"])
+        if declare_role and span_dict["agent"] == "orchestrator":
+            span.set_attribute("gen_ai.agent.role", "orchestrator")
         if span_dict.get("tool"):
             span.set_attribute("gen_ai.tool.name", span_dict["tool"])
         span.set_attribute("gen_ai.usage.output_tokens", int(span_dict.get("tokens", 100)))
@@ -61,6 +63,9 @@ def main():
     ap.add_argument("--inject-latency-drift", action="store_true",
                     help="--trace swarm only, opt-in: one subagent per round slows down "
                          "(swarm.LATENCY_DRIFT_INJECT), for testing drift detection end to end")
+    ap.add_argument("--declare-role", action="store_true",
+                    help="set gen_ai.agent.role=orchestrator on the orchestrator's spans, so the "
+                         "browser gives it the lead voice regardless of which agent spoke first")
     ap.add_argument("--batch-delay-ms", type=int, default=0,
                     help="use BatchSpanProcessor with this schedule delay instead of Simple, to "
                          "test against clumped arrivals the way most real SDK setups export")
@@ -92,7 +97,8 @@ def main():
         spans = c.synthetic_trace()
     print(f"Streaming {len(spans)} spans to {args.endpoint} in real time (speed={args.speed}x)...")
 
-    threads = [threading.Thread(target=emit_one, args=(tracer, s, args.speed)) for s in spans]
+    threads = [threading.Thread(target=emit_one, args=(tracer, s, args.speed, args.declare_role))
+               for s in spans]
     for th in threads:
         th.start()
     for th in threads:
