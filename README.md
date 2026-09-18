@@ -11,7 +11,9 @@ subagents in parallel, one tool call failing, and the chord the ensemble is soun
 happens. A frozen frame of real engine output, not a mockup.
 
 **[Listen at oteljazz.com](https://oteljazz.com)**. Every visit generates a different session, in
-your browser, in about three seconds. No signup, no backend, no cookies.
+your browser, in about three seconds. No signup, no cookies, no accounts, and the music is
+generated and played entirely on your machine. There is a server, and it keeps a request log:
+[what this site logs](#what-this-site-logs) says exactly what is in it.
 
 ---
 
@@ -191,6 +193,35 @@ src/      the Cloudflare Worker serving oteljazz.com
 supplementary_audio/   five rendered examples
 zenodo_deposit/        the data deposit contents
 ```
+
+## What this site logs
+
+The demo runs in the browser, but requests to oteljazz.com pass through a Cloudflare Worker that
+writes one row per request to a small database. That log exists for a specific reason: which AI
+crawlers visit a site like this, whether they honor robots.txt and ai.txt, and what they ask for
+is an open question with very little public data behind it, and this site is in a position to
+answer it for itself. The schema and the code that writes it are both in this repo
+(`infra/d1_schema.sql`, `src/crawler-log.js`), so none of the following has to be taken on trust.
+
+Each row holds: the time, the path, the HTTP method, the status returned, the user-agent, the
+referring page (origin and path only, never the query string), Cloudflare's two-letter country
+code, the network operator's ASN, and whether the user-agent named itself as a known crawler.
+
+**IP addresses are never stored.** What is stored instead is `client_key`: a keyed hash of the
+address, computed with a secret that lives only in Cloudflare's secret store and never in this
+repo or in any exported data, with the current UTC date mixed in so the key changes daily. It
+exists so that requests from one visitor can be grouped for a few hours (did a browser actually
+load the app, is this one scanner or fifty), and it is deliberately useless beyond that: two rows
+from different days cannot be linked to each other by anyone, including me. It is pseudonymous,
+not anonymous, and the difference is worth stating plainly rather than hiding behind the word
+"hashed": whoever holds the secret could test a guessed address against one day's key. The
+address itself is still never written down.
+
+Browser traffic is sampled: roughly one visitor in ten is logged at all, and that draw is made
+per visitor, so a sampled-out visitor leaves no trace of any kind. Self-identified crawlers are
+logged in full. Rows are kept as long as the log is useful to the study, and the keys expire with
+the rows they sit in. Nothing is sold, shared, or sent anywhere else, and there are no
+third-party analytics, trackers, or cookies of any kind.
 
 ## License
 

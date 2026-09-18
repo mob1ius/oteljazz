@@ -29,6 +29,10 @@ from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, SimpleSpanProcessor
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+
+# Marks every request this script makes as ours, so traffic reports can subtract it rather than
+# count it as a visitor. Keep the token stable: changing it orphans the rows already logged.
+INTERNAL_UA = "oteljazz-producer/1 (+internal test client)"
 from opentelemetry.trace import Status, StatusCode
 
 import caidence as c
@@ -72,7 +76,11 @@ def main():
     args = ap.parse_args()
 
     provider = TracerProvider()
-    exporter = OTLPSpanExporter(endpoint=args.endpoint)
+    # Self-identifying User-Agent. The site's own request log (src/crawler-log.js) has no way to
+    # tell our test traffic from a stranger's, and "we generated our own numbers" is the first
+    # thing that invalidates a traffic report. The default OTLP exporter UA would be indistinct
+    # from any other Python client, so it is replaced with one nothing else sends.
+    exporter = OTLPSpanExporter(endpoint=args.endpoint, headers={"user-agent": INTERNAL_UA})
     if args.batch_delay_ms > 0:
         provider.add_span_processor(BatchSpanProcessor(exporter, schedule_delay_millis=args.batch_delay_ms))
     else:

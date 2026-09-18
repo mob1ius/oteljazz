@@ -15,7 +15,23 @@ export { LiveRelay } from './live-relay.js';
 // asset request reaches this script, it is not worth a row. .txt is deliberately absent -- a
 // crawler fetching /robots.txt or /ai.txt is the single most interesting event this table can
 // record.
-const ASSET_RE = /\.(mp3|wav|ogg|png|jpe?g|gif|svg|webp|ico|css|js|mjs|json|map|woff2?|ttf|eot)$/i;
+//
+// The four app files are the exception, and the leading lookahead is what exempts them. They are
+// the only server-visible evidence that a visitor's browser got past the HTML: a crawler that
+// fetches "/" and stops looks identical to a person until app.js is requested, because only a
+// script-executing browser asks for it. One client_key fetching "/" and then "/app.js" is a real
+// browser; "/" alone is not.
+//
+// What this does NOT prove, checked in web/app.js rather than assumed: that anyone pressed play.
+// The corpus model and every instrument sample are fetched during page load, inside the same
+// chain that ends with the play button being enabled -- nothing is fetched at press time. So the
+// funnel's last step is "the engine loaded", not "the engine ran". Measuring the press itself
+// would take a beacon request, which is a new endpoint and deliberately out of scope here; until
+// then the reports say "browser loaded the demo" and never "listened".
+//
+// Everything heavier stays excluded in wrangler.jsonc (a single page load pulls ~40 sample
+// files), so this costs four Worker invocations per first visit, not forty-five.
+const ASSET_RE = /^(?!\/(?:app|director|engine)\.js$|\/corpus_model_jazz\.json$).*\.(mp3|wav|ogg|png|jpe?g|gif|svg|webp|ico|css|js|mjs|json|map|woff2?|ttf|eot)$/i;
 
 const crawlerLog = createCrawlerLogHandler({ assetPattern: ASSET_RE });
 

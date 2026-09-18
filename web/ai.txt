@@ -29,6 +29,28 @@ Allow-Search-Indexing: /
 Allow-User-Initiated-Retrieval: /
 
 # ---------------------------------------------------------------------------
+# What this site logs about your visit
+# ---------------------------------------------------------------------------
+# Stated here as well as in the repo because a crawler reading this file deserves the same
+# disclosure a person gets, and because a site that studies crawler behaviour should be the last
+# one to be quiet about its own.
+#
+# One row per request: time, path, method, status, user-agent, referring page (origin and path
+# only, never the query string), country, ASN, and whether the user-agent names a known crawler.
+# The purpose is research into which AI crawlers arrive here and whether they honor this file and
+# robots.txt.
+#
+# IP addresses are never stored. A daily-rotating keyed hash of the address is stored instead, so
+# that one visitor's requests can be grouped within a day and not across days. The key for that
+# hash is held only in the server's secret store. That makes the rows pseudonymous, not anonymous.
+#
+# Browser traffic is sampled at roughly one visitor in ten; self-identified crawlers are logged in
+# full. No cookies, no trackers, no third-party analytics, nothing sold or shared.
+#
+# Schema and the code that writes it: https://github.com/mob1ius/oteljazz
+#   infra/d1_schema.sql, src/crawler-log.js
+
+# ---------------------------------------------------------------------------
 # Attribution, if this site is cited
 # ---------------------------------------------------------------------------
 # Wagner, M. "OtelJazz: semantic sonification of multi-agent AI coordination."

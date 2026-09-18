@@ -19,16 +19,20 @@
     // exactly the interesting set -- "/", robots.txt, ai.txt, and any unknown probe path such as
     // /wp-admin or /.env, which are among the more revealing things a crawler does.
     //
+    // The four app files used to be excluded here too, and were added back deliberately: a
+    // request for /app.js is the only thing that separates a browser that actually ran the page
+    // from a crawler that fetched the HTML and left, and without it every per-visitor question
+    // starts from a population that is mostly crawlers. That costs four extra invocations on a
+    // first visit (they are cached afterwards), against ~40 for the samples that stay excluded.
+    // See src/index.js's ASSET_RE, which has the matching exemption -- removing one without the
+    // other silently logs nothing new.
+    //
     // Negative patterns take precedence over positive ones and order does not matter.
     "run_worker_first": [
       "/*",
       "!/samples/*",
       "!/assets/*",
-      "!/vendor/*",
-      "!/app.js",
-      "!/director.js",
-      "!/engine.js",
-      "!/corpus_model_jazz.json"
+      "!/vendor/*"
     ]
   },
 

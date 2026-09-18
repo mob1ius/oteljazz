@@ -13,6 +13,16 @@
 -- follow, for no analytical gain. The site otherwise sets no cookies and no storage of any kind;
 -- keep it that way. ASN and country are coarse and are the useful part: ASN is what identifies
 -- the operator behind an unlabelled crawler, which a spoofable user-agent string cannot.
+--
+-- WHAT IT DOES STORE, ADDED LATER AND WORTH BEING PRECISE ABOUT: client_key, a daily-rotating
+-- keyed hash of the IP (see below). That is pseudonymous, not anonymous, and calling it anonymous
+-- would be the kind of claim this project exists to avoid making. The honest statement is the one
+-- in README.md and web/ai.txt: the address itself is never written down, the key changes every
+-- day so nothing links across days, and whoever holds the Worker secret could confirm a guessed
+-- address against one day's key. It was added because every per-visitor question -- did anyone
+-- actually start the audio, is this one scanner or fifty, how much traffic did the flood guard
+-- swallow -- is unanswerable without some grouping key, and (ASN, user-agent) collapses an entire
+-- consumer ISP into a single "visitor".
 
 CREATE TABLE IF NOT EXISTS requests (
   id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,13 +47,27 @@ CREATE TABLE IF NOT EXISTS requests (
   -- /.env is indistinguishable from a successful read of it, and "crawler requested N paths"
   -- cannot be separated from "crawler retrieved N paths" -- the first question a reviewer
   -- asks of scan traffic.
-  status           INTEGER
+  status           INTEGER,
+  -- Groups requests from one client without storing the client. HMAC-SHA256 of
+  -- "<UTC date>\n<ip>" under a secret held only in Cloudflare's secret store, truncated to 16 hex
+  -- chars; NULL when no secret is configured or no client IP was available. Rotating the date
+  -- into the message is what bounds it: two rows on different days cannot be linked to each other
+  -- by anyone, including us. The secret is never in this repo and never leaves the Worker.
+  client_key       TEXT,
+  -- How many requests the flood guard collapsed into this row, counting the row itself. A FLOOR,
+  -- not a count: the guard writes an update only at checkpoints (2, 5, 10, 25, 50, ...), and the
+  -- edge cache it counts in is per-location, so a flood spread across colos produces one row per
+  -- colo. Without it, a row means "this client asked for this path at least once in that minute"
+  -- and the difference between one polite fetch and nine hundred is invisible -- which is the
+  -- difference the scan-traffic exhibits are about.
+  dup_count        INTEGER NOT NULL DEFAULT 1
 );
 
 CREATE INDEX IF NOT EXISTS idx_requests_ts        ON requests (ts);
 CREATE INDEX IF NOT EXISTS idx_requests_bot_ts    ON requests (is_bot_ua, ts);
 CREATE INDEX IF NOT EXISTS idx_requests_path      ON requests (path);
 CREATE INDEX IF NOT EXISTS idx_requests_status    ON requests (status);
+CREATE INDEX IF NOT EXISTS idx_requests_client_key ON requests (client_key, ts);
 
 -- Durable, queryable observability for src/live-relay.js (v1.3.0's live-OTLP path). One row per
 -- session id, updated in place rather than one row per event: a live session can receive

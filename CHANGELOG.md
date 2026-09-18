@@ -1,5 +1,46 @@
 # Changelog
 
+## v1.12.0 - 2026-09-18
+
+The site's request log gains the two things every per-visitor question needed, and says so out
+loud in README.md and web/ai.txt. Nothing about the music changed.
+
+### Added
+
+- **A per-visitor grouping key that is not an address.** `client_key` is an HMAC of the client's
+  IP under a secret held only in Cloudflare's secret store, with the UTC date mixed into the
+  message so the key rotates daily and nothing links across days. IP addresses are still never
+  stored. It is pseudonymous rather than anonymous, and the disclosure says exactly that instead
+  of hiding behind the word "hashed".
+- **A count of what the flood guard swallows.** The dedupe guard has always collapsed one row per
+  client and path per minute; `dup_count` now records how many requests that row stands for,
+  written at checkpoints (2, 5, 10, 25, ...) so counting cannot reintroduce the write-per-request
+  problem the guard exists to prevent. It is a floor, exact at the last checkpoint, and per edge
+  location. Verified on the live site: 8 rapid requests, one row, `dup_count` 5.
+- **The four app files are logged.** `/app.js`, `/director.js`, `/engine.js` and
+  `/corpus_model_jazz.json` now reach the Worker, which is what separates a browser that ran the
+  page from a crawler that took the HTML and left. Samples, assets and vendor stay excluded: a
+  page load pulls about 40 of them.
+- **Disclosure of all of it** in README.md and web/ai.txt, including retention and purpose. The
+  README's old "no backend" claim was false and is gone.
+
+### Changed
+
+- **Browser sampling is per visitor, not per request.** The 10% draw is derived from `client_key`,
+  so a sampled-in visitor's whole day is present and a sampled-out visitor leaves nothing at all.
+  Per-request draws would have preserved a complete page-to-engine chain about once in 100,000.
+  Rows still carry `sample_rate` and real volume is still the sum of its reciprocal, but the
+  estimator is noisier on small browser counts, and the reports say so.
+- **The crawler dataset changes shape from here.** Rows written before today have no key, and
+  their `dup_count` was backfilled to 1, which means one request or an unknown number. Anything
+  built on this data has to treat the two periods separately.
+
+### Not measured
+
+- Whether anyone presses play. The corpus model and every instrument sample load during page load,
+  so no request marks the press itself; the funnel's last step is that the engine's data loaded.
+  Measuring the press would take a beacon endpoint, which this release deliberately does not add.
+
 ## v1.11.0 — 2026-09-17
 
 The capture spike is detected rather than invented, leaving conflict as the only signature the
