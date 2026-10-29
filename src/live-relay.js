@@ -237,8 +237,11 @@ export class LiveRelay {
       // may be opened and closed, and a connect that is immediately dropped still costs an object
       // start and (before the hasIngested gate below) a D1 write. 20 upgrades a second is far
       // above a few tabs reconnecting after a deploy. Per-instance like the ingest limiter, with
-      // the same caveat: a new session id is a new instance with a fresh counter, which is what
-      // src/index.js's pre-idFromName limiter exists to cover.
+      // the same caveat: a new session id is a new instance with a fresh counter, so this bounds
+      // one session being hammered and not a sweep across ids. Nothing covers that sweep today --
+      // the Workers rate-limit binding that was meant to, ahead of idFromName(), did not work and
+      // was removed (see src/index.js). What the sweep can still cost is object starts, not rows:
+      // the hasIngested gate below is what closed the database side of it.
       const nowWs = Date.now();
       if (nowWs - this.wsWindowStartMs > 1000) {
         this.wsWindowStartMs = nowWs;
