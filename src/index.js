@@ -73,12 +73,23 @@ const SESSION_ID_RE = /^[0-9a-f]{32}$/;
 // allows everything is worse than no control, because the config reads as though the route is
 // protected. Removed rather than left as decoration.
 //
-// WHAT IS THEREFORE STILL UNMITIGATED: a well-formed but unused session id still creates a
-// Durable Object, and nothing bounds how many. That is a compute-cost vector, not a data one --
-// the row it used to write is closed separately by live-relay.js's hasIngested gate, which was
-// always the control that mattered for the database. The documented fix for a strict global
-// limit is to build one out of Durable Objects, which is circular here and belongs with the
-// larger change in local/live-relay-hardening.md, not bolted on afterwards.
+// WHAT IS THEREFORE STILL UNMITIGATED, and measured against the deployed site on 2026-10-29
+// rather than reasoned about: one POST to /live/<fresh 32-hex id>/v1/traces creates a Durable
+// Object AND writes a live_sessions row, and nothing bounds how many. An empty body is the
+// cheapest version -- zero bytes, a valid (if empty) ExportTraceServiceRequest, answered 200,
+// one row with ingest_count=1 and span_count=0. A malformed body costs one row the same way via
+// the decode_errors counter.
+//
+// So this is a data vector, not only a compute one. An earlier version of this comment said the
+// opposite, on the grounds that live-relay.js's hasIngested gate had closed the database side.
+// That gate closes the VIEWER door, which is the one that carries no payload and therefore the
+// one a per-object check can actually hold. Ingest always carries a payload and a valid payload
+// is free to build, so no unauthenticated per-object gate closes it -- it only changes which
+// bytes the sender has to send.
+//
+// Closing it needs a check at the door, before idFromName(): either a working global limiter
+// (the binding that was supposed to be one is the paragraph above) or Tier 3's ingest token in
+// local/live-relay-hardening.md, which is the real fix and is a design change, not a patch.
 
 export default {
   async fetch(request, env, ctx) {

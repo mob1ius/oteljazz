@@ -240,8 +240,10 @@ export class LiveRelay {
       // the same caveat: a new session id is a new instance with a fresh counter, so this bounds
       // one session being hammered and not a sweep across ids. Nothing covers that sweep today --
       // the Workers rate-limit binding that was meant to, ahead of idFromName(), did not work and
-      // was removed (see src/index.js). What the sweep can still cost is object starts, not rows:
-      // the hasIngested gate below is what closed the database side of it.
+      // was removed (see src/index.js). The gate below keeps that sweep from writing rows through
+      // THIS door, because a viewer connection carries no payload. It does not keep it from
+      // writing rows through the ingest door, which always carries one: see src/index.js's
+      // unmitigated note, measured rather than assumed.
       const nowWs = Date.now();
       if (nowWs - this.wsWindowStartMs > 1000) {
         this.wsWindowStartMs = nowWs;
