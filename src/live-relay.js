@@ -15,22 +15,28 @@
  *
  * One Durable Object instance per session id (see index.js's idFromName), so two people pointing
  * their own instrumented systems at oteljazz.com at the same time never see each other's spans --
- * each session id is its own isolated room. A session id is whatever string the operator picks
- * for their own OTLP endpoint path; there is no discovery or listing of active sessions.
+ * each session id is its own isolated room. There is no discovery or listing of active sessions.
  *
- * No auth on either route. Anyone who knows a session id can POST spans into it, AND can open the
- * WebSocket and read the real ones. An earlier version of this comment said the worst case was
- * "someone else's made-up spans appearing in your own browser tab, not any data disclosure",
- * which was only ever true of the write direction. Spans carry gen_ai.agent.name,
- * gen_ai.tool.name, gen_ai.operation.name and token counts from somebody's actual agent system,
- * so a session id that leaks is a read of that system's shape, not just a nuisance.
+ * AUTH, as of v1.13.0, and read this before adding anything to either route. The two directions
+ * are no longer symmetric:
  *
- * A session id is therefore a password, and src/index.js enforces a shape that a password could
- * plausibly have (16-64 chars) before any request reaches this class. That is a floor, not a
- * guarantee: an id someone chose by hand is still an id someone can guess.
- * local/live-relay-hardening.md proposes the two things that would actually fix this -- issuing
- * random ids rather than accepting chosen ones, and splitting the read id from the write token so
- * that publishing one grants nothing about the other.
+ *   WRITE is authenticated. src/index.js requires the session's ingest token on v1/traces and
+ *   refuses the request before this class is ever constructed, so a POST that reaches here has
+ *   already proved it holds the token. Nothing in this file re-checks it, and nothing in this
+ *   file should start deciding who may write -- the check belongs at the door, because the point
+ *   of it is to avoid creating the object at all. See src/live-token.js.
+ *
+ *   READ is not authenticated, by design. Anyone holding the session id can open the WebSocket
+ *   and read the real spans. That is what makes an id publishable for a demo and exactly what
+ *   makes it unsafe to publish for a private session. An earlier version of this comment claimed
+ *   the worst case was "someone else's made-up spans appearing in your own browser tab, not any
+ *   data disclosure", which was only ever true of the write direction: spans carry
+ *   gen_ai.agent.name, gen_ai.tool.name, gen_ai.operation.name and token counts from somebody's
+ *   actual agent system, so an id that leaks is a read of that system's shape.
+ *
+ * A session id is therefore still a credential, just a read-only one, and it is no longer chosen
+ * by anyone: it is HMAC(secret, token) truncated to 32 hex, so it cannot be a guessable word the
+ * way "verify-xss" was. local/live-relay-hardening.md has the full threat model.
  *
  * OBSERVABILITY: this was the newest, least battle-tested code in the repo and, until this pass,
  * genuinely a black box -- decode failures and connection activity were caught and swallowed with
@@ -49,9 +55,10 @@ import { decodeExportTraceServiceRequest } from './otlp-decode.js';
 // gen_ai.* attribute names this reads, matching the semantic conventions engine/caidence.py and
 // engine/live_producer.py already use -- see live_producer.py's emit_one for the producer side
 // of this exact same attribute set.
-// Every gen_ai.* attribute below is attacker-controlled: this relay has no auth (see class
-// header), so anyone who knows a session id can put arbitrary strings in these fields via their
-// own OTLP exporter. app.js's pushTerm() renders the result with innerHTML, not textContent (the
+// Every gen_ai.* attribute below is untrusted input. Since v1.13.0 a writer must hold the
+// session's ingest token (see class header), so these strings come from someone authorized rather
+// than from anyone who guessed an id -- which is a smaller set of people, not a trustworthy one.
+// An exporter is software, and a compromised or simply buggy one puts arbitrary bytes here. app.js's pushTerm() renders the result with innerHTML, not textContent (the
 // terminal needs the <span class="dim/ok/err"> markup), so an unescaped attribute value is a
 // straightforward stored HTML-injection bug -- found in a security pass, not exploited live. This
 // site's CSP (script-src 'self') blocks inline <script>/event-handler execution, but style-src

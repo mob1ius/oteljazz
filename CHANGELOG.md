@@ -1,5 +1,72 @@
 # Changelog
 
+## v1.13.0 - 2026-10-29
+
+Reading and writing a live session are now separate capabilities. Breaking for anyone holding a
+session id as a write credential, which at the time of writing is nobody.
+
+### Added
+
+- **An ingest token, separate from the session id.** A live session now has two names: a private
+  64-hex ingest token that grants write, and the public 32-hex session id derived from it that
+  grants read. `sessionId = HMAC-SHA256(LIVE_RELAY_SECRET, domain + token)` truncated to 32 hex,
+  the width committed in v1.12.2 precisely so that landing this would not be a second format
+  change on a public endpoint.
+  - **Why the token needs no signature of its own.** Ingest posts to the session id and presents
+    the token; the Worker re-derives the id from the token and requires it to equal the one in
+    the path. That equality is the entire proof. Inventing a token is useless because computing
+    its id needs the secret, and knowing an id is useless because HMAC is one-way, so a usable
+    pair can only come from something holding the secret. An earlier draft added a signature to
+    the token; it was redundant for exactly this reason. If a future change ever stops requiring
+    the path to match, the token becomes an unverifiable string and the property is gone.
+- **`scripts/mint_live_token.mjs`**, which mints a pair and prints ready-to-paste commands for
+  both halves. It imports the derivation from `src/live-token.js` rather than reimplementing it,
+  so the thing that mints and the thing that verifies cannot drift.
+- **`--token` on `engine/live_producer.py`**, sent as `Authorization: Bearer`. The README uses the
+  producer as its verification path, so without this the documented check would no longer work.
+
+### Changed
+
+- **Ingest is authenticated; reading is not, by design.** `/live/<id>/v1/traces` requires the
+  token and is refused with 401 before a Durable Object exists. `/live/<id>/ws` still needs only
+  the id, which is what makes an id publishable for a demo and exactly what makes it the wrong
+  thing to post for a private run.
+  - Gated on the route rather than the method, so a GET or OPTIONS without a token is also
+    refused at the door. Letting one through to be rejected inside the object would still have
+    created the object, which is the cost this avoids.
+  - **401 rather than 404, and it leaks nothing.** The check performs no lookup, so the answer is
+    identical for a live session, a dead one and one that never existed. What it buys is an
+    operator who forgot the header being told so instead of debugging a silent 404.
+- **Fails closed with no secret configured.** Every ingest is refused and a `secret_missing` line
+  is logged. This is the opposite of `src/crawler-log.js`, where a missing secret degrades to a
+  NULL column: degrading is right there, because the cost is a less useful log row, and wrong
+  here, because the cost would be turning a deployment mistake into anyone-can-write.
+- **The token never appears in a log line, and there is no `?token=` fallback.** Query strings are
+  the part of a URL that gets logged, cached and passed onward.
+- **The stale-session message no longer tells you to generate an id.** It said
+  `make one: python3 ... token_hex(16)`, which stopped being true when ids became derived.
+  Following it produced a well-formed id that connects and then waits forever, because nobody can
+  mint the token for an id you invented.
+
+### Fixed
+
+- **A POST to a fresh well-formed session id no longer creates a Durable Object and a
+  `live_sessions` row.** Measured on the deployed site before this change: an empty body, zero
+  bytes, answered 200, wrote one row with `ingest_count=1`; a malformed body wrote one through
+  `decode_errors`. Nothing bounded how many. No gate inside the object could close it, because
+  ingest always carries a payload and a valid payload is free to build -- v1.12.1's `hasIngested`
+  gate works on the viewer door only, which is the one that carries no payload. Comments in
+  `src/index.js` and `src/live-relay.js` claimed otherwise between v1.12.1 and now; both were
+  corrected when the measurement contradicted them.
+
+### Still open
+
+- **The viewer route.** `GET /live/<any well-formed id>/ws` still creates a Durable Object, and
+  nothing bounds how many distinct ids someone tries. That is object starts only: no row is
+  written and no span is readable, because none ever arrives. Closing it would need a working
+  limiter ahead of `idFromName` or a token on the read side, and the second would defeat the
+  point of a publishable id.
+
 ## v1.12.2 - 2026-10-29
 
 Session ids are issued rather than chosen. Breaking for anyone holding an older id, which at the

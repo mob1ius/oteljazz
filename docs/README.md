@@ -120,35 +120,55 @@ included, plays your real system's telemetry. This is separate from the receiver
 feeds the Python engine's MIDI output, this one feeds the browser directly over a Cloudflare
 Durable Object relay (`src/live-relay.js`).
 
-Generate a session id. Do not invent one:
+A session has two names, and which one you hold decides what you can do:
+
+| | What it is | What it grants |
+|---|---|---|
+| **ingest token** | 64 lowercase hex, private | **write.** POST spans into the session |
+| **session id** | 32 lowercase hex, public | **read.** Open the WebSocket and hear them |
+
+The id is derived from the token by an HMAC under a server-side secret, so holding an id tells you
+nothing about its token. That is what makes an id safe to hand to whoever should listen while the
+write side stays yours.
+
+**Mint a pair** (needs `LIVE_RELAY_SECRET`, so this is the site operator's step -- see below if
+you are not them):
 
 ```bash
-python3 -c "import secrets; print(secrets.token_hex(16))"
+node scripts/mint_live_token.mjs
 ```
 
-It must be exactly 32 lowercase hex characters, which is what that command prints; anything else
-is answered 404 before it reaches the relay. The id is the only thing protecting the session and
-it protects it in both directions, so it is a password rather than a name: anyone who knows it
-can POST spans in, and can also open the WebSocket and read the real ones (agent names, tool
-names, operations, token counts). Treat it accordingly, and use a fresh one per session rather
-than keeping a favourite.
+It prints the token, the id, and ready-to-paste commands for both halves. Keep the token the way
+you would keep a password; it is one. Share the id freely.
 
-Then:
+**If you are not the operator**, you cannot mint your own: a public mint endpoint would hand valid
+write credentials to anyone who asked, which is the whole thing this design exists to prevent. Ask
+whoever runs the session for its id to listen, or run your own instance and set your own secret.
+
+Then export to it:
 
 ```bash
-# Point your OTLP/HTTP exporter's endpoint at:
-#   https://oteljazz.com/live/<your-session-id>/v1/traces
-# content-type must be application/x-protobuf -- the standard OTLP/HTTP default for every real
-# SDK exporter. JSON encoding is not supported by this relay.
+# Endpoint:  https://oteljazz.com/live/<session-id>/v1/traces
+# Header:    Authorization: Bearer <ingest-token>
+# Encoding:  application/x-protobuf -- the OTLP/HTTP default for every real SDK exporter.
+#            JSON encoding is not supported by this relay.
+#
+# The token goes in a header, never in the URL. There is no ?token= fallback, deliberately:
+# query strings end up in access logs, Referer headers and anything that caches by URL.
 
-# Verify quickly using this repo's own test producer, which uses the real opentelemetry-sdk
-# exporter rather than a hand-built payload:
+# Verify with this repo's own test producer, which uses the real opentelemetry-sdk exporter
+# rather than a hand-built payload:
 cd engine
 python3 -m venv .venv && source .venv/bin/activate   # if you haven't already, see Setup above
 pip install opentelemetry-sdk opentelemetry-exporter-otlp-proto-http
 python3 live_producer.py --trace synthetic --speed 4 \
-  --endpoint https://oteljazz.com/live/<your-session-id>/v1/traces
+  --endpoint https://oteljazz.com/live/<session-id>/v1/traces \
+  --token <ingest-token>
 ```
+
+Requests are refused before anything is created: a session id that is not 32 lowercase hex gets a
+404, and an ingest without a matching token gets a 401. Neither answer reveals whether that
+session exists, because nothing is looked up to produce it.
 
 Then open `https://oteljazz.com/?live=<your-session-id>` in a browser before or during that run.
 The corpus/instrument load takes a moment as normal; press play once the button enables. Real
@@ -165,8 +185,13 @@ Everything else pools onto the worker voices the same way a synthetic subagent i
 the same dissonant/anomaly-eligible treatment a scripted error status gets) all carry through.
 
 No listener discovery: only browser tabs open to your exact session id hear your spans, and
-nobody else's spans can appear in yours. There's no server-side auth beyond the session id itself,
-so don't reuse anything you wouldn't want a stranger to guess.
+nobody else's spans can appear in yours, because writing needs the token.
+
+**What this does not protect is the read direction, on purpose.** Anyone holding a session id can
+listen to it, and a listening tab is invisible to you. That is what makes an id publishable for a
+demo and exactly what makes it the wrong thing to post publicly for a private run: your spans
+carry your agent names, tool names, operations and token counts. Share an id with the people who
+should hear it, and mint a new pair per session rather than keeping a favourite.
 
 ## Real-trace capture
 

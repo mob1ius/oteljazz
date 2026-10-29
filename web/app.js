@@ -158,10 +158,16 @@ async function startLiveMode(session) {
   // server's rule rather than a request to it: a round-trip to learn the answer is slower than
   // the socket. The two must be changed together; this message is the only explanation anyone
   // gets. Returning here leaves powerBtn disabled on purpose -- there is no session to play.
+  //
+  // The advice line changed in v1.13.0 and the old one is worth remembering as a mistake: it
+  // said "make one: python3 ... token_hex(16)", which stopped being true when session ids became
+  // derived from an ingest token rather than generated. Following it produced a well-formed id
+  // that passes this check, connects, and then waits forever -- nobody can mint the token for an
+  // id they invented. A message that sends someone down that path is worse than no message.
   if (!/^[0-9a-f]{32}$/.test(session)) {
     pushTerm('<span class="err">&gt; invalid session id</span>');
-    pushTerm('<span class="dim">&gt; session ids are 32 hex characters and are generated, not chosen</span>');
-    pushTerm('<span class="dim">&gt; make one: python3 -c "import secrets; print(secrets.token_hex(16))"</span>');
+    pushTerm('<span class="dim">&gt; a session id is 32 lowercase hex characters, derived from its ingest token</span>');
+    pushTerm('<span class="dim">&gt; it cannot be made up -- ask whoever runs the session for the id</span>');
     statusEl.textContent = "Invalid session id.";
     return;
   }
@@ -192,6 +198,12 @@ async function startLiveMode(session) {
   ws.onopen = () => {
     termLines = [];
     pushTerm(`<span class="dim">&gt; live session "${session}" connected. waiting for spans...</span>`);
+    // Said once, on connect, rather than after a timeout: a well-formed id always connects, even
+    // one that no exporter will ever post to, because the read side is unauthenticated on
+    // purpose. So "connected" does not mean "a session exists", and the one thing that would
+    // otherwise be silently missing is the token. No timer here deliberately -- see the timer
+    // rule in this file's own notes; a one-shot hint costs nothing and cannot drift out of sync.
+    pushTerm('<span class="dim">&gt; the exporter writing to it needs this session\'s ingest token</span>');
   };
   ws.onmessage = (ev) => {
     let msg;

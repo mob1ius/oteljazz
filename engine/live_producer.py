@@ -19,6 +19,11 @@ Usage:
   python3 live_producer.py --trace synthetic        # streams the ~30s calibration trace instead
   python3 live_producer.py --speed 2.0              # twice as fast
   python3 live_producer.py --endpoint http://localhost:4318/v1/traces
+
+Against oteljazz.com rather than a local live.py, ingest needs the session's token as well as its
+id. Mint a pair with `node scripts/mint_live_token.mjs`, which prints the whole command:
+  python3 live_producer.py --trace synthetic --speed 4 \
+    --endpoint https://oteljazz.com/live/<session-id>/v1/traces --token <ingest-token>
 """
 
 import argparse
@@ -61,6 +66,12 @@ def emit_one(tracer, span_dict, speed, declare_role=False):
 def main():
     ap = argparse.ArgumentParser(description="Synthetic live OTel producer for testing live.py")
     ap.add_argument("--endpoint", default="http://localhost:4318/v1/traces")
+    # Required by oteljazz.com's relay since v1.13.0, and irrelevant to a local live.py receiver,
+    # which has no auth at all -- hence a plain default of None rather than a required argument.
+    # scripts/mint_live_token.mjs prints a ready-made command with both halves filled in.
+    ap.add_argument("--token", default=None,
+                    help="live-session ingest token, sent as Authorization: Bearer. Required by "
+                         "oteljazz.com (see scripts/mint_live_token.mjs); not needed by live.py")
     ap.add_argument("--speed", type=float, default=1.0)
     ap.add_argument("--trace", choices=["synthetic", "demo", "swarm"], default="demo")
     ap.add_argument("--seed", type=int, default=0, help="--trace swarm: pipeline seed")
@@ -80,7 +91,13 @@ def main():
     # tell our test traffic from a stranger's, and "we generated our own numbers" is the first
     # thing that invalidates a traffic report. The default OTLP exporter UA would be indistinct
     # from any other Python client, so it is replaced with one nothing else sends.
-    exporter = OTLPSpanExporter(endpoint=args.endpoint, headers={"user-agent": INTERNAL_UA})
+    # The token travels in a header, never in the endpoint URL. A credential in a query string
+    # ends up in access logs, in Referer headers and in anything that caches by URL, and the
+    # relay has no ?token= fallback for exactly that reason (see src/index.js).
+    headers = {"user-agent": INTERNAL_UA}
+    if args.token:
+        headers["authorization"] = f"Bearer {args.token}"
+    exporter = OTLPSpanExporter(endpoint=args.endpoint, headers=headers)
     if args.batch_delay_ms > 0:
         provider.add_span_processor(BatchSpanProcessor(exporter, schedule_delay_millis=args.batch_delay_ms))
     else:
