@@ -37,17 +37,31 @@ const crawlerLog = createCrawlerLogHandler({ assetPattern: ASSET_RE });
 
 // A session id lands in two places that must not take an arbitrary string: idFromName(), where
 // every distinct value creates a Durable Object, and live_sessions.session, where it is the
-// primary key. The old pattern here was "[^/]+", which accepted a two-character id and a
-// two-kilobyte one equally.
+// primary key. It is also the ONLY thing protecting a session, in both directions: knowing it
+// lets you POST spans in, and it lets you open the WebSocket and read the real ones (agent
+// names, tool names, operations, token counts).
 //
-// The floor matters more than the ceiling. A session id is the ONLY thing protecting a session,
-// and it protects it in both directions: knowing it lets you POST spans in, and it also lets you
-// open the WebSocket and read the real ones (agent names, tool names, operations, token counts).
-// The ids already in the table were written before that was thought through -- "verify-xss" is a
-// ten-character English password. 16 characters of this alphabet is a floor, not a guarantee;
-// local/live-relay-hardening.md proposes issuing 32 random hex characters instead, which is what
-// actually makes an id unguessable.
-const SESSION_ID_RE = /^[A-Za-z0-9_-]{16,64}$/;
+// So ids are issued, not chosen. 32 lowercase hex characters, which is what
+// `python3 -c "import secrets; print(secrets.token_hex(16))"` prints: 128 bits of randomness,
+// the same shape every time, and a fixed-width primary key. The previous rule here allowed
+// 16-64 characters of [A-Za-z0-9_-], which permitted "my-demo-session" as readily as a random
+// one; before that it was "[^/]+", which took a two-character id and a two-kilobyte one equally.
+//
+// WHAT THIS DOES NOT DO: a regular expression checks shape, not entropy. Thirty-two zeroes match
+// it. What changes is that the documented path produces a strong id and a memorable one is no
+// longer something you can casually pick, not that a weak id has become impossible.
+//
+// Lowercase only, deliberately. idFromName("AB...") and idFromName("ab...") are DIFFERENT
+// objects, so accepting mixed case without normalising would quietly give two people separate
+// rooms for what they both believe is one id. One canonical spelling removes the question.
+//
+// THIS WIDTH IS COMMITTED. local/live-relay-hardening.md's Tier 3 derives the public session id
+// as HMAC(secret, ingestToken), and that derivation must truncate to these same 32 hex
+// characters. The repo's other HMAC (client_key, infra/d1_schema.sql) truncates to 16, which is
+// right for a daily-rotating grouping key and wrong here: this one is a capability that grants
+// read access to somebody's live telemetry. Matching it would force a second format change on a
+// public endpoint, which is the thing this change exists to avoid having to do twice.
+const SESSION_ID_RE = /^[0-9a-f]{32}$/;
 
 // A Workers rate-limit binding was built here and removed, because it did not work. The intent
 // was to throttle /live/* BEFORE idFromName(), which is the only point where a flood that uses a

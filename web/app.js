@@ -147,7 +147,26 @@ function wireDirectorCallbacks(d) {
 // synthetic path's 24s) since live spans arrive in real time and there is nothing to pre-generate
 // far ahead of; startEngine() itself is unchanged, just parametrized on that variable.
 async function startLiveMode(session) {
-  termEl.innerHTML = '<span class="dim">&gt; connecting to live session...</span>';
+  // FIRST, before the corpus fetch and before loadInstruments(): the relay answers 404 to any
+  // session id outside this shape (src/index.js's SESSION_ID_RE, which rejects before a Durable
+  // Object is created), so there is nothing to load for. Checked at the top rather than next to
+  // the WebSocket it protects, because everything in between is ~40 sample files and several
+  // seconds of "connecting to live session..." spent on a session that cannot exist.
+  //
+  // Without this check a stale ?live= lands on ws.onerror, which says "connection error" --
+  // true, and useless for the one cause a visitor can actually fix. Kept as a copy of the
+  // server's rule rather than a request to it: a round-trip to learn the answer is slower than
+  // the socket. The two must be changed together; this message is the only explanation anyone
+  // gets. Returning here leaves powerBtn disabled on purpose -- there is no session to play.
+  if (!/^[0-9a-f]{32}$/.test(session)) {
+    pushTerm('<span class="err">&gt; invalid session id</span>');
+    pushTerm('<span class="dim">&gt; session ids are 32 hex characters and are generated, not chosen</span>');
+    pushTerm('<span class="dim">&gt; make one: python3 -c "import secrets; print(secrets.token_hex(16))"</span>');
+    statusEl.textContent = "Invalid session id.";
+    return;
+  }
+
+  pushTerm('<span class="dim">&gt; connecting to live session...</span>');
   statusEl.textContent = "Loading instruments...";
 
   try {
@@ -164,19 +183,6 @@ async function startLiveMode(session) {
   } catch (err) {
     statusEl.textContent = "Error: " + err.message;
     console.error(err);
-    return;
-  }
-
-  // The relay answers 404 to any session id outside this shape (src/index.js's SESSION_ID_RE,
-  // which rejects before a Durable Object is created). Without this check a stale ?live= from
-  // before that rule existed lands on ws.onerror, which says "connection error" -- true, and
-  // useless for the one cause a visitor can actually fix. Kept as a copy of the server's rule
-  // rather than a request to it: a round-trip to learn the answer is slower than the socket.
-  if (!/^[A-Za-z0-9_-]{16,64}$/.test(session)) {
-    termEl.innerHTML = "";
-    pushTerm('<span class="err">&gt; invalid session id</span>');
-    pushTerm('<span class="dim">&gt; must be 16-64 characters of letters, digits, _ or -</span>');
-    statusEl.textContent = "Invalid session id.";
     return;
   }
 

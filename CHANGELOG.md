@@ -1,5 +1,38 @@
 # Changelog
 
+## v1.12.2 - 2026-10-29
+
+Session ids are issued rather than chosen. Breaking for anyone holding an older id, which at the
+time of writing is nobody: every row in `live_sessions` is a test session of this project's own.
+
+### Changed
+
+- **A session id is now exactly 32 lowercase hex characters**, the output of
+  `python3 -c "import secrets; print(secrets.token_hex(16))"`. The previous rule accepted 16 to
+  64 characters of `[A-Za-z0-9_-]`, which permitted `my-demo-session` as readily as a random
+  string, and the rule before that accepted anything without a slash in it. The id is the only
+  thing protecting a live session and it protects it in both directions, so it is a password and
+  it should be generated like one.
+  - **Lowercase only, on purpose.** `idFromName` is case-sensitive, so accepting mixed case
+    without normalising would give two people separate rooms for what they both believe is one
+    id.
+  - **What this does not do:** a format check tests shape, not entropy. Thirty-two zeroes still
+    match. What changes is that the documented path produces a strong id and a memorable one is
+    no longer casually choosable.
+  - **The width is committed.** The Tier 3 design in `local/live-relay-hardening.md` derives the
+    public id as an HMAC and must truncate to these same 32 characters, so that landing it is not
+    a second breaking change on a public endpoint.
+- **A stale `?live=` now says what to do about it**, not just that it is wrong: the terminal
+  prints the format and the command that generates one. Checked before the corpus and the
+  instruments load, so an id that cannot exist no longer spends several seconds and ~40 sample
+  requests on the way to the message.
+
+### Note
+
+- Rows in `live_sessions` created before this release keep their old-format ids and are
+  unreachable by design. They are historical records, not live sessions, and are left in place
+  rather than deleted.
+
 ## v1.12.1 - 2026-10-29
 
 Hardening for the two live-relay routes. No change to the music, the site, or how a live session
