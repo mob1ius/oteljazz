@@ -35,6 +35,37 @@ const ASSET_RE = /^(?!\/(?:app|director|engine)\.js$|\/corpus_model_jazz\.json$)
 
 const crawlerLog = createCrawlerLogHandler({ assetPattern: ASSET_RE });
 
+// A session id lands in two places that must not take an arbitrary string: idFromName(), where
+// every distinct value creates a Durable Object, and live_sessions.session, where it is the
+// primary key. The old pattern here was "[^/]+", which accepted a two-character id and a
+// two-kilobyte one equally.
+//
+// The floor matters more than the ceiling. A session id is the ONLY thing protecting a session,
+// and it protects it in both directions: knowing it lets you POST spans in, and it also lets you
+// open the WebSocket and read the real ones (agent names, tool names, operations, token counts).
+// The ids already in the table were written before that was thought through -- "verify-xss" is a
+// ten-character English password. 16 characters of this alphabet is a floor, not a guarantee;
+// local/live-relay-hardening.md proposes issuing 32 random hex characters instead, which is what
+// actually makes an id unguessable.
+const SESSION_ID_RE = /^[A-Za-z0-9_-]{16,64}$/;
+
+// A Workers rate-limit binding was built here and removed, because it did not work. The intent
+// was to throttle /live/* BEFORE idFromName(), which is the only point where a flood that uses a
+// new session id every time can be refused at all -- the relay's own limiter lives on the object
+// and so cannot see one. The binding attached correctly (wrangler showed it as
+// "LIVE_LIMITER (120 requests/60s)"), limit() was reached on every request, and it returned
+// {success:true} to all 700 requests of a single-window burst. No exception, nothing in the logs,
+// and no documented plan requirement found. Whatever the cause, a security control that silently
+// allows everything is worse than no control, because the config reads as though the route is
+// protected. Removed rather than left as decoration.
+//
+// WHAT IS THEREFORE STILL UNMITIGATED: a well-formed but unused session id still creates a
+// Durable Object, and nothing bounds how many. That is a compute-cost vector, not a data one --
+// the row it used to write is closed separately by live-relay.js's hasIngested gate, which was
+// always the control that mattered for the database. The documented fix for a strict global
+// limit is to build one out of Durable Objects, which is circular here and belongs with the
+// larger change in local/live-relay-hardening.md, not bolted on afterwards.
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -46,6 +77,13 @@ export default {
     // first, which would 404 on a path that was never a static file.
     const m = url.pathname.match(/^\/live\/([^/]+)\/(ws|v1\/traces)$/);
     if (m) {
+      // Everything from here to idFromName() exists because idFromName() is the expensive step
+      // and it cannot be undone: every distinct string is a new Durable Object, and Cloudflare
+      // documents no cap on how many ("you can create and run as many separate Durable Objects
+      // as you want"). Anything that can reject a request has to do it before this line.
+      if (!SESSION_ID_RE.test(m[1])) {
+        return new Response('not found', { status: 404 });
+      }
       const id = env.LIVE_RELAY.idFromName(m[1]);
       return env.LIVE_RELAY.get(id).fetch(request);
     }

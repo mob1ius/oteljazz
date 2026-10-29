@@ -67,6 +67,7 @@
       { "name": "LIVE_RELAY", "class_name": "LiveRelay" }
     ]
   },
+
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["LiveRelay"] }
   ]

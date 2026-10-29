@@ -120,8 +120,17 @@ included, plays your real system's telemetry. This is separate from the receiver
 feeds the Python engine's MIDI output, this one feeds the browser directly over a Cloudflare
 Durable Object relay (`src/live-relay.js`).
 
-Pick a session id (any string; it doubles as a shared secret -- see the security note in
-`src/live-relay.js`'s header before using anything guessable), then:
+Pick a session id. It must be 16 to 64 characters of letters, digits, `_` or `-`; anything else
+is answered 404 before it reaches the relay. The id is the only thing protecting the session and
+it protects it in both directions, so treat it as a password rather than a name: anyone who knows
+it can POST spans in, and can also open the WebSocket and read the real ones. Generate one rather
+than inventing it:
+
+```bash
+python3 -c "import secrets; print(secrets.token_hex(16))"
+```
+
+Then:
 
 ```bash
 # Point your OTLP/HTTP exporter's endpoint at:

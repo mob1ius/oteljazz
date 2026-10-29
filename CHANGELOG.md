@@ -1,5 +1,62 @@
 # Changelog
 
+## v1.12.1 - 2026-10-29
+
+Hardening for the two live-relay routes. No change to the music, the site, or how a live session
+is used beyond the session-id format. Full findings and the proposals not taken yet are in
+`local/live-relay-hardening.md`.
+
+### Fixed
+
+- **A viewer connection no longer writes a database row for a session nobody has exported to.**
+  The WebSocket upgrade had no rate limit, no content-type to satisfy and no body to pay for, yet
+  wrote one `live_sessions` row keyed on whatever string was in the URL. One GET was one Durable
+  Object plus one row, and `MAX_SOCKETS` could not stop it because a fresh object's socket count
+  is zero. Connections that arrive before the first span are now held in memory and flushed by
+  it, so opening the tab before starting the exporter still counts.
+- **A token count that is not a number no longer reaches the audio path.** `gen_ai.usage.
+  output_tokens` was passed through as given, and `director.js` does `Math.round(span.tokens ||
+  50)` before handing the result to `tokensToVelocity`, so a non-numeric attribute scheduled a
+  note with a NaN velocity. Coerced to a finite number or treated as absent.
+- **The decode error returned to the client no longer quotes the decoder.** A parser fed
+  attacker-controlled bytes was handing its own message back to whoever sent them. The status code
+  is what an exporter needs; the message stays in the log.
+
+### Changed
+
+- **Session ids are validated before anything is created.** 16 to 64 characters of
+  `[A-Za-z0-9_-]`, enforced in `src/index.js` ahead of `idFromName()`, which is the last point
+  where a request can be refused without having already made a Durable Object. The floor matters
+  more than the ceiling: every id in the table predates this and one of them is ten characters of
+  dictionary English.
+- **The WebSocket upgrade gains the per-object rate limit the ingest path already had**, at 20 a
+  second. It previously had none.
+
+### Not shipped
+
+- **A Workers rate-limit binding in front of `idFromName()`** was built, deployed and removed. It
+  was meant to cover the one case the relay's own limiter cannot see, a flood that uses a new
+  session id every time, since that limiter lives on the object and a new id is a new object with
+  a fresh counter. The binding attached and was called on every request, and returned success to
+  all 700 requests of a single-window burst against one key, with no exception and nothing in the
+  logs. A control that silently allows everything is worse than none, because the configuration
+  reads as though the route is protected, so it is gone rather than left in place. What this
+  leaves open is unbounded Durable Object creation, which costs compute and writes nothing: the
+  database row a sweep used to leave behind is closed by the `hasIngested` gate above, which was
+  always the part that mattered.
+- **Bounded what one request can expand into.** An export is capped at 2,000 spans and
+  `gen_ai.agent.name`, `gen_ai.operation.name` and `gen_ai.tool.name` at 128 characters each.
+  The 2MB body cap bounded what arrived, not what it decoded to, and one accepted request is
+  broadcast to as many as 32 sockets.
+- **A stale `?live=` says why it failed.** An id from before the format rule now gets a plain
+  "invalid session id" and the rule in the terminal, instead of the generic "connection error"
+  the 404'd upgrade would otherwise produce. The check is a copy of the server's rule rather than
+  a request to it.
+- **`src/live-relay.js`'s header no longer understates the risk.** It said the worst case was
+  made-up spans in someone's browser tab and "not any data disclosure". That was only ever true
+  of the write direction: anyone who knows a session id can also read the real spans, which carry
+  agent names, tool names, operations and token counts from somebody's actual system.
+
 ## v1.12.0 - 2026-09-18
 
 The site's request log gains the two things every per-visitor question needed, and says so out

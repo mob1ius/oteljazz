@@ -167,6 +167,19 @@ async function startLiveMode(session) {
     return;
   }
 
+  // The relay answers 404 to any session id outside this shape (src/index.js's SESSION_ID_RE,
+  // which rejects before a Durable Object is created). Without this check a stale ?live= from
+  // before that rule existed lands on ws.onerror, which says "connection error" -- true, and
+  // useless for the one cause a visitor can actually fix. Kept as a copy of the server's rule
+  // rather than a request to it: a round-trip to learn the answer is slower than the socket.
+  if (!/^[A-Za-z0-9_-]{16,64}$/.test(session)) {
+    termEl.innerHTML = "";
+    pushTerm('<span class="err">&gt; invalid session id</span>');
+    pushTerm('<span class="dim">&gt; must be 16-64 characters of letters, digits, _ or -</span>');
+    statusEl.textContent = "Invalid session id.";
+    return;
+  }
+
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
   const ws = new WebSocket(`${proto}//${location.host}/live/${encodeURIComponent(session)}/ws`);
 

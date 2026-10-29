@@ -18,11 +18,19 @@
  * each session id is its own isolated room. A session id is whatever string the operator picks
  * for their own OTLP endpoint path; there is no discovery or listing of active sessions.
  *
- * No auth on ingest. Anyone who knows a session id can POST spans into it. Acceptable for v1
- * because a session id is a shared secret by construction (you have to know it to point your own
- * exporter at it) and the worst case is someone else's made-up spans appearing in your own
- * browser tab, not any data disclosure. Revisit if this ever needs to be safe against a
- * genuinely adversarial party knowing the id.
+ * No auth on either route. Anyone who knows a session id can POST spans into it, AND can open the
+ * WebSocket and read the real ones. An earlier version of this comment said the worst case was
+ * "someone else's made-up spans appearing in your own browser tab, not any data disclosure",
+ * which was only ever true of the write direction. Spans carry gen_ai.agent.name,
+ * gen_ai.tool.name, gen_ai.operation.name and token counts from somebody's actual agent system,
+ * so a session id that leaks is a read of that system's shape, not just a nuisance.
+ *
+ * A session id is therefore a password, and src/index.js enforces a shape that a password could
+ * plausibly have (16-64 chars) before any request reaches this class. That is a floor, not a
+ * guarantee: an id someone chose by hand is still an id someone can guess.
+ * local/live-relay-hardening.md proposes the two things that would actually fix this -- issuing
+ * random ids rather than accepting chosen ones, and splitting the read id from the write token so
+ * that publishing one grants nothing about the other.
  *
  * OBSERVABILITY: this was the newest, least battle-tested code in the repo and, until this pass,
  * genuinely a black box -- decode failures and connection activity were caught and swallowed with
@@ -81,18 +89,33 @@ async function reject(request, body, init) {
   return new Response(body, init);
 }
 
+// Every attribute below is attacker-controlled and none of them had a length bound except `role`,
+// which was clamped to 64 from the start. An unbounded gen_ai.operation.name went into the
+// terminal line, into the broadcast string, and from there into innerHTML on every connected
+// tab -- escaped, so not injection, but nothing stopped one span from carrying a megabyte. 128 is
+// well past any real agent, tool or operation name. Clamping here rather than at the call sites
+// keeps it in one place, next to the escaping that has the same reason for existing.
+const MAX_FIELD_CHARS = 128;
+const clamp = (v, n = MAX_FIELD_CHARS) => (v == null ? v : String(v).slice(0, n));
+
 function spanToLine(span) {
   const attrs = span.attributes || {};
-  const service = attrs['gen_ai.agent.name'] || attrs['gen_ai.agent.id'] || 'unknown';
-  const op = attrs['gen_ai.operation.name'] || span.name || 'span';
-  const tool = attrs['gen_ai.tool.name'];
+  const service = clamp(attrs['gen_ai.agent.name'] || attrs['gen_ai.agent.id'] || 'unknown');
+  const op = clamp(attrs['gen_ai.operation.name'] || span.name || 'span');
+  const tool = clamp(attrs['gen_ai.tool.name']);
   // Which agent leads (takes the unpooled "planner" voice) is otherwise just "whoever spoke
   // first" -- see web/engine.js's LEAD ASSIGNMENT. There is no GenAI convention for an agent's
   // role, so this reads the two spellings a producer is likeliest to use. Like every other
   // attribute here it is attacker-controlled; it only ever selects a voice, and it reaches the
   // page as data (see the escaping note above), never as markup.
   const role = attrs['gen_ai.agent.role'] || attrs['gen_ai.agent.type'] || null;
-  const tokens = attrs['gen_ai.usage.output_tokens'];
+  // Coerced to a finite number or dropped, rather than clamped as a string. This one is not only
+  // a length question: director.js's feedSpan does Math.round(span.tokens || 50) and passes the
+  // result to tokensToVelocity, so a non-numeric value arrives at the audio path as NaN and a
+  // note gets scheduled with a NaN velocity. A token count that is not a number is not a token
+  // count, so it is treated as absent.
+  const rawTokens = Number(attrs['gen_ai.usage.output_tokens']);
+  const tokens = Number.isFinite(rawTokens) ? rawTokens : null;
   const tS = span.startTimeUnixNano ? span.startTimeUnixNano / 1e9 : 0;
   const durS = span.endTimeUnixNano && span.startTimeUnixNano
     ? (span.endTimeUnixNano - span.startTimeUnixNano) / 1e9
@@ -134,6 +157,22 @@ export class LiveRelay {
     // capped every instance at 50 ingest requests for its whole lifetime, not 50 per second.
     this.rateWindowStartMs = 0;
     this.rateWindowCount = 0;
+    // Same window, same reasoning, for the WebSocket upgrade -- which had neither a rate limit
+    // nor a body to pay for, making it the cheapest way in the codebase to turn one GET into one
+    // D1 row (see _touchSession's caller below).
+    this.wsWindowStartMs = 0;
+    this.wsWindowCount = 0;
+    // Whether this instance has ever accepted a span. It gates the D1 write for viewer
+    // connections: a session nobody has ever exported to is not worth a row, and writing one on
+    // an unauthenticated GET is exactly the unbounded-insert path this is here to close. Held in
+    // memory rather than read back from D1 on purpose -- a read per connect to avoid a write per
+    // connect would make the attacker's path more expensive for us, not for them. It resets when
+    // the object is evicted, which is acceptable because eviction resets their progress too.
+    this.hasIngested = false;
+    // Viewer connections that arrived before the first span. Opening the tab and then starting
+    // the exporter is the normal order, so dropping these outright would undercount every real
+    // session; they are flushed by the first successful ingest instead.
+    this.pendingWsConnects = 0;
   }
 
   // Every log line carries the session id explicitly rather than relying on log-stream context
@@ -193,12 +232,37 @@ export class LiveRelay {
         this._log('ws_rejected', { reason: 'socket_limit', openSockets: this.sockets.size });
         return new Response('too many concurrent viewers for this session', { status: 503 });
       }
+
+      // MAX_SOCKETS caps how many sockets are open at once; it says nothing about how fast they
+      // may be opened and closed, and a connect that is immediately dropped still costs an object
+      // start and (before the hasIngested gate below) a D1 write. 20 upgrades a second is far
+      // above a few tabs reconnecting after a deploy. Per-instance like the ingest limiter, with
+      // the same caveat: a new session id is a new instance with a fresh counter, which is what
+      // src/index.js's pre-idFromName limiter exists to cover.
+      const nowWs = Date.now();
+      if (nowWs - this.wsWindowStartMs > 1000) {
+        this.wsWindowStartMs = nowWs;
+        this.wsWindowCount = 0;
+      }
+      this.wsWindowCount += 1;
+      if (this.wsWindowCount > 20) {
+        this._log('ws_rate_limited', { windowCount: this.wsWindowCount });
+        return new Response('rate limited', { status: 429 });
+      }
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
       server.accept();
       this.sockets.add(server);
       this._log('ws_connect', { openSockets: this.sockets.size });
-      this._touchSession({ wsConnects: 1 });
+      // Deliberately NOT an unconditional D1 write. See hasIngested in the constructor: until a
+      // span has actually arrived for this session, a viewer connection is indistinguishable from
+      // someone sweeping ids, and the row it would write is attacker-chosen. The log line above
+      // still records the connection either way.
+      if (this.hasIngested) {
+        this._touchSession({ wsConnects: 1 });
+      } else {
+        this.pendingWsConnects += 1;
+      }
       server.addEventListener('close', () => {
         this.sockets.delete(server);
         this._log('ws_close', { openSockets: this.sockets.size });
@@ -253,7 +317,21 @@ export class LiveRelay {
           this._log('ingest_rejected', { reason: 'payload too large (actual)', actualLen: bytes.length });
           return new Response('payload too large', { status: 413 });
         }
-        const spans = decodeExportTraceServiceRequest(bytes);
+        const decoded = decodeExportTraceServiceRequest(bytes);
+        // The body cap bounds what arrives; it does not bound what one body expands into. A 2MB
+        // protobuf of minimal spans decodes to a very large array, every element becomes an
+        // object in one JSON.stringify, and that one string is then sent to up to MAX_SOCKETS
+        // sockets -- so a single accepted request is amplified 32 times. A real export batch from
+        // this repo's own producers is tens of spans; 2,000 is headroom, not a limit anyone
+        // legitimate will meet. Extra spans are dropped rather than the batch rejected: a
+        // too-large batch from a real exporter should still play, and the count is logged.
+        const MAX_SPANS_PER_EXPORT = 2000;
+        const spans = decoded.length > MAX_SPANS_PER_EXPORT
+          ? decoded.slice(0, MAX_SPANS_PER_EXPORT)
+          : decoded;
+        if (decoded.length > spans.length) {
+          this._log('ingest_truncated', { received: decoded.length, kept: spans.length });
+        }
         const lines = spans.map(spanToLine);
         const msg = JSON.stringify({ type: 'spans', spans: lines });
         let delivered = 0;
@@ -264,7 +342,12 @@ export class LiveRelay {
           }
         }
         this._log('ingest', { spanCount: spans.length, deliveredTo: delivered, listeningSockets: this.sockets.size });
-        await this._touchSession({ spans: spans.length, ingests: 1 });
+        // First real span for this instance: the session is now known to be in use, so the viewer
+        // connections that were held back above are worth recording after all.
+        const flushed = this.pendingWsConnects;
+        this.pendingWsConnects = 0;
+        this.hasIngested = true;
+        await this._touchSession({ spans: spans.length, ingests: 1, wsConnects: flushed });
         // Empty body, 200: a valid ExportTraceServiceResponse indicating full success with no
         // partial-success field set, per the OTLP spec -- a real exporter doesn't need the reply
         // parsed to know it worked, just the status code.
@@ -275,7 +358,11 @@ export class LiveRelay {
         // retry. 400 tells it to stop trying this specific payload.
         this._logError('decode_failed', err);
         await this._touchSession({ decodeErrors: 1 });
-        return new Response(`decode error: ${err.message}`, { status: 400 });
+        // The exporter needs the status code, not the reason: 400 already tells it to stop
+        // retrying this payload. The decoder's own message describes internals of a parser
+        // handed attacker-controlled bytes, and it was being handed straight back to whoever
+        // sent them. It stays in the log line above, where it is actually useful.
+        return new Response('malformed OTLP payload', { status: 400 });
       }
     }
 
